@@ -254,10 +254,27 @@ def residual_rmsnorm_triton(x, residual, weight, eps: float = 1e-6, num_warps=No
     return y, residual_out
 
 
-def residual_rmsnorm_backend(hidden_size: int) -> str:
-    """Return the measured L20 backend for a hidden size."""
+def residual_rmsnorm_backend(
+    rows: int, hidden_size: int, flashinfer_available: bool = False
+) -> str:
+    """Return the measured L20 backend for a workload shape."""
 
-    return "triton" if hidden_size == 8192 else "torch_eager"
+    triton_decode_shapes = {
+        (8, 4096),
+        (8, 6144),
+        (32, 4096),
+        (32, 6144),
+        (128, 4096),
+        (512, 4096),
+        (512, 5120),
+    }
+    if flashinfer_available and (rows, hidden_size) in triton_decode_shapes:
+        return "triton"
+    if flashinfer_available:
+        return "flashinfer"
+    if rows <= 512 or hidden_size == 8192:
+        return "triton"
+    return "torch_eager"
 
 
 def residual_rmsnorm_l20(x, residual, weight, eps: float = 1e-6):
@@ -271,7 +288,7 @@ def residual_rmsnorm_l20(x, residual, weight, eps: float = 1e-6):
         raise ValueError("weight must be 1D and match hidden_size")
 
     hidden_size = int(x.shape[1])
-    if residual_rmsnorm_backend(hidden_size) == "triton":
+    if residual_rmsnorm_backend(int(x.shape[0]), hidden_size) == "triton":
         return residual_rmsnorm_triton(x, residual, weight, eps)
 
     residual_out = x + residual
@@ -279,3 +296,64 @@ def residual_rmsnorm_l20(x, residual, weight, eps: float = 1e-6):
         residual_out, (hidden_size,), weight, eps
     )
     return normalized, residual_out
+
+
+def residual_rmsnorm_triton_inplace(x, residual, weight, eps: float = 1e-6):
+    """Apply the L20 Triton fused kernel in place."""
+
+    if torch is None or triton is None:
+        raise RuntimeError("residual_rmsnorm_triton_inplace requires torch and triton")
+    if x.dim() != 2 or residual.shape != x.shape:
+        raise ValueError("x and residual must be matching 2D tensors")
+    if weight.dim() != 1 or weight.numel() != x.shape[1]:
+        raise ValueError("weight must be 1D and match hidden_size")
+    if not x.is_cuda or not residual.is_cuda or not weight.is_cuda:
+        raise ValueError("x, residual, and weight must be CUDA tensors")
+    if not x.is_contiguous() or not residual.is_contiguous():
+        raise ValueError("in-place tensors must be contiguous")
+
+    rows, hidden_size = x.shape
+    config = residual_rmsnorm_launch_config(int(hidden_size))
+    measured_warps = {
+        (8, 4096): 8,
+        (32, 4096): 8,
+    }
+    num_warps = measured_warps.get((int(rows), int(hidden_size)), config.num_warps)
+    _residual_rmsnorm_kernel[(rows,)](
+        x,
+        residual,
+        weight,
+        x,
+        residual,
+        hidden_size,
+        eps,
+        config.block_size,
+        num_warps=num_warps,
+        num_stages=config.num_stages,
+    )
+
+
+def residual_rmsnorm_l20_inplace(x, residual, weight, eps: float = 1e-6) -> str:
+    """Apply the fastest measured in-place backend and return its name."""
+
+    try:
+        import flashinfer
+    except ImportError:
+        flashinfer = None
+
+    backend = residual_rmsnorm_backend(
+        int(x.shape[0]), int(x.shape[1]), flashinfer is not None
+    )
+    if backend == "flashinfer":
+        flashinfer.norm.fused_add_rmsnorm(x, residual, weight, eps)
+        return backend
+    if backend == "triton":
+        residual_rmsnorm_triton_inplace(x, residual, weight, eps)
+        return backend
+
+    residual.add_(x)
+    normalized = torch.nn.functional.rms_norm(
+        residual, (int(x.shape[1]),), weight, eps
+    )
+    x.copy_(normalized)
+    return backend

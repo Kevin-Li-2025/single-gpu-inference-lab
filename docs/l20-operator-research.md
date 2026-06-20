@@ -267,3 +267,54 @@ Implementation references for this pass:
 - https://triton-lang.org/main/python-api/generated/triton.language.multiple_of.html
 - https://triton-lang.org/main/python-api/generated/triton.language.max_contiguous.html
 - https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#cache-operators
+
+## V4 FlashInfer and Decode Matrix
+
+The previous studies used 4096 rows, which represents a large prefill-style
+workload but not autoregressive decode. V4 adds the rows dimension:
+
+- decode and small batches: 1, 8, 32, 128 rows
+- medium prefill: 512 rows
+- large prefill: 4096 rows
+- hidden sizes: 4096, 5120, 6144, 8192
+
+FlashInfer 0.6.12 was installed in an isolated environment alongside PyTorch
+2.12.1+cu130. Its `fused_add_rmsnorm` API updates the input and residual tensors
+in place, matching production inference engines. The benchmark resets those
+tensors outside the CUDA Event timing interval, so reset copies are not charged
+to FlashInfer.
+
+The L20 production API is `residual_rmsnorm_l20_inplace`. It dispatches between
+FlashInfer and the local SM89 Triton kernel using the measured `(rows,
+hidden_size)` shape. Without FlashInfer, it retains a Triton fallback for rows
+up to 512 and hidden size 8192.
+
+Median speedup of the final in-place dispatcher over out-of-place PyTorch eager
+across three cold-cache runs:
+
+| Rows | Workload | Speedup range across hidden sizes |
+| ---: | --- | ---: |
+| 1 | single-token decode | 1.85x-2.18x |
+| 8 | decode batch | 1.71x-2.28x |
+| 32 | decode batch | 1.62x-1.89x |
+| 128 | large decode batch | 1.63x-1.86x |
+| 512 | medium prefill | 1.23x-1.52x |
+| 4096 | large prefill | 1.01x-1.18x |
+
+All 24 shapes passed correctness checks. FlashInfer was the strongest general
+in-place provider. The local Triton kernel remains useful as the no-dependency
+fallback and for a small number of L20 decode shapes. Out-of-place Triton can
+occasionally measure about one microsecond faster, but that is not directly
+comparable to the required in-place production contract.
+
+Raw reports:
+
+- `benchmarks/results/l20-flashinfer-matrix-v4/run1.json`
+- `benchmarks/results/l20-flashinfer-matrix-v4/run2.json`
+- `benchmarks/results/l20-flashinfer-matrix-v4/run3.json`
+
+Sources:
+
+- https://docs.flashinfer.ai/installation.html
+- https://docs.flashinfer.ai/generated/flashinfer.norm.fused_add_rmsnorm.html
+- https://docs.flashinfer.ai/generated/flashinfer.testing.bench_gpu_time_with_cuda_event.html

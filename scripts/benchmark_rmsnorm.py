@@ -16,6 +16,7 @@ from l20_stack.operators import (
 from l20_stack.ops.triton_rmsnorm import (
     residual_rmsnorm_reference,
     residual_rmsnorm_l20,
+    residual_rmsnorm_l20_inplace,
     residual_rmsnorm_triton,
     rmsnorm_reference,
     rmsnorm_triton,
@@ -24,6 +25,7 @@ from l20_stack.ops.triton_rmsnorm import (
 
 
 MATRIX_HIDDEN_SIZES = (4096, 5120, 6144, 8192)
+MATRIX_ROWS = (1, 8, 32, 128, 512, 4096)
 
 
 def parse_args():
@@ -39,6 +41,11 @@ def parse_args():
         "--matrix",
         action="store_true",
         help="benchmark common LLM hidden sizes: 4096, 5120, 6144, and 8192",
+    )
+    parser.add_argument(
+        "--rows-matrix",
+        action="store_true",
+        help="benchmark decode and prefill rows: 1, 8, 32, 128, 512, and 4096",
     )
     parser.add_argument("--dtype", choices=("float16", "bfloat16", "float32"), default="float16")
     parser.add_argument("--warmup", type=int, default=25)
@@ -68,8 +75,10 @@ def percentile(values, pct):
     return ordered[index]
 
 
-def cuda_event_timings(torch, function, warmup, iterations, cache_flush):
+def cuda_event_timings(torch, function, reset, warmup, iterations, cache_flush):
     for _ in range(warmup):
+        if reset is not None:
+            reset()
         if cache_flush is not None:
             cache_flush.zero_()
         function()
@@ -78,6 +87,8 @@ def cuda_event_timings(torch, function, warmup, iterations, cache_flush):
     starts = [torch.cuda.Event(enable_timing=True) for _ in range(iterations)]
     ends = [torch.cuda.Event(enable_timing=True) for _ in range(iterations)]
     for start, end in zip(starts, ends):
+        if reset is not None:
+            reset()
         if cache_flush is not None:
             cache_flush.zero_()
         start.record()
@@ -139,14 +150,20 @@ def benchmark_providers(
     torch, providers, expected, dtype, minimum_bytes, warmup, iterations, cache_flush
 ):
     reports = {}
-    for name, function in providers.items():
+    for name, provider in providers.items():
+        if isinstance(provider, tuple):
+            function, reset = provider
+        else:
+            function, reset = provider, None
         try:
+            if reset is not None:
+                reset()
             actual = function()
             torch.cuda.synchronize()
             provider_report = correctness(torch, actual, expected, dtype)
             if provider_report["correct"]:
                 timings = cuda_event_timings(
-                    torch, function, warmup, iterations, cache_flush
+                    torch, function, reset, warmup, iterations, cache_flush
                 )
                 provider_report.update(timing_report(timings, minimum_bytes))
             reports[name] = provider_report
@@ -174,9 +191,9 @@ def fastest_provider(reports):
     return min(measured, key=measured.get) if measured else None
 
 
-def benchmark_shape(torch, args, hidden_size):
+def benchmark_shape(torch, args, rows, hidden_size, flashinfer):
     dtype = getattr(torch, args.dtype)
-    x = torch.randn(args.rows, hidden_size, device="cuda", dtype=dtype)
+    x = torch.randn(rows, hidden_size, device="cuda", dtype=dtype)
     residual = torch.randn_like(x)
     weight = torch.randn(hidden_size, device="cuda", dtype=dtype)
     cache_flush = None
@@ -184,9 +201,9 @@ def benchmark_shape(torch, args, hidden_size):
         cache_flush = torch.empty(
             args.cache_flush_mb * 1024 * 1024, device="cuda", dtype=torch.uint8
         )
-    shape = OperatorShape(args.rows, hidden_size, x.element_size())
+    shape = OperatorShape(rows, hidden_size, x.element_size())
     report = {
-        "shape": {"rows": args.rows, "hidden_size": hidden_size, "dtype": args.dtype},
+        "shape": {"rows": rows, "hidden_size": hidden_size, "dtype": args.dtype},
         "operators": {},
     }
 
@@ -238,6 +255,35 @@ def benchmark_shape(torch, args, hidden_size):
         providers["l20_dispatch"] = lambda: residual_rmsnorm_l20(
             x, residual, weight, args.eps
         )
+        dispatch_input = x.clone()
+        dispatch_residual = residual.clone()
+
+        def reset_l20_inplace():
+            dispatch_input.copy_(x)
+            dispatch_residual.copy_(residual)
+
+        def run_l20_inplace():
+            residual_rmsnorm_l20_inplace(
+                dispatch_input, dispatch_residual, weight, args.eps
+            )
+            return dispatch_input, dispatch_residual
+
+        providers["l20_inplace"] = (run_l20_inplace, reset_l20_inplace)
+        if flashinfer is not None:
+            flashinfer_input = x.clone()
+            flashinfer_residual = residual.clone()
+
+            def reset_flashinfer():
+                flashinfer_input.copy_(x)
+                flashinfer_residual.copy_(residual)
+
+            def run_flashinfer():
+                flashinfer.norm.fused_add_rmsnorm(
+                    flashinfer_input, flashinfer_residual, weight, args.eps
+                )
+                return flashinfer_input, flashinfer_residual
+
+            providers["flashinfer"] = (run_flashinfer, reset_flashinfer)
         for num_warps in rmsnorm_warp_candidates(hidden_size):
             providers[f"triton_w{num_warps}"] = (
                 lambda warps=num_warps: residual_rmsnorm_triton(
@@ -288,6 +334,10 @@ def main() -> int:
 
     import torch
     import triton
+    try:
+        import flashinfer
+    except ImportError:
+        flashinfer = None
 
     if not torch.cuda.is_available():
         raise SystemExit("CUDA is required for this benchmark")
@@ -300,7 +350,12 @@ def main() -> int:
 
     torch.manual_seed(0)
     hidden_sizes = MATRIX_HIDDEN_SIZES if args.matrix else (args.hidden_size,)
-    shapes = [benchmark_shape(torch, args, hidden_size) for hidden_size in hidden_sizes]
+    row_sizes = MATRIX_ROWS if args.rows_matrix else (args.rows,)
+    shapes = [
+        benchmark_shape(torch, args, rows, hidden_size, flashinfer)
+        for rows in row_sizes
+        for hidden_size in hidden_sizes
+    ]
     all_correct = all(
         provider.get("correct", False)
         for shape in shapes
@@ -314,6 +369,7 @@ def main() -> int:
         "cuda": torch.version.cuda,
         "torch": torch.__version__,
         "triton": triton.__version__,
+        "flashinfer": getattr(flashinfer, "__version__", None),
         "warmup_iterations": args.warmup,
         "measured_iterations": args.iters,
         "cache_flush_mb": args.cache_flush_mb,
@@ -321,7 +377,9 @@ def main() -> int:
         "shapes": shapes,
         "note": (
             "Effective GB/s uses the semantic minimum traffic. Speedups are valid only for "
-            "the GPU and software versions recorded in this report."
+            "the GPU and software versions recorded in this report. FlashInfer and "
+            "l20_inplace use the production in-place contract; other providers return "
+            "new output tensors."
         ),
     }
     serialized = json.dumps(report, indent=2, sort_keys=True)

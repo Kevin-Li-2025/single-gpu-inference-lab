@@ -29,6 +29,9 @@ kernels = [
   "torch>=2.4",
   "triton>=3.0",
 ]
+production-kernels = [
+  "flashinfer-python>=0.6.12",
+]
 dev = [
   "pytest>=8",
   "ruff>=0.6",

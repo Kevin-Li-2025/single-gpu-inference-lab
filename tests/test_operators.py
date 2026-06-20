@@ -50,10 +50,12 @@ class OperatorPlanTest(unittest.TestCase):
         self.assertAlmostEqual(plan.launch["minimum_traffic_reduction_pct"], 20.0, places=2)
 
     def test_l20_residual_rmsnorm_dispatch_uses_measured_crossover(self):
-        self.assertEqual(residual_rmsnorm_backend(4096), "torch_eager")
-        self.assertEqual(residual_rmsnorm_backend(5120), "torch_eager")
-        self.assertEqual(residual_rmsnorm_backend(6144), "torch_eager")
-        self.assertEqual(residual_rmsnorm_backend(8192), "triton")
+        self.assertEqual(residual_rmsnorm_backend(4096, 4096), "torch_eager")
+        self.assertEqual(residual_rmsnorm_backend(1, 4096), "triton")
+        self.assertEqual(residual_rmsnorm_backend(4096, 8192), "triton")
+        self.assertEqual(residual_rmsnorm_backend(128, 5120, True), "flashinfer")
+        self.assertEqual(residual_rmsnorm_backend(4096, 6144, True), "flashinfer")
+        self.assertEqual(residual_rmsnorm_backend(32, 4096, True), "triton")
 
     def test_oversized_single_pass_rmsnorm_is_rejected(self):
         with self.assertRaises(ValueError):
