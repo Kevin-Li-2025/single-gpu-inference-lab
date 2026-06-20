@@ -1,0 +1,38 @@
+{
+  "hardware": "nvidia-l20",
+  "workload": "llm-inference-and-qlora",
+  "operators": [
+    {
+      "name": "rmsnorm",
+      "shape": {
+        "rows": 4096,
+        "hidden_size": 4096,
+        "dtype_bytes": 2
+      }
+    },
+    {
+      "name": "rmsnorm",
+      "shape": {
+        "rows": 2048,
+        "hidden_size": 8192,
+        "dtype_bytes": 2
+      }
+    },
+    {
+      "name": "rope",
+      "shape": {
+        "rows": 8192,
+        "hidden_size": 128,
+        "dtype_bytes": 2
+      }
+    },
+    {
+      "name": "dequant_matvec",
+      "shape": {
+        "rows": 4096,
+        "hidden_size": 4096,
+        "dtype_bytes": 1
+      }
+    }
+  ]
+}

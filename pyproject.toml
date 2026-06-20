@@ -25,6 +25,10 @@ train = [
 serve = [
   "vllm>=0.6",
 ]
+kernels = [
+  "torch>=2.4",
+  "triton>=3.0",
+]
 dev = [
   "pytest>=8",
   "ruff>=0.6",

@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 from typing import Sequence
 
 from l20_stack.experiment import ExperimentConfig
 from l20_stack.memory import estimate_training_memory
+from l20_stack.operators import OperatorTarget, l20_operator_summary, plan_operators
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -16,6 +18,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     plan = subparsers.add_parser("plan", help="estimate memory for an experiment config")
     plan.add_argument("--config", required=True, help="path to a JSON experiment config")
+
+    operator_plan = subparsers.add_parser(
+        "operator-plan", help="rank L20 operator optimization targets"
+    )
+    operator_plan.add_argument("--config", required=True, help="path to operator target JSON")
 
     return parser
 
@@ -37,6 +44,27 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "note": (
                         "Planning estimate only; validate with real CUDA telemetry "
                         "before making performance claims."
+                    ),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.command == "operator-plan":
+        payload = json.loads(Path(args.config).read_text(encoding="utf-8"))
+        targets = [OperatorTarget.from_dict(item) for item in payload["operators"]]
+        plans = plan_operators(targets)
+        print(
+            json.dumps(
+                {
+                    "workload": payload.get("workload", "unknown"),
+                    "summary": l20_operator_summary(),
+                    "plans": [plan.to_dict() for plan in plans],
+                    "note": (
+                        "This is an optimization plan, not a measured result. "
+                        "Run the RMSNorm benchmark on real L20 hardware before claiming speedup."
                     ),
                 },
                 indent=2,
