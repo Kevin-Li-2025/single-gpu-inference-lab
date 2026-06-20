@@ -54,6 +54,7 @@ class OperatorPlanTest(unittest.TestCase):
         self.assertEqual(residual_rmsnorm_backend(1, 4096), "triton")
         self.assertEqual(residual_rmsnorm_backend(4096, 8192), "triton")
         self.assertEqual(residual_rmsnorm_backend(128, 5120, True), "flashinfer")
+        self.assertEqual(residual_rmsnorm_backend(512, 4096, True), "flashinfer")
         self.assertEqual(residual_rmsnorm_backend(4096, 6144, True), "flashinfer")
         self.assertEqual(residual_rmsnorm_backend(32, 4096, True), "triton")
 

@@ -307,6 +307,25 @@ fallback and for a small number of L20 decode shapes. Out-of-place Triton can
 occasionally measure about one microsecond faster, but that is not directly
 comparable to the required in-place production contract.
 
+## V5 Policy Generation
+
+The next optimization pass adds an explicit policy-generation step rather than
+editing the L20 dispatch table by hand. `scripts/analyze_rmsnorm_policy.py`
+aggregates repeated JSON benchmark reports, computes median p50 latency for the
+production providers, marks small-margin winners as unstable, and exits nonzero
+when a stable recommendation disagrees with the current dispatch.
+
+Running the analyzer on the three v4 FlashInfer reports found one stable policy
+correction: with FlashInfer installed, `(rows=512, hidden_size=4096)` should use
+FlashInfer rather than forcing the local Triton fallback. The median p50 gap was
+0.0256 ms versus 0.0266 ms, about 3.9%. The code path is therefore updated to
+let FlashInfer handle that shape when available, while keeping Triton as the
+no-dependency fallback.
+
+This is a small speedup, but the larger result is methodological: future
+4096/5120/6144 kernel variants now need to beat the measured production policy
+by a configured margin before they are allowed into the L20 dispatcher.
+
 Raw reports:
 
 - `benchmarks/results/l20-flashinfer-matrix-v4/run1.json`

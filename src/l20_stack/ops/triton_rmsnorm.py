@@ -265,7 +265,6 @@ def residual_rmsnorm_backend(
         (32, 4096),
         (32, 6144),
         (128, 4096),
-        (512, 4096),
         (512, 5120),
     }
     if flashinfer_available and (rows, hidden_size) in triton_decode_shapes:

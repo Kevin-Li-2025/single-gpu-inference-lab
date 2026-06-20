@@ -29,6 +29,8 @@ Implemented:
   the 8192 hidden-size crossover.
 - An L20 production in-place dispatcher benchmarked across decode and prefill
   rows against FlashInfer.
+- A benchmark-policy analyzer that rebuilds L20 dispatch decisions from repeated
+  JSON reports and fails when a stable measured winner disagrees with the code.
 
 Not implemented yet:
 
@@ -70,3 +72,13 @@ For production inference, install the optional `production-kernels` extra and
 use `residual_rmsnorm_l20_inplace`. On the measured L20, its speedup over
 PyTorch eager ranges from 1.62x-2.28x for decode batches and 1.01x-1.18x for
 4096-row prefill, depending on hidden size.
+
+To regenerate the measured residual RMSNorm policy from the checked-in L20
+reports:
+
+```bash
+PYTHONPATH=src /usr/bin/python3 scripts/analyze_rmsnorm_policy.py \
+  benchmarks/results/l20-flashinfer-matrix-v4/run1.json \
+  benchmarks/results/l20-flashinfer-matrix-v4/run2.json \
+  benchmarks/results/l20-flashinfer-matrix-v4/run3.json
+```
