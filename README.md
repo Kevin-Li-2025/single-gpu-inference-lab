@@ -24,6 +24,7 @@ Implemented:
 - Unit tests that run without CUDA, PyTorch, or model downloads.
 - SM89 Triton RMSNorm and fused residual RMSNorm forward kernels.
 - CUDA Event benchmark matrix for PyTorch eager, `torch.compile`, and Triton.
+- Three cold-cache L20 benchmark runs with shape-specific 4/8-warp launch choices.
 
 Not implemented yet:
 
@@ -55,3 +56,8 @@ PYTHONPATH=src /usr/bin/python3 -m l20_stack.cli plan --config configs/qlora_l20
 4. Only then decide whether a custom PagedAttention or quantization kernel is justified.
 
 See [docs/roadmap.md](docs/roadmap.md) for the v0.1 to v1.0 release plan and commit-sized task breakdown.
+
+Measured operator results and raw reports are documented in
+[docs/l20-operator-research.md](docs/l20-operator-research.md). The current custom fused
+residual kernel wins only at hidden size 8192; the repository does not claim a universal
+fused-kernel speedup.

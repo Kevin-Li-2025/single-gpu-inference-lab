@@ -50,7 +50,15 @@ def rmsnorm_launch_config(hidden_size: int) -> RmsNormLaunchConfig:
     if block_size > 16384:
         raise ValueError("single-pass RMSNorm baseline supports hidden_size <= 16384")
 
-    if block_size <= 512:
+    measured_warps = {
+        4096: 4,
+        5120: 8,
+        6144: 4,
+        8192: 8,
+    }
+    if hidden_size in measured_warps:
+        num_warps = measured_warps[hidden_size]
+    elif block_size <= 512:
         num_warps = 2
     elif block_size <= 1024:
         num_warps = 4
@@ -65,7 +73,29 @@ def rmsnorm_launch_config(hidden_size: int) -> RmsNormLaunchConfig:
         sm_target="sm_89",
         rationale=(
             "one Triton program per row, FP32 reduction, power-of-two block, "
-            "and at most 8 warps to limit register pressure on SM89"
+            "and L20-measured warps for common LLM hidden sizes"
+        ),
+    )
+
+
+def residual_rmsnorm_launch_config(hidden_size: int) -> RmsNormLaunchConfig:
+    base = rmsnorm_launch_config(hidden_size)
+    measured_warps = {
+        4096: 4,
+        5120: 4,
+        6144: 8,
+        8192: 4,
+    }
+    num_warps = measured_warps.get(hidden_size, base.num_warps)
+    return RmsNormLaunchConfig(
+        hidden_size=base.hidden_size,
+        block_size=base.block_size,
+        num_warps=num_warps,
+        num_stages=base.num_stages,
+        sm_target=base.sm_target,
+        rationale=(
+            "fused residual RMSNorm warps selected from three cold-cache L20 runs "
+            "for common LLM hidden sizes"
         ),
     )
 
@@ -159,7 +189,7 @@ def rmsnorm_triton(x, weight, eps: float = 1e-6, num_warps=None):
         x = x.contiguous()
 
     rows, hidden_size = x.shape
-    config = rmsnorm_launch_config(int(hidden_size))
+    config = residual_rmsnorm_launch_config(int(hidden_size))
     launch_warps = config.num_warps if num_warps is None else int(num_warps)
     if launch_warps not in rmsnorm_warp_candidates(int(hidden_size)):
         raise ValueError("num_warps is not an L20 launch candidate for this hidden size")

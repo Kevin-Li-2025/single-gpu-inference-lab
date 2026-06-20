@@ -106,6 +106,11 @@ effective GB/s, and speedup relative to eager. PyTorch's 2026 normalization work
 `torch.compile` is a serious baseline; a custom kernel is not useful merely because it beats
 eager execution on another GPU.
 
+The default benchmark touches a 256 MB buffer before every timing sample. This is larger
+than the full AD102 L2 cache and prevents repeated reads of one fixed activation tensor from
+producing an L2-resident bandwidth number above the L20 DRAM ceiling. Use
+`--cache-flush-mb 0` only when intentionally measuring a warm-cache microbenchmark.
+
 Relevant implementation references:
 
 - https://triton-lang.org/main/getting-started/tutorials/05-layer-norm.html
@@ -152,6 +157,7 @@ PYTHONPATH=src python scripts/benchmark_rmsnorm.py \
   --dtype float16 \
   --warmup 25 \
   --iters 100 \
+  --cache-flush-mb 256 \
   --require-l20 \
   --output outputs/l20-rmsnorm-v2.json
 ```
@@ -169,3 +175,32 @@ The report must include:
 - eager-relative speedup for every correct provider
 
 No speedup claim should be added to README until this benchmark is run on real L20 hardware.
+
+## Measured L20 Results
+
+Measured on June 20, 2026:
+
+- NVIDIA L20, compute capability 8.9, 46,068 MiB reported memory
+- NVIDIA driver 580.159.04
+- PyTorch 2.12.1+cu130
+- Triton 3.7.1
+- rows 4096, FP16, 256 MB cache flush, 25 warmups, 100 measured iterations
+- three complete runs; the table reports the median p50 across runs
+
+| Hidden | Standalone RMSNorm winner | Speedup vs eager | Residual RMSNorm winner | Speedup vs eager |
+| ---: | --- | ---: | --- | ---: |
+| 4096 | Triton, 4 warps | 1.079x | PyTorch eager | 1.000x |
+| 5120 | Triton, 8 warps | 1.055x | PyTorch eager | 1.000x |
+| 6144 | Triton, 4 warps | 1.066x | PyTorch eager | 1.000x |
+| 8192 | Triton, 8 warps | 1.030x | Triton, 4 warps | 1.131x |
+
+All providers passed correctness checks. The result is mixed rather than universally
+positive: standalone RMSNorm improves modestly at every measured size, while the fused
+residual kernel only beats eager at hidden size 8192. For 4096, 5120, and 6144, deployment
+should keep PyTorch eager unless a full-model trace changes the launch and cache behavior.
+
+Raw reports:
+
+- `benchmarks/results/l20-rmsnorm-v2-cold-run1.json`
+- `benchmarks/results/l20-rmsnorm-v2-cold-run2.json`
+- `benchmarks/results/l20-rmsnorm-v2-cold-run3.json`

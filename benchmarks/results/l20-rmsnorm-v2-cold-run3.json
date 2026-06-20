@@ -1,0 +1,555 @@
+{
+  "all_correct": true,
+  "benchmark_version": 2,
+  "cache_flush_mb": 256,
+  "compute_capability": "8.9",
+  "cuda": "13.0",
+  "gpu_name": "NVIDIA L20",
+  "measured_iterations": 100,
+  "note": "Effective GB/s uses the semantic minimum traffic. Speedups are valid only for the GPU and software versions recorded in this report.",
+  "shapes": [
+    {
+      "operators": {
+        "residual_rmsnorm": {
+          "fastest_provider": "torch_eager",
+          "fused_minimum_bytes": 134225920,
+          "minimum_traffic_reduction_pct": 20.0,
+          "providers": {
+            "torch_compile": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.0078125,
+              "max_rel_error": 0.0019801980815827847,
+              "minimum_effective_gbps": 630.19,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 0.865,
+              "timing_ms": {
+                "mean": 0.2135,
+                "p50": 0.213,
+                "p95": 0.2181
+              }
+            },
+            "torch_eager": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.0078125,
+              "max_rel_error": 0.0034129691775888205,
+              "minimum_effective_gbps": 728.22,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.0,
+              "timing_ms": {
+                "mean": 0.1844,
+                "p50": 0.1843,
+                "p95": 0.1874
+              }
+            },
+            "triton_w4": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009737098589539528,
+              "minimum_effective_gbps": 689.89,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 0.947,
+              "timing_ms": {
+                "mean": 0.195,
+                "p50": 0.1946,
+                "p95": 0.1976
+              }
+            },
+            "triton_w8": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009737098589539528,
+              "minimum_effective_gbps": 645.71,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 0.886,
+              "timing_ms": {
+                "mean": 0.208,
+                "p50": 0.2079,
+                "p95": 0.215
+              }
+            }
+          },
+          "unfused_minimum_bytes": 167780352
+        },
+        "rmsnorm": {
+          "fastest_provider": "triton_w4",
+          "minimum_bytes": 67117056,
+          "providers": {
+            "torch_compile": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0012970168609172106,
+              "minimum_effective_gbps": 642.59,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.069,
+              "timing_ms": {
+                "mean": 0.1042,
+                "p50": 0.1044,
+                "p95": 0.1065
+              }
+            },
+            "torch_eager": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0012970168609172106,
+              "minimum_effective_gbps": 601.32,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.0,
+              "timing_ms": {
+                "mean": 0.1119,
+                "p50": 0.1116,
+                "p95": 0.1147
+              }
+            },
+            "triton_w4": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009699321235530078,
+              "minimum_effective_gbps": 648.95,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.079,
+              "timing_ms": {
+                "mean": 0.1034,
+                "p50": 0.1034,
+                "p95": 0.1055
+              }
+            },
+            "triton_w8": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0012970168609172106,
+              "minimum_effective_gbps": 630.23,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.048,
+              "timing_ms": {
+                "mean": 0.106,
+                "p50": 0.1065,
+                "p95": 0.1085
+              }
+            }
+          }
+        }
+      },
+      "shape": {
+        "dtype": "float16",
+        "hidden_size": 4096,
+        "rows": 4096
+      }
+    },
+    {
+      "operators": {
+        "residual_rmsnorm": {
+          "fastest_provider": "torch_eager",
+          "fused_minimum_bytes": 167782400,
+          "minimum_traffic_reduction_pct": 20.0,
+          "providers": {
+            "torch_compile": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.0078125,
+              "max_rel_error": 0.007407407276332378,
+              "minimum_effective_gbps": 615.98,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 0.895,
+              "timing_ms": {
+                "mean": 0.2721,
+                "p50": 0.2724,
+                "p95": 0.2765
+              }
+            },
+            "torch_eager": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.0078125,
+              "max_rel_error": 0.010204081423580647,
+              "minimum_effective_gbps": 688.45,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.0,
+              "timing_ms": {
+                "mean": 0.2437,
+                "p50": 0.2437,
+                "p95": 0.2499
+              }
+            },
+            "triton_w4": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009765625,
+              "minimum_effective_gbps": 640.04,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 0.93,
+              "timing_ms": {
+                "mean": 0.2623,
+                "p50": 0.2621,
+                "p95": 0.2662
+              }
+            },
+            "triton_w8": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009727626456879079,
+              "minimum_effective_gbps": 630.19,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 0.915,
+              "timing_ms": {
+                "mean": 0.2667,
+                "p50": 0.2662,
+                "p95": 0.2744
+              }
+            }
+          },
+          "unfused_minimum_bytes": 209725440
+        },
+        "rmsnorm": {
+          "fastest_provider": "triton_w8",
+          "minimum_bytes": 83896320,
+          "providers": {
+            "torch_compile": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009756097570061684,
+              "minimum_effective_gbps": 606.89,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.0,
+              "timing_ms": {
+                "mean": 0.1385,
+                "p50": 0.1382,
+                "p95": 0.1413
+              }
+            },
+            "torch_eager": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.001953125,
+              "max_rel_error": 0.0009756097570061684,
+              "minimum_effective_gbps": 606.89,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.0,
+              "timing_ms": {
+                "mean": 0.1382,
+                "p50": 0.1382,
+                "p95": 0.1413
+              }
+            },
+            "triton_w4": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009756097570061684,
+              "minimum_effective_gbps": 640.08,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.054,
+              "timing_ms": {
+                "mean": 0.1313,
+                "p50": 0.1311,
+                "p95": 0.1341
+              }
+            },
+            "triton_w8": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009756097570061684,
+              "minimum_effective_gbps": 645.12,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.063,
+              "timing_ms": {
+                "mean": 0.1302,
+                "p50": 0.13,
+                "p95": 0.1331
+              }
+            }
+          }
+        }
+      },
+      "shape": {
+        "dtype": "float16",
+        "hidden_size": 5120,
+        "rows": 4096
+      }
+    },
+    {
+      "operators": {
+        "residual_rmsnorm": {
+          "fastest_provider": "torch_eager",
+          "fused_minimum_bytes": 201338880,
+          "minimum_traffic_reduction_pct": 20.0,
+          "providers": {
+            "torch_compile": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.0078125,
+              "max_rel_error": 0.059604644775390625,
+              "minimum_effective_gbps": 614.44,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 0.962,
+              "timing_ms": {
+                "mean": 0.3275,
+                "p50": 0.3277,
+                "p95": 0.3328
+              }
+            },
+            "torch_eager": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.0078125,
+              "max_rel_error": 0.059604644775390625,
+              "minimum_effective_gbps": 638.38,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.0,
+              "timing_ms": {
+                "mean": 0.3154,
+                "p50": 0.3154,
+                "p95": 0.3205
+              }
+            },
+            "triton_w4": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009756097570061684,
+              "minimum_effective_gbps": 626.18,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 0.981,
+              "timing_ms": {
+                "mean": 0.3215,
+                "p50": 0.3215,
+                "p95": 0.3267
+              }
+            },
+            "triton_w8": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009756097570061684,
+              "minimum_effective_gbps": 638.38,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.0,
+              "timing_ms": {
+                "mean": 0.3159,
+                "p50": 0.3154,
+                "p95": 0.3236
+              }
+            }
+          },
+          "unfused_minimum_bytes": 251670528
+        },
+        "rmsnorm": {
+          "fastest_provider": "triton_w4",
+          "minimum_bytes": 100675584,
+          "providers": {
+            "torch_compile": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009756097570061684,
+              "minimum_effective_gbps": 618.34,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.019,
+              "timing_ms": {
+                "mean": 0.163,
+                "p50": 0.1628,
+                "p95": 0.1659
+              }
+            },
+            "torch_eager": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009756097570061684,
+              "minimum_effective_gbps": 606.89,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.0,
+              "timing_ms": {
+                "mean": 0.1656,
+                "p50": 0.1659,
+                "p95": 0.169
+              }
+            },
+            "triton_w4": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.000974658876657486,
+              "minimum_effective_gbps": 646.82,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.066,
+              "timing_ms": {
+                "mean": 0.1555,
+                "p50": 0.1556,
+                "p95": 0.1587
+              }
+            },
+            "triton_w8": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.000974658876657486,
+              "minimum_effective_gbps": 642.59,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.059,
+              "timing_ms": {
+                "mean": 0.1575,
+                "p50": 0.1567,
+                "p95": 0.1608
+              }
+            }
+          }
+        }
+      },
+      "shape": {
+        "dtype": "float16",
+        "hidden_size": 6144,
+        "rows": 4096
+      }
+    },
+    {
+      "operators": {
+        "residual_rmsnorm": {
+          "fastest_provider": "triton_w4",
+          "fused_minimum_bytes": 268451840,
+          "minimum_traffic_reduction_pct": 20.0,
+          "providers": {
+            "torch_compile": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.0078125,
+              "max_rel_error": 0.00401606410741806,
+              "minimum_effective_gbps": 616.85,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.094,
+              "timing_ms": {
+                "mean": 0.4348,
+                "p50": 0.4352,
+                "p95": 0.4403
+              }
+            },
+            "torch_eager": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.0078125,
+              "max_rel_error": 0.0044843051582574844,
+              "minimum_effective_gbps": 563.78,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.0,
+              "timing_ms": {
+                "mean": 0.4763,
+                "p50": 0.4762,
+                "p95": 0.4792
+              }
+            },
+            "triton_w4": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009765625,
+              "minimum_effective_gbps": 636.31,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.129,
+              "timing_ms": {
+                "mean": 0.4217,
+                "p50": 0.4219,
+                "p95": 0.426
+              }
+            },
+            "triton_w8": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009765625,
+              "minimum_effective_gbps": 630.19,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.118,
+              "timing_ms": {
+                "mean": 0.4259,
+                "p50": 0.426,
+                "p95": 0.4311
+              }
+            }
+          },
+          "unfused_minimum_bytes": 335560704
+        },
+        "rmsnorm": {
+          "fastest_provider": "triton_w8",
+          "minimum_bytes": 134234112,
+          "providers": {
+            "torch_compile": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.0,
+              "max_rel_error": 0.0,
+              "minimum_effective_gbps": 621.27,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 0.986,
+              "timing_ms": {
+                "mean": 0.2158,
+                "p50": 0.2161,
+                "p95": 0.2191
+              }
+            },
+            "torch_eager": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009765625,
+              "minimum_effective_gbps": 630.23,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.0,
+              "timing_ms": {
+                "mean": 0.213,
+                "p50": 0.213,
+                "p95": 0.215
+              }
+            },
+            "triton_w4": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009765625,
+              "minimum_effective_gbps": 645.75,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.025,
+              "timing_ms": {
+                "mean": 0.2083,
+                "p50": 0.2079,
+                "p95": 0.2109
+              }
+            },
+            "triton_w8": {
+              "atol": 0.005,
+              "correct": true,
+              "max_abs_error": 0.00390625,
+              "max_rel_error": 0.0009765625,
+              "minimum_effective_gbps": 648.95,
+              "rtol": 0.001,
+              "speedup_vs_torch_eager": 1.03,
+              "timing_ms": {
+                "mean": 0.2067,
+                "p50": 0.2068,
+                "p95": 0.2099
+              }
+            }
+          }
+        }
+      },
+      "shape": {
+        "dtype": "float16",
+        "hidden_size": 8192,
+        "rows": 4096
+      }
+    }
+  ],
+  "torch": "2.12.1+cu130",
+  "triton": "3.7.1",
+  "warmup_iterations": 25
+}

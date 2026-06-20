@@ -6,7 +6,10 @@ from dataclasses import asdict, dataclass
 from typing import Dict, Iterable, List
 
 from l20_stack.hardware import L20_SPEC, classify_roofline
-from l20_stack.ops.triton_rmsnorm import rmsnorm_launch_config
+from l20_stack.ops.triton_rmsnorm import (
+    residual_rmsnorm_launch_config,
+    rmsnorm_launch_config,
+)
 
 
 @dataclass(frozen=True)
@@ -113,7 +116,7 @@ def plan_operator(target: OperatorTarget) -> OperatorPlan:
         fused_bytes = residual_rmsnorm_minimum_bytes(shape, fused=True)
         unfused_bytes = residual_rmsnorm_minimum_bytes(shape, fused=False)
         reduction_pct = 100 * (unfused_bytes - fused_bytes) / unfused_bytes
-        launch = rmsnorm_launch_config(shape.hidden_size).to_dict()
+        launch = residual_rmsnorm_launch_config(shape.hidden_size).to_dict()
         launch.update(
             {
                 "fused_minimum_bytes": fused_bytes,

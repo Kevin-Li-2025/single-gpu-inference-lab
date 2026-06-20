@@ -43,6 +43,12 @@ def parse_args():
     parser.add_argument("--warmup", type=int, default=25)
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--eps", type=float, default=1e-6)
+    parser.add_argument(
+        "--cache-flush-mb",
+        type=int,
+        default=256,
+        help="bytes touched before each timing sample to evict L2; use 0 for warm-cache tests",
+    )
     parser.add_argument("--skip-compile", action="store_true")
     parser.add_argument(
         "--require-l20",
@@ -61,14 +67,18 @@ def percentile(values, pct):
     return ordered[index]
 
 
-def cuda_event_timings(torch, function, warmup, iterations):
+def cuda_event_timings(torch, function, warmup, iterations, cache_flush):
     for _ in range(warmup):
+        if cache_flush is not None:
+            cache_flush.zero_()
         function()
     torch.cuda.synchronize()
 
     starts = [torch.cuda.Event(enable_timing=True) for _ in range(iterations)]
     ends = [torch.cuda.Event(enable_timing=True) for _ in range(iterations)]
     for start, end in zip(starts, ends):
+        if cache_flush is not None:
+            cache_flush.zero_()
         start.record()
         function()
         end.record()
@@ -124,7 +134,9 @@ def timing_report(timings_ms, minimum_bytes):
     }
 
 
-def benchmark_providers(torch, providers, expected, dtype, minimum_bytes, warmup, iterations):
+def benchmark_providers(
+    torch, providers, expected, dtype, minimum_bytes, warmup, iterations, cache_flush
+):
     reports = {}
     for name, function in providers.items():
         try:
@@ -132,7 +144,9 @@ def benchmark_providers(torch, providers, expected, dtype, minimum_bytes, warmup
             torch.cuda.synchronize()
             provider_report = correctness(torch, actual, expected, dtype)
             if provider_report["correct"]:
-                timings = cuda_event_timings(torch, function, warmup, iterations)
+                timings = cuda_event_timings(
+                    torch, function, warmup, iterations, cache_flush
+                )
                 provider_report.update(timing_report(timings, minimum_bytes))
             reports[name] = provider_report
         except Exception as exc:  # Keep the rest of the benchmark matrix usable.
@@ -164,6 +178,11 @@ def benchmark_shape(torch, args, hidden_size):
     x = torch.randn(args.rows, hidden_size, device="cuda", dtype=dtype)
     residual = torch.randn_like(x)
     weight = torch.randn(hidden_size, device="cuda", dtype=dtype)
+    cache_flush = None
+    if args.cache_flush_mb:
+        cache_flush = torch.empty(
+            args.cache_flush_mb * 1024 * 1024, device="cuda", dtype=torch.uint8
+        )
     shape = OperatorShape(args.rows, hidden_size, x.element_size())
     report = {
         "shape": {"rows": args.rows, "hidden_size": hidden_size, "dtype": args.dtype},
@@ -196,6 +215,7 @@ def benchmark_shape(torch, args, hidden_size):
             minimum_bytes,
             args.warmup,
             args.iters,
+            cache_flush,
         )
         report["operators"]["rmsnorm"] = {
             "minimum_bytes": minimum_bytes,
@@ -234,6 +254,7 @@ def benchmark_shape(torch, args, hidden_size):
             minimum_bytes,
             args.warmup,
             args.iters,
+            cache_flush,
         )
         report["operators"]["residual_rmsnorm"] = {
             "fused_minimum_bytes": minimum_bytes,
@@ -250,7 +271,13 @@ def benchmark_shape(torch, args, hidden_size):
 
 def main() -> int:
     args = parse_args()
-    if args.rows <= 0 or args.hidden_size <= 0 or args.warmup < 0 or args.iters <= 0:
+    if (
+        args.rows <= 0
+        or args.hidden_size <= 0
+        or args.warmup < 0
+        or args.iters <= 0
+        or args.cache_flush_mb < 0
+    ):
         raise SystemExit(
             "rows, hidden-size, and iters must be positive; warmup must be non-negative"
         )
@@ -285,6 +312,7 @@ def main() -> int:
         "triton": triton.__version__,
         "warmup_iterations": args.warmup,
         "measured_iterations": args.iters,
+        "cache_flush_mb": args.cache_flush_mb,
         "all_correct": all_correct,
         "shapes": shapes,
         "note": (
