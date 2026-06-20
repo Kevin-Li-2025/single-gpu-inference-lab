@@ -402,3 +402,42 @@ Sources:
 - https://github.com/vllm-project/vllm
 - https://github.com/Dao-AILab/flash-attention
 - https://docs.flashinfer.ai/
+
+## V7 Block-Table Paged RoPE + KV Write
+
+V7 replaces the contiguous destination with the production-style NHD layout
+`[physical_blocks, block_size, kv_heads, head_dim]`. Each token supplies a
+sequence id and logical position. The kernel resolves the physical page through
+a two-dimensional block table, applies half-rotation RoPE to K, and writes K/V
+to the resolved page in one launch. Benchmark page tables use a random physical
+block permutation so the test does not collapse into contiguous addressing.
+
+The comparison uses identical FP16 tensors, NHD page size 16, 8 KV heads, head
+dimension 128, CUDA Events, 25 warmups, 100 measurements, and a 256 MB cache
+flush. FlashInfer 0.6.12 is measured as `rotate K + append_paged_kv_cache`, so
+its timed functional boundary matches the custom fused kernel. vLLM is recorded
+as unavailable on this host rather than replaced with a proxy.
+
+| Tokens | PyTorch separate | FlashInfer separate | L20 fused | vs FlashInfer |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 0.0594 ms | 0.0358 ms | 0.0061 ms | 5.869x |
+| 8 | 0.0625 ms | 0.0379 ms | 0.0061 ms | 6.213x |
+| 32 | 0.0625 ms | 0.0389 ms | 0.0061 ms | 6.377x |
+| 128 | 0.0666 ms | 0.0420 ms | 0.0072 ms | 5.833x |
+| 512 | 0.0870 ms | 0.0512 ms | 0.0143 ms | 3.580x |
+| 4096 | 0.2294 ms | 0.1679 ms | 0.0727 ms | 2.309x |
+
+The table reports the median p50 from three complete runs. All 18 reports are
+bit-exact against the PyTorch block-table reference. This result is specifically
+about RoPE plus paged cache append; it is not a claim against FlashInfer's full
+attention stack. vLLM's current fusion pass targets the same RoPE/cache-update
+boundary, so a direct vLLM comparison remains required on a compatible isolated
+environment.
+
+Raw reports: `benchmarks/results/l20-paged-rope-kv-v1/run{1,2,3}/`.
+
+Sources:
+
+- https://docs.vllm.ai/en/latest/design/fusions/
+- https://docs.vllm.ai/en/v0.14.0/api/vllm/v1/attention/ops/triton_reshape_and_cache_flash/
+- https://docs.flashinfer.ai/generated/flashinfer.page.append_paged_kv_cache.html

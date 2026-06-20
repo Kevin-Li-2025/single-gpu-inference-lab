@@ -81,6 +81,12 @@ than a separate PyTorch rotation plus cache assignment in decode-sized batches,
 and 2.65x faster at 4096 tokens for the tested `[tokens, 8 kv_heads, 128
 head_dim]` layout.
 
+The paged V7 path in `scripts/benchmark_paged_rope_kv.py` resolves a randomized
+block table and fuses RoPE with NHD paged K/V writes. Across three L20 runs it
+beats the same-boundary FlashInfer 0.6.12 path by 5.87x-6.38x for 1-128 tokens
+and 2.31x at 4096 tokens. This is an append-path result, not a full-attention
+comparison.
+
 To regenerate the measured residual RMSNorm policy from the checked-in L20
 reports:
 

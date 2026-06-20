@@ -1,0 +1,82 @@
+{
+  "all_correct": true,
+  "benchmark_version": 1,
+  "compute_capability": "8.9",
+  "gpu_name": "NVIDIA L20",
+  "layout": "NHD [blocks, block_size, kv_heads, head_dim]",
+  "physical_block_order": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      5
+    ],
+    [
+      7
+    ],
+    [
+      6
+    ],
+    [
+      3
+    ],
+    [
+      4
+    ],
+    [
+      2
+    ]
+  ],
+  "providers": {
+    "flashinfer_separate": {
+      "correct": true,
+      "max_abs_error": 0.0,
+      "speedup_vs_torch_separate": 1.586,
+      "timing_ms": {
+        "mean": 0.0417,
+        "p50": 0.042,
+        "p95": 0.042
+      }
+    },
+    "l20_triton_fused": {
+      "correct": true,
+      "max_abs_error": 0.0,
+      "speedup_vs_torch_separate": 9.25,
+      "timing_ms": {
+        "mean": 0.0076,
+        "p50": 0.0072,
+        "p95": 0.0082
+      }
+    },
+    "torch_separate": {
+      "correct": true,
+      "max_abs_error": 0.0,
+      "speedup_vs_torch_separate": 1.0,
+      "timing_ms": {
+        "mean": 0.0668,
+        "p50": 0.0666,
+        "p95": 0.0676
+      }
+    }
+  },
+  "shape": {
+    "block_size": 16,
+    "cache_flush_mb": 256,
+    "head_dim": 128,
+    "iters": 100,
+    "kv_heads": 8,
+    "output": "/tmp/l20-paged-rope-v1/run1/tokens-128.json",
+    "require_l20": true,
+    "sequences": 8,
+    "tokens": 128,
+    "warmup": 25
+  },
+  "torch": "2.12.1+cu130",
+  "triton": "3.7.1",
+  "unavailable_providers": {
+    "vllm_separate": "No module named 'vllm'"
+  }
+}

@@ -6,7 +6,7 @@ from l20_stack.operators import (
     plan_operator,
     rope_kv_minimum_bytes,
 )
-from l20_stack.ops.triton_rope_kv import rope_kv_launch_config
+from l20_stack.ops.triton_rope_kv import paged_rope_kv_reference, rope_kv_launch_config
 
 
 class RopeKvPlanTest(unittest.TestCase):
@@ -31,6 +31,27 @@ class RopeKvPlanTest(unittest.TestCase):
     def test_invalid_rotary_dim_is_rejected(self):
         with self.assertRaises(ValueError):
             rope_kv_launch_config(128, rotary_dim=127)
+
+    def test_paged_reference_uses_block_table(self):
+        try:
+            import torch
+        except ImportError:
+            self.skipTest("torch is optional")
+        k = torch.tensor([[[1.0, 2.0]], [[3.0, 4.0]]])
+        v = torch.tensor([[[5.0, 6.0]], [[7.0, 8.0]]])
+        cos = torch.ones(2, 1)
+        sin = torch.zeros(2, 1)
+        sequence_ids = torch.tensor([0, 1])
+        positions = torch.tensor([0, 0])
+        block_table = torch.tensor([[1], [0]])
+        k_cache = torch.zeros(2, 2, 1, 2)
+        v_cache = torch.zeros_like(k_cache)
+        paged_rope_kv_reference(
+            k, v, cos, sin, sequence_ids, positions, block_table, k_cache, v_cache
+        )
+        self.assertTrue(torch.equal(k_cache[1, 0], k[0]))
+        self.assertTrue(torch.equal(k_cache[0, 0], k[1]))
+        self.assertTrue(torch.equal(v_cache[1, 0], v[0]))
 
 
 if __name__ == "__main__":
