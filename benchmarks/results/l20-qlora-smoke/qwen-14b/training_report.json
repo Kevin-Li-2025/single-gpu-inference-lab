@@ -1,0 +1,83 @@
+{
+  "config": {
+    "eval_file": "tests/fixtures/qlora_eval.jsonl",
+    "eval_steps": 1,
+    "gradient_accumulation_steps": 1,
+    "learning_rate": 0.0002,
+    "logging_steps": 1,
+    "lora_alpha": 16,
+    "lora_dropout": 0.0,
+    "lora_rank": 8,
+    "max_length": 256,
+    "max_steps": 1,
+    "micro_batch_size": 1,
+    "model_name": "Qwen/Qwen2.5-Coder-14B-Instruct",
+    "output_dir": "/tmp/l20-qlora-14b-smoke",
+    "packing": false,
+    "save_steps": 1,
+    "seed": 42,
+    "target_modules": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj",
+      "gate_proj",
+      "up_proj",
+      "down_proj"
+    ],
+    "train_file": "tests/fixtures/qlora_train.jsonl",
+    "use_bf16": true,
+    "use_gradient_checkpointing": true,
+    "warmup_steps": 0
+  },
+  "config_fingerprint": "160d3c58d5adbcd9",
+  "dataset": {
+    "contamination": {
+      "eval_unique_prompts": 1,
+      "normalized_prompt_overlap": 0,
+      "overlap_examples": [],
+      "train_unique_prompts": 2
+    },
+    "eval_examples": 1,
+    "eval_fingerprint": "523b795233184c369abf2517f484ce62692ffc712cf2adf798c96ac9344de68d",
+    "eval_records": 1,
+    "packed_train_examples": 2,
+    "train_fingerprint": "f4716c0335caa6ced829abe2f83c024b458868676b0b258034284aa8dfc22e58",
+    "train_records": 2
+  },
+  "environment": {
+    "cuda_visible_devices": null
+  },
+  "hardware": {
+    "compute_capability": "8.9",
+    "gpu": "NVIDIA L20",
+    "gpu_memory_bytes": 47665709056,
+    "peak_allocated_bytes": 14935007232,
+    "peak_reserved_bytes": 16896753664
+  },
+  "model": {
+    "total_parameters": 8198411264,
+    "trainable_fraction": 0.004196715545496206,
+    "trainable_parameters": 34406400
+  },
+  "result": {
+    "best_eval_loss": 0.8963539600372314,
+    "elapsed_seconds": 2.833931139030028,
+    "history": [
+      {
+        "eval_loss": 0.8963539600372314,
+        "learning_rate": 0.0002,
+        "step": 1,
+        "train_loss": 1.398916482925415
+      }
+    ],
+    "tokens": 45,
+    "tokens_per_second": 15.879002626507779
+  },
+  "schema_version": 1,
+  "software": {
+    "python": "3.12.3",
+    "torch": "2.12.1+cu130",
+    "transformers": "5.12.1"
+  }
+}

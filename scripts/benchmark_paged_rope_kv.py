@@ -24,6 +24,8 @@ def parse_args():
     parser.add_argument("--warmup", type=int, default=25)
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--cache-flush-mb", type=int, default=256)
+    parser.add_argument("--l20-fused-warps", type=int, choices=(1, 2, 4, 8))
+    parser.add_argument("--l20-heads-per-program", type=int, choices=(1, 2, 4))
     parser.add_argument("--require-l20", action="store_true")
     parser.add_argument("--output", type=Path)
     return parser.parse_args()
@@ -110,7 +112,18 @@ def main() -> int:
     )
     triton_cache = (torch.zeros_like(expected[0]), torch.zeros_like(expected[1]))
     providers["l20_triton_fused"] = (
-        lambda: paged_rope_kv_cache_write_triton(k, v, cos, sin, sequence_ids, positions, block_table, *triton_cache),
+        lambda: paged_rope_kv_cache_write_triton(
+            k,
+            v,
+            cos,
+            sin,
+            sequence_ids,
+            positions,
+            block_table,
+            *triton_cache,
+            num_warps=args.l20_fused_warps,
+            heads_per_program=args.l20_heads_per_program,
+        ),
         lambda: [x.zero_() for x in triton_cache],
     )
 

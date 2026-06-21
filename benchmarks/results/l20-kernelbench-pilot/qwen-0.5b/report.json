@@ -1,0 +1,118 @@
+{
+  "generation": {
+    "adapter": null,
+    "model": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+    "tasks": [
+      {
+        "candidate": "/tmp/l20-kb-pilot-05b/level1_problem19.py",
+        "level": 1,
+        "problem_id": 19,
+        "prompt_characters": 1426,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/19_ReLU.py",
+        "response_characters": 4081
+      },
+      {
+        "candidate": "/tmp/l20-kb-pilot-05b/level1_problem36.py",
+        "level": 1,
+        "problem_id": 36,
+        "prompt_characters": 2019,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/36_RMSNorm_.py",
+        "response_characters": 3392
+      },
+      {
+        "candidate": "/tmp/l20-kb-pilot-05b/level2_problem40.py",
+        "level": 2,
+        "problem_id": 40,
+        "prompt_characters": 1939,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level2/40_Matmul_Scaling_ResidualAdd.py",
+        "response_characters": 1772
+      }
+    ]
+  },
+  "hardware": {
+    "compute_capability": "8.9",
+    "gpu": "NVIDIA L20"
+  },
+  "results": [
+    {
+      "compiled": false,
+      "correctness": false,
+      "level": 1,
+      "metadata": {
+        "compilation_error": "unterminated string literal (detected at line 5) (tmpd18mls9e.py, line 5)",
+        "compilation_error_name": "builtins.SyntaxError",
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20"
+      },
+      "problem_id": 19,
+      "ref_runtime": -1.0,
+      "ref_runtime_stats": {},
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        false,
+        [
+          "Missing @triton.jit or @triton.autotune"
+        ],
+        [
+          "Uses torch computation op: torch.relu"
+        ]
+      ]
+    },
+    {
+      "compiled": false,
+      "correctness": false,
+      "level": 1,
+      "metadata": {
+        "compilation_error": "invalid syntax (tmpli_3y0vt.py, line 1)",
+        "compilation_error_name": "builtins.SyntaxError",
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20"
+      },
+      "problem_id": 36,
+      "ref_runtime": -1.0,
+      "ref_runtime_stats": {},
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        false,
+        [
+          "Missing @triton.jit or @triton.autotune"
+        ],
+        []
+      ]
+    },
+    {
+      "compiled": false,
+      "correctness": false,
+      "level": 2,
+      "metadata": {
+        "compilation_error": "cannot import name 'TritonContext' from 'triton' (/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/__init__.py)",
+        "compilation_error_name": "builtins.ImportError",
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20"
+      },
+      "problem_id": 40,
+      "ref_runtime": -1.0,
+      "ref_runtime_stats": {},
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        false,
+        [
+          "Missing @triton.jit or @triton.autotune",
+          "Contains 'pass' statement (inheritance bypass)"
+        ],
+        []
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "compile_rate": 0.0,
+    "fast_0": 0.0,
+    "fast_1": 0.0,
+    "fast_2": 0.0,
+    "tasks": 3
+  }
+}

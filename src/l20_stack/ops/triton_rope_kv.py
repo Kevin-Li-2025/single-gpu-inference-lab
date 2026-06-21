@@ -61,6 +61,35 @@ def rope_kv_launch_config(head_dim: int, rotary_dim: int | None = None) -> RopeK
     )
 
 
+def paged_rope_kv_launch_heads(tokens: int, kv_heads: int, head_dim: int) -> int:
+    """Group heads only where L20 measurements show a stable traffic win."""
+
+    if tokens <= 0 or kv_heads <= 0 or head_dim <= 0:
+        raise ValueError("tokens, kv_heads, and head_dim must be positive")
+    if tokens >= 768 and head_dim == 128 and kv_heads % 4 == 0:
+        return 4
+    return 1
+
+
+def paged_rope_kv_launch_warps(
+    tokens: int, head_dim: int, heads_per_program: int = 1
+) -> int:
+    """L20 launch policy for paged RoPE + KV writes.
+
+    The paged path is decode/update dominated. On L20, fewer warps reduce
+    scheduling overhead for head_dim=128; 4096-token prefill recovers a small
+    benefit from two warps.
+    """
+
+    if tokens <= 0 or head_dim <= 0 or heads_per_program <= 0:
+        raise ValueError("tokens, head_dim, and heads_per_program must be positive")
+    if heads_per_program > 1:
+        return 4
+    if head_dim <= 128:
+        return 2 if tokens >= 4096 else 1
+    return 4
+
+
 if triton is not None:  # pragma: no cover - requires Triton
 
     @triton.jit
@@ -242,6 +271,78 @@ if triton is not None:  # pragma: no cover - requires Triton
         tl.store(k_cache + cache_base, k_out, mask=mask)
         tl.store(v_cache + cache_base, v_row, mask=mask)
 
+    @triton.jit
+    def _paged_rope_kv_cache_write_grouped_kernel(
+        k,
+        v,
+        cos,
+        sin,
+        sequence_ids,
+        positions,
+        block_table,
+        k_cache,
+        v_cache,
+        kv_heads: tl.constexpr,
+        head_dim: tl.constexpr,
+        rotary_dim: tl.constexpr,
+        max_blocks_per_sequence: tl.constexpr,
+        block_size: tl.constexpr,
+        block: tl.constexpr,
+        heads_per_program: tl.constexpr,
+    ):
+        token = tl.program_id(0)
+        head_group = tl.program_id(1)
+        offsets = tl.arange(0, heads_per_program * block)
+        head = head_group * heads_per_program + offsets // block
+        dim = offsets % block
+        mask = (head < kv_heads) & (dim < head_dim)
+        half_rotary = rotary_dim // 2
+
+        sequence = tl.load(sequence_ids + token)
+        position = tl.load(positions + token)
+        logical_block = position // block_size
+        physical_block = tl.load(
+            block_table + sequence * max_blocks_per_sequence + logical_block
+        )
+        block_offset = position % block_size
+
+        input_base = (token * kv_heads + head) * head_dim + dim
+        cache_base = (
+            ((physical_block * block_size + block_offset) * kv_heads + head)
+            * head_dim
+            + dim
+        )
+        k_row = tl.load(k + input_base, mask=mask, other=0.0)
+        v_row = tl.load(v + input_base, mask=mask, other=0.0)
+
+        first_half = dim < half_rotary
+        second_half = (dim >= half_rotary) & (dim < rotary_dim)
+        pair_dim = dim % half_rotary
+        trig_mask = mask & (dim < rotary_dim)
+        cos_row = tl.load(
+            cos + token * half_rotary + pair_dim, mask=trig_mask, other=0.0
+        )
+        sin_row = tl.load(
+            sin + token * half_rotary + pair_dim, mask=trig_mask, other=0.0
+        )
+        head_base = (token * kv_heads + head) * head_dim
+        k_second = tl.load(
+            k + head_base + pair_dim + half_rotary,
+            mask=mask & first_half,
+            other=0.0,
+        )
+        k_first = tl.load(
+            k + head_base + pair_dim,
+            mask=mask & second_half,
+            other=0.0,
+        )
+        rotated_first = k_row.to(tl.float32) * cos_row - k_second.to(tl.float32) * sin_row
+        rotated_second = k_row.to(tl.float32) * cos_row + k_first.to(tl.float32) * sin_row
+        k_out = tl.where(first_half, rotated_first, k_row)
+        k_out = tl.where(second_half, rotated_second, k_out)
+        tl.store(k_cache + cache_base, k_out, mask=mask)
+        tl.store(v_cache + cache_base, v_row, mask=mask)
+
 
 def rope_kv_cache_write_triton(k, v, cos, sin, cache_positions, k_cache, v_cache):
     """Fuse RoPE on K with contiguous K/V cache writes.
@@ -301,7 +402,17 @@ def rope_kv_cache_write_triton(k, v, cos, sin, cache_positions, k_cache, v_cache
 
 
 def paged_rope_kv_cache_write_triton(
-    k, v, cos, sin, sequence_ids, positions, block_table, k_cache, v_cache
+    k,
+    v,
+    cos,
+    sin,
+    sequence_ids,
+    positions,
+    block_table,
+    k_cache,
+    v_cache,
+    num_warps: int | None = None,
+    heads_per_program: int | None = None,
 ):
     """Fuse K RoPE and NHD paged KV writes using a two-dimensional block table."""
 
@@ -334,7 +445,32 @@ def paged_rope_kv_cache_write_triton(
 
     rotary_dim = int(cos.shape[1]) * 2
     config = rope_kv_launch_config(int(head_dim), rotary_dim)
-    _paged_rope_kv_cache_write_kernel[(tokens, kv_heads)](
+    launch_heads = (
+        paged_rope_kv_launch_heads(int(tokens), int(kv_heads), int(head_dim))
+        if heads_per_program is None
+        else int(heads_per_program)
+    )
+    launch_warps = (
+        paged_rope_kv_launch_warps(int(tokens), int(head_dim), launch_heads)
+        if num_warps is None
+        else int(num_warps)
+    )
+    if launch_warps not in (1, 2, 4, 8):
+        raise ValueError("num_warps must be one of 1, 2, 4, or 8")
+    if launch_heads not in (1, 2, 4):
+        raise ValueError("heads_per_program must be one of 1, 2, or 4")
+    kernel = (
+        _paged_rope_kv_cache_write_kernel
+        if launch_heads == 1
+        else _paged_rope_kv_cache_write_grouped_kernel
+    )
+    grid = (
+        (tokens, kv_heads)
+        if launch_heads == 1
+        else (tokens, triton.cdiv(kv_heads, launch_heads))
+    )
+    grouped_args = () if launch_heads == 1 else (launch_heads,)
+    kernel[grid](
         k,
         v,
         cos,
@@ -350,7 +486,8 @@ def paged_rope_kv_cache_write_triton(
         int(block_table.shape[1]),
         int(k_cache.shape[1]),
         config.block_size,
-        num_warps=config.num_warps,
+        *grouped_args,
+        num_warps=launch_warps,
         num_stages=config.num_stages,
     )
     return k_cache, v_cache

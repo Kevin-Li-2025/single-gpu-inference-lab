@@ -1,0 +1,9 @@
+{
+  "suite": "l20-kernel-elementwise-v1",
+  "dataset": "ScalingIntelligence/KernelBench v0.1",
+  "precision": "fp32",
+  "backend": "triton",
+  "tasks": [
+    {"level": 1, "problem_id": 19}
+  ]
+}

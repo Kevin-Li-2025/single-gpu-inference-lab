@@ -1,0 +1,228 @@
+{
+  "aggregation": "median across runs; prefix caching disabled",
+  "schema_version": 1,
+  "shapes": [
+    {
+      "input_tokens": 1024,
+      "max_concurrency": 1,
+      "metrics": {
+        "median_itl_ms": {
+          "baseline": 5.0921,
+          "change_pct": -0.656,
+          "fused": 5.05869
+        },
+        "median_ttft_ms": {
+          "baseline": 56.87637,
+          "change_pct": -3.811,
+          "fused": 54.7087
+        },
+        "output_throughput": {
+          "baseline": 169.65434,
+          "change_pct": 0.954,
+          "fused": 171.27223
+        },
+        "p95_itl_ms": {
+          "baseline": 5.27409,
+          "change_pct": -0.107,
+          "fused": 5.26845
+        },
+        "p95_ttft_ms": {
+          "baseline": 60.98582,
+          "change_pct": -0.42,
+          "fused": 60.72949
+        },
+        "request_throughput": {
+          "baseline": 2.65085,
+          "change_pct": 0.954,
+          "fused": 2.67613
+        }
+      },
+      "runs_per_provider": 2
+    },
+    {
+      "input_tokens": 3072,
+      "max_concurrency": 1,
+      "metrics": {
+        "median_itl_ms": {
+          "baseline": 5.37836,
+          "change_pct": -0.625,
+          "fused": 5.34472
+        },
+        "median_ttft_ms": {
+          "baseline": 143.78366,
+          "change_pct": 0.501,
+          "fused": 144.50352
+        },
+        "output_throughput": {
+          "baseline": 133.8676,
+          "change_pct": 0.487,
+          "fused": 134.52017
+        },
+        "p95_itl_ms": {
+          "baseline": 5.67062,
+          "change_pct": -1.615,
+          "fused": 5.57902
+        },
+        "p95_ttft_ms": {
+          "baseline": 149.88179,
+          "change_pct": -1.041,
+          "fused": 148.32155
+        },
+        "request_throughput": {
+          "baseline": 2.09168,
+          "change_pct": 0.487,
+          "fused": 2.10188
+        }
+      },
+      "runs_per_provider": 2
+    },
+    {
+      "input_tokens": 1024,
+      "max_concurrency": 16,
+      "metrics": {
+        "median_itl_ms": {
+          "baseline": 6.38067,
+          "change_pct": 0.219,
+          "fused": 6.39467
+        },
+        "median_ttft_ms": {
+          "baseline": 282.15501,
+          "change_pct": -5.189,
+          "fused": 267.51365
+        },
+        "output_throughput": {
+          "baseline": 1138.06216,
+          "change_pct": 0.275,
+          "fused": 1141.18623
+        },
+        "p95_itl_ms": {
+          "baseline": 42.40187,
+          "change_pct": 28.766,
+          "fused": 54.59902
+        },
+        "p95_ttft_ms": {
+          "baseline": 518.97181,
+          "change_pct": 1.43,
+          "fused": 526.39528
+        },
+        "request_throughput": {
+          "baseline": 17.78222,
+          "change_pct": 0.275,
+          "fused": 17.83103
+        }
+      },
+      "runs_per_provider": 2
+    },
+    {
+      "input_tokens": 3072,
+      "max_concurrency": 16,
+      "metrics": {
+        "median_itl_ms": {
+          "baseline": 8.49131,
+          "change_pct": 0.797,
+          "fused": 8.55898
+        },
+        "median_ttft_ms": {
+          "baseline": 545.19896,
+          "change_pct": -1.2,
+          "fused": 538.65735
+        },
+        "output_throughput": {
+          "baseline": 469.59076,
+          "change_pct": 0.035,
+          "fused": 469.75358
+        },
+        "p95_itl_ms": {
+          "baseline": 74.1517,
+          "change_pct": -0.517,
+          "fused": 73.76828
+        },
+        "p95_ttft_ms": {
+          "baseline": 1529.25811,
+          "change_pct": 0.596,
+          "fused": 1538.37879
+        },
+        "request_throughput": {
+          "baseline": 7.33736,
+          "change_pct": 0.035,
+          "fused": 7.3399
+        }
+      },
+      "runs_per_provider": 2
+    },
+    {
+      "input_tokens": 1024,
+      "max_concurrency": 64,
+      "metrics": {
+        "median_itl_ms": {
+          "baseline": 9.12439,
+          "change_pct": -0.636,
+          "fused": 9.06634
+        },
+        "median_ttft_ms": {
+          "baseline": 448.07461,
+          "change_pct": -1.609,
+          "fused": 440.8667
+        },
+        "output_throughput": {
+          "baseline": 1603.78826,
+          "change_pct": 0.731,
+          "fused": 1615.51148
+        },
+        "p95_itl_ms": {
+          "baseline": 66.94139,
+          "change_pct": 0.398,
+          "fused": 67.20797
+        },
+        "p95_ttft_ms": {
+          "baseline": 2001.57899,
+          "change_pct": -1.276,
+          "fused": 1976.04631
+        },
+        "request_throughput": {
+          "baseline": 25.05919,
+          "change_pct": 0.731,
+          "fused": 25.24237
+        }
+      },
+      "runs_per_provider": 2
+    },
+    {
+      "input_tokens": 3072,
+      "max_concurrency": 64,
+      "metrics": {
+        "median_itl_ms": {
+          "baseline": 73.43528,
+          "change_pct": -0.529,
+          "fused": 73.04675
+        },
+        "median_ttft_ms": {
+          "baseline": 2604.02452,
+          "change_pct": -0.443,
+          "fused": 2592.47813
+        },
+        "output_throughput": {
+          "baseline": 536.01929,
+          "change_pct": 0.745,
+          "fused": 540.01244
+        },
+        "p95_itl_ms": {
+          "baseline": 78.76152,
+          "change_pct": 0.553,
+          "fused": 79.19729
+        },
+        "p95_ttft_ms": {
+          "baseline": 6732.78928,
+          "change_pct": -1.031,
+          "fused": 6663.37643
+        },
+        "request_throughput": {
+          "baseline": 8.3753,
+          "change_pct": 0.745,
+          "fused": 8.43769
+        }
+      },
+      "runs_per_provider": 2
+    }
+  ]
+}

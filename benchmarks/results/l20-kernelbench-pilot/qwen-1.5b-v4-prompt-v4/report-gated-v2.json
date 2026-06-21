@@ -1,0 +1,130 @@
+{
+  "generation": {
+    "adapter": "/home/hhai/runs/l20-kernel-1.5b-v4/checkpoint-60",
+    "model": "/home/hhai/models/Qwen2.5-Coder-1.5B-Instruct",
+    "tasks": [
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-v4-prompt-v4/level1_problem19.py",
+        "level": 1,
+        "problem_id": 19,
+        "prompt_characters": 3593,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/19_ReLU.py",
+        "response_characters": 2123
+      },
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-v4-prompt-v4/level1_problem36.py",
+        "level": 1,
+        "problem_id": 36,
+        "prompt_characters": 4186,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/36_RMSNorm_.py",
+        "response_characters": 3521
+      },
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-v4-prompt-v4/level2_problem40.py",
+        "level": 2,
+        "problem_id": 40,
+        "prompt_characters": 4106,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level2/40_Matmul_Scaling_ResidualAdd.py",
+        "response_characters": 2747
+      }
+    ]
+  },
+  "hardware": {
+    "compute_capability": "8.9",
+    "gpu": "NVIDIA L20"
+  },
+  "results": [
+    {
+      "compiled": true,
+      "correctness": false,
+      "interface_check": {
+        "errors": [],
+        "valid": true,
+        "warnings": []
+      },
+      "level": 1,
+      "metadata": {
+        "correctness_issue": "Output shape mismatch: Expected torch.Size([4096, 393216]), got torch.Size([1610612736])",
+        "correctness_issue_name": "correctness_issue",
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20"
+      },
+      "problem_id": 19,
+      "ref_runtime": 19.7,
+      "ref_runtime_stats": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "max": 22.5,
+        "mean": 19.7,
+        "min": 19.3,
+        "num_trials": 100,
+        "std": 0.587
+      },
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    },
+    {
+      "compiled": false,
+      "correctness": false,
+      "interface_check": {
+        "errors": [
+          "Triton tl.arange must use explicit start and end"
+        ],
+        "valid": false,
+        "warnings": []
+      },
+      "level": 1,
+      "metadata": {
+        "interface_errors": [
+          "Triton tl.arange must use explicit start and end"
+        ]
+      },
+      "problem_id": 36,
+      "ref_runtime": -1.0,
+      "runtime": -1.0,
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    },
+    {
+      "compiled": false,
+      "correctness": false,
+      "interface_check": {
+        "errors": [
+          "Triton kernel uses dynamic block tensor view/reshape"
+        ],
+        "valid": false,
+        "warnings": []
+      },
+      "level": 2,
+      "metadata": {
+        "interface_errors": [
+          "Triton kernel uses dynamic block tensor view/reshape"
+        ]
+      },
+      "problem_id": 40,
+      "ref_runtime": -1.0,
+      "runtime": -1.0,
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "compile_rate": 0.3333333333333333,
+    "fast_0": 0.0,
+    "fast_1": 0.0,
+    "fast_2": 0.0,
+    "tasks": 3
+  }
+}

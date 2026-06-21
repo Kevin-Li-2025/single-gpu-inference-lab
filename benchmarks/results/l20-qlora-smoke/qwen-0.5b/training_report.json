@@ -1,0 +1,89 @@
+{
+  "config": {
+    "eval_file": "tests/fixtures/qlora_eval.jsonl",
+    "eval_steps": 1,
+    "gradient_accumulation_steps": 1,
+    "learning_rate": 0.0002,
+    "logging_steps": 1,
+    "lora_alpha": 16,
+    "lora_dropout": 0.0,
+    "lora_rank": 8,
+    "max_length": 256,
+    "max_steps": 2,
+    "micro_batch_size": 1,
+    "model_name": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+    "output_dir": "/tmp/l20-qlora-smoke",
+    "packing": true,
+    "save_steps": 2,
+    "seed": 42,
+    "target_modules": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj",
+      "gate_proj",
+      "up_proj",
+      "down_proj"
+    ],
+    "train_file": "tests/fixtures/qlora_train.jsonl",
+    "use_bf16": true,
+    "use_gradient_checkpointing": true,
+    "warmup_steps": 0
+  },
+  "config_fingerprint": "7a5578b71c2f253e",
+  "dataset": {
+    "contamination": {
+      "eval_unique_prompts": 1,
+      "normalized_prompt_overlap": 0,
+      "overlap_examples": [],
+      "train_unique_prompts": 2
+    },
+    "eval_examples": 1,
+    "eval_fingerprint": "523b795233184c369abf2517f484ce62692ffc712cf2adf798c96ac9344de68d",
+    "eval_records": 1,
+    "packed_train_examples": 1,
+    "train_fingerprint": "f4716c0335caa6ced829abe2f83c024b458868676b0b258034284aa8dfc22e58",
+    "train_records": 2
+  },
+  "environment": {
+    "cuda_visible_devices": null
+  },
+  "hardware": {
+    "compute_capability": "8.9",
+    "gpu": "NVIDIA L20",
+    "gpu_memory_bytes": 47665709056,
+    "peak_allocated_bytes": 1251212288,
+    "peak_reserved_bytes": 1304428544
+  },
+  "model": {
+    "total_parameters": 319518592,
+    "trainable_fraction": 0.013767912447485998,
+    "trainable_parameters": 4399104
+  },
+  "result": {
+    "best_eval_loss": 0.7056218981742859,
+    "elapsed_seconds": 1.4554006659891456,
+    "history": [
+      {
+        "eval_loss": 0.9207254648208618,
+        "learning_rate": 0.0002,
+        "step": 1,
+        "train_loss": 3.4013757705688477
+      },
+      {
+        "eval_loss": 0.7056218981742859,
+        "learning_rate": 0.0001,
+        "step": 2,
+        "train_loss": 2.586900234222412
+      }
+    ],
+    "tokens": 184,
+    "tokens_per_second": 126.42566703440843
+  },
+  "schema_version": 1,
+  "software": {
+    "python": "3.12.3",
+    "torch": "2.12.1+cu130",
+    "transformers": "5.12.1"
+  }
+}

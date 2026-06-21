@@ -1,0 +1,90 @@
+{
+  "all_correct": true,
+  "benchmark_version": 1,
+  "compute_capability": "8.9",
+  "gpu_name": "NVIDIA L20",
+  "layout": "NHD [blocks, block_size, kv_heads, head_dim]",
+  "physical_block_order": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      5
+    ],
+    [
+      7
+    ],
+    [
+      6
+    ],
+    [
+      3
+    ],
+    [
+      4
+    ],
+    [
+      2
+    ]
+  ],
+  "providers": {
+    "flashinfer_separate": {
+      "correct": true,
+      "max_abs_error": 0.0,
+      "speedup_vs_torch_separate": 1.659,
+      "timing_ms": {
+        "mean": 0.0358,
+        "p50": 0.0358,
+        "p95": 0.0369
+      }
+    },
+    "l20_triton_fused": {
+      "correct": true,
+      "max_abs_error": 0.0,
+      "speedup_vs_torch_separate": 11.647,
+      "timing_ms": {
+        "mean": 0.0051,
+        "p50": 0.0051,
+        "p95": 0.0061
+      }
+    },
+    "torch_separate": {
+      "correct": true,
+      "max_abs_error": 0.0,
+      "speedup_vs_torch_separate": 1.0,
+      "timing_ms": {
+        "mean": 0.0592,
+        "p50": 0.0594,
+        "p95": 0.0604
+      }
+    },
+    "vllm_separate": {
+      "correct": true,
+      "max_abs_error": 0.0,
+      "speedup_vs_torch_separate": 1.567,
+      "timing_ms": {
+        "mean": 0.0375,
+        "p50": 0.0379,
+        "p95": 0.0379
+      }
+    }
+  },
+  "shape": {
+    "block_size": 16,
+    "cache_flush_mb": 256,
+    "head_dim": 128,
+    "iters": 100,
+    "kv_heads": 8,
+    "output": "/tmp/l20-paged-rope-vllm-v2/run3/tokens-1.json",
+    "require_l20": true,
+    "sequences": 8,
+    "tokens": 1,
+    "warmup": 25
+  },
+  "torch": "2.11.0+cu130",
+  "triton": "3.6.0",
+  "unavailable_providers": {}
+}

@@ -1,0 +1,151 @@
+{
+  "generation": {
+    "adapter": "/home/hhai/runs/l20-kernel-1.5b-v4/checkpoint-60",
+    "model": "/home/hhai/models/Qwen2.5-Coder-1.5B-Instruct",
+    "tasks": [
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-v4/level1_problem19.py",
+        "level": 1,
+        "problem_id": 19,
+        "prompt_characters": 3066,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/19_ReLU.py",
+        "response_characters": 2305
+      },
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-v4/level1_problem36.py",
+        "level": 1,
+        "problem_id": 36,
+        "prompt_characters": 3659,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/36_RMSNorm_.py",
+        "response_characters": 3482
+      },
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-v4/level2_problem40.py",
+        "level": 2,
+        "problem_id": 40,
+        "prompt_characters": 3579,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level2/40_Matmul_Scaling_ResidualAdd.py",
+        "response_characters": 2730
+      }
+    ]
+  },
+  "hardware": {
+    "compute_capability": "8.9",
+    "gpu": "NVIDIA L20"
+  },
+  "results": [
+    {
+      "compiled": true,
+      "correctness": false,
+      "interface_check": {
+        "errors": [],
+        "valid": true,
+        "warnings": []
+      },
+      "level": 1,
+      "metadata": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "runtime_error": "CUDA out of memory. Tried to allocate 1.50 GiB. GPU 0 has a total capacity of 44.39 GiB of which 850.00 MiB is free. Process 27569 has 2.72 GiB memory in use. Including non-PyTorch memory, this pro...",
+        "runtime_error_name": "torch.OutOfMemoryError",
+        "runtime_error_traceback": "Traceback (most recent call last):\n  File \"/tmp/KernelBench-l20-git/src/kernelbench/eval.py\", line 804, in run_and_check_correctness\n    if not torch.allclose(\n           ^^^^^^^^^^^^^^^\ntorch.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.50 GiB. GPU 0 has a total capacity of 44.39 GiB of which 850.00 MiB is free. Process 27569 has 2.72 GiB memory in use. Including non-PyTorch memory, this process has 40.82 GiB memory in use. Of the allocated memory 40.50 GiB is allocated by PyTorch, and 0 bytes is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)\n"
+      },
+      "problem_id": 19,
+      "ref_runtime": 22.0,
+      "ref_runtime_stats": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "max": 249.0,
+        "mean": 22.0,
+        "min": 19.2,
+        "num_trials": 100,
+        "std": 22.8
+      },
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    },
+    {
+      "compiled": true,
+      "correctness": false,
+      "interface_check": {
+        "errors": [],
+        "valid": true,
+        "warnings": []
+      },
+      "level": 1,
+      "metadata": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "runtime_error": "at 20:14:\n    BLOCK_SIZE: tl.constexpr\n):\n    pid = tl.program_id(0)\n    # Compute linear offsets for this program instance\n    offs = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n    mask = offs < ...",
+        "runtime_error_name": "triton.compiler.errors.CompilationError",
+        "runtime_error_traceback": "Traceback (most recent call last):\n  File \"/tmp/KernelBench-l20-git/src/kernelbench/eval.py\", line 782, in run_and_check_correctness\n    output_new = model_new(*inputs)\n                 ^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1778, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1789, in _call_impl\n    return forward_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/tmp2wju9syp.py\", line 108, in forward\n    return triton_kernel_wrapper(x, self.eps)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/tmp2wju9syp.py\", line 71, in triton_kernel_wrapper\n    rmsnorm_kernel[grid](\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/runtime/jit.py\", line 370, in <lambda>\n    return lambda *args, **kwargs: self.run(grid=grid, warmup=False, *args, **kwargs)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/runtime/jit.py\", line 739, in run\n    kernel = self._do_compile(key, signature, device, constexprs, options, attrs, warmup)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/runtime/jit.py\", line 884, in _do_compile\n    kernel = self.compile(src, target=target, options=options.__dict__)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/compiler/compiler.py\", line 307, in compile\n    module = src.make_ir(target, options, codegen_fns, module_map, context)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/compiler/compiler.py\", line 80, in make_ir\n    return ast_to_ttir(self.fn, self, context=context, options=options, codegen_fns=codegen_fns,\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntriton.compiler.errors.CompilationError: at 20:14:\n    BLOCK_SIZE: tl.constexpr\n):\n    pid = tl.program_id(0)\n    # Compute linear offsets for this program instance\n    offs = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n    mask = offs < batch_size\n\n    # Load input values\n    x = tl.load(x_ptr + offs, mask=mask, other=0.0)\n\n    # Compute mean squared over the feature dimension\n    mean_sq = tl.sum(x * x, axis=1, keepdims=True)  # (batch_size, 1)\n              ^\nTypeError(\"got an unexpected keyword argument 'keepdims'\")\n"
+      },
+      "problem_id": 36,
+      "ref_runtime": 60.0,
+      "ref_runtime_stats": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "max": 291.0,
+        "mean": 60.0,
+        "min": 57.5,
+        "num_trials": 100,
+        "std": 23.2
+      },
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    },
+    {
+      "compiled": true,
+      "correctness": false,
+      "interface_check": {
+        "errors": [],
+        "valid": true,
+        "warnings": []
+      },
+      "level": 2,
+      "metadata": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "runtime_error": "at 19:17:\n    BLOCK_SIZE: tl.constexpr\n):\n    pid = tl.program_id(0)\n    block_start = pid * BLOCK_SIZE\n    offsets = block_start + tl.arange(0, BLOCK_SIZE)\n    mask = offsets < batch_size * out_fe...",
+        "runtime_error_name": "triton.compiler.errors.CompilationError",
+        "runtime_error_traceback": "Traceback (most recent call last):\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/language/core.py\", line 78, in wrapper\n    return fn(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/language/core.py\", line 43, in wrapper\n    return fn(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/language/core.py\", line 1922, in view\n    shape = _shape_check_impl(_unwrap_iterable(shape))\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/language/core.py\", line 1680, in _shape_check_impl\n    validate_block_shape(shape)\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/_utils.py\", line 66, in validate_block_shape\n    raise TypeError(f\"Shape element {i} must have type `constexpr[int]`, got `constexpr[{type(d)}]\")\nTypeError: Shape element 0 must have type `constexpr[int]`, got `constexpr[<class 'triton.language.core.tensor'>]\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/tmp/KernelBench-l20-git/src/kernelbench/eval.py\", line 782, in run_and_check_correctness\n    output_new = model_new(*inputs)\n                 ^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1778, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1789, in _call_impl\n    return forward_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/tmp_41kynwq.py\", line 89, in forward\n    return triton_kernel_wrapper(x, self.scale)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/tmp_41kynwq.py\", line 65, in triton_kernel_wrapper\n    model_new_forward[grid](\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/runtime/jit.py\", line 370, in <lambda>\n    return lambda *args, **kwargs: self.run(grid=grid, warmup=False, *args, **kwargs)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/runtime/jit.py\", line 739, in run\n    kernel = self._do_compile(key, signature, device, constexprs, options, attrs, warmup)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/runtime/jit.py\", line 884, in _do_compile\n    kernel = self.compile(src, target=target, options=options.__dict__)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/compiler/compiler.py\", line 307, in compile\n    module = src.make_ir(target, options, codegen_fns, module_map, context)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/compiler/compiler.py\", line 80, in make_ir\n    return ast_to_ttir(self.fn, self, context=context, options=options, codegen_fns=codegen_fns,\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntriton.compiler.errors.CompilationError: at 19:17:\n    BLOCK_SIZE: tl.constexpr\n):\n    pid = tl.program_id(0)\n    block_start = pid * BLOCK_SIZE\n    offsets = block_start + tl.arange(0, BLOCK_SIZE)\n    mask = offsets < batch_size * out_features\n\n    # Load input elements\n    x = tl.load(x_ptr + offsets, mask=mask, other=0.0)\n\n    # Matrix multiply\n    matmul_out = x.view(batch_size, out_features).sum(dim=0)\n                 ^\nShape element 0 must have type `constexpr[int]`, got `constexpr[<class 'triton.language.core.tensor'>]\n"
+      },
+      "problem_id": 40,
+      "ref_runtime": 19.7,
+      "ref_runtime_stats": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "max": 21.0,
+        "mean": 19.7,
+        "min": 18.3,
+        "num_trials": 100,
+        "std": 0.387
+      },
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "compile_rate": 1.0,
+    "fast_0": 0.0,
+    "fast_1": 0.0,
+    "fast_2": 0.0,
+    "tasks": 3
+  }
+}

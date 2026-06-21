@@ -1,0 +1,75 @@
+{
+  "correctness_comparator": {
+    "chunk_elements": 4194304,
+    "implementation": "chunked_torch_allclose",
+    "note": "Same torch.allclose tolerance and elementwise semantics; chunking reduces comparator peak memory but is not the default KernelBench path."
+  },
+  "generation": {
+    "model": "handwritten-l20-control",
+    "suite": "l20-kernel-elementwise-v1",
+    "tasks": [
+      {
+        "candidate": "/home/hhai/l20-stack/benchmarks/kernelbench_baselines/relu_l20.py",
+        "level": 1,
+        "problem_id": 19,
+        "reference": "/home/hhai/KernelBench/KernelBench/level1/19_ReLU.py"
+      }
+    ]
+  },
+  "hardware": {
+    "compute_capability": "8.9",
+    "gpu": "NVIDIA L20"
+  },
+  "results": [
+    {
+      "compiled": true,
+      "correctness": true,
+      "interface_check": {
+        "errors": [],
+        "valid": true,
+        "warnings": []
+      },
+      "level": 1,
+      "metadata": {
+        "correctness_trials": "(3 / 3)",
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20"
+      },
+      "problem_id": 19,
+      "ref_runtime": 20.1,
+      "ref_runtime_stats": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "max": 34.8,
+        "mean": 20.1,
+        "min": 19.5,
+        "num_trials": 30,
+        "std": 2.73
+      },
+      "runtime": 19.5,
+      "runtime_stats": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "max": 34.7,
+        "mean": 19.5,
+        "min": 18.6,
+        "num_trials": 30,
+        "std": 2.82
+      },
+      "speedup": 1.0307692307692309,
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "compile_rate": 1.0,
+    "fast_0": 1.0,
+    "fast_1": 1.0,
+    "fast_2": 0.0,
+    "tasks": 1
+  }
+}

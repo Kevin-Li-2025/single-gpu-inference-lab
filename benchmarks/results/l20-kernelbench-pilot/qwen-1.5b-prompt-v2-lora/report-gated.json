@@ -1,0 +1,121 @@
+{
+  "generation": {
+    "adapter": "/home/hhai/runs/l20-kernel-1.5b-v3/checkpoint-60",
+    "model": "/home/hhai/models/Qwen2.5-Coder-1.5B-Instruct",
+    "tasks": [
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-prompt-v2-lora/level1_problem19.py",
+        "level": 1,
+        "problem_id": 19,
+        "prompt_characters": 2830,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/19_ReLU.py",
+        "response_characters": 1734
+      },
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-prompt-v2-lora/level1_problem36.py",
+        "level": 1,
+        "problem_id": 36,
+        "prompt_characters": 3423,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/36_RMSNorm_.py",
+        "response_characters": 2546
+      },
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-prompt-v2-lora/level2_problem40.py",
+        "level": 2,
+        "problem_id": 40,
+        "prompt_characters": 3343,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level2/40_Matmul_Scaling_ResidualAdd.py",
+        "response_characters": 2557
+      }
+    ]
+  },
+  "hardware": {
+    "compute_capability": "8.9",
+    "gpu": "NVIDIA L20"
+  },
+  "results": [
+    {
+      "compiled": false,
+      "correctness": false,
+      "interface_check": {
+        "errors": [
+          "triton_kernel_wrapper requires more positional args than ModelNew.forward"
+        ],
+        "valid": false,
+        "warnings": []
+      },
+      "level": 1,
+      "metadata": {
+        "interface_errors": [
+          "triton_kernel_wrapper requires more positional args than ModelNew.forward"
+        ]
+      },
+      "problem_id": 19,
+      "ref_runtime": -1.0,
+      "runtime": -1.0,
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    },
+    {
+      "compiled": false,
+      "correctness": false,
+      "interface_check": {
+        "errors": [
+          "raises or constructs NotImplementedError"
+        ],
+        "valid": false,
+        "warnings": []
+      },
+      "level": 1,
+      "metadata": {
+        "interface_errors": [
+          "raises or constructs NotImplementedError"
+        ]
+      },
+      "problem_id": 36,
+      "ref_runtime": -1.0,
+      "runtime": -1.0,
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    },
+    {
+      "compiled": false,
+      "correctness": false,
+      "interface_check": {
+        "errors": [
+          "triton_kernel_wrapper requires more positional args than ModelNew.forward"
+        ],
+        "valid": false,
+        "warnings": []
+      },
+      "level": 2,
+      "metadata": {
+        "interface_errors": [
+          "triton_kernel_wrapper requires more positional args than ModelNew.forward"
+        ]
+      },
+      "problem_id": 40,
+      "ref_runtime": -1.0,
+      "runtime": -1.0,
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "compile_rate": 0.0,
+    "fast_0": 0.0,
+    "fast_1": 0.0,
+    "fast_2": 0.0,
+    "tasks": 3
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "adapter": null,
+  "model": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+  "tasks": [
+    {
+      "candidate": "/tmp/l20-kb-pilot-05b/level1_problem19.py",
+      "level": 1,
+      "problem_id": 19,
+      "prompt_characters": 1426,
+      "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/19_ReLU.py",
+      "response_characters": 4081
+    },
+    {
+      "candidate": "/tmp/l20-kb-pilot-05b/level1_problem36.py",
+      "level": 1,
+      "problem_id": 36,
+      "prompt_characters": 2019,
+      "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/36_RMSNorm_.py",
+      "response_characters": 3392
+    },
+    {
+      "candidate": "/tmp/l20-kb-pilot-05b/level2_problem40.py",
+      "level": 2,
+      "problem_id": 40,
+      "prompt_characters": 1939,
+      "reference": "/tmp/KernelBench-l20-git/KernelBench/level2/40_Matmul_Scaling_ResidualAdd.py",
+      "response_characters": 1772
+    }
+  ]
+}

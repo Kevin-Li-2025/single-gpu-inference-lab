@@ -1,0 +1,212 @@
+{
+  "all_correct": true,
+  "benchmark_version": 1,
+  "compute_capability": "8.9",
+  "gpu_name": "NVIDIA L20",
+  "layout": "NHD [blocks, block_size, kv_heads, head_dim]",
+  "physical_block_order": [
+    [
+      122,
+      59,
+      109,
+      64,
+      28,
+      84,
+      27,
+      19,
+      110,
+      94,
+      21,
+      37,
+      60,
+      121,
+      43,
+      2
+    ],
+    [
+      103,
+      95,
+      51,
+      105,
+      10,
+      96,
+      101,
+      108,
+      35,
+      57,
+      22,
+      81,
+      80,
+      55,
+      7,
+      69
+    ],
+    [
+      1,
+      74,
+      44,
+      92,
+      49,
+      65,
+      34,
+      67,
+      18,
+      107,
+      68,
+      90,
+      112,
+      13,
+      71,
+      97
+    ],
+    [
+      100,
+      76,
+      26,
+      85,
+      98,
+      36,
+      82,
+      75,
+      15,
+      24,
+      63,
+      46,
+      38,
+      50,
+      116,
+      78
+    ],
+    [
+      111,
+      93,
+      89,
+      119,
+      104,
+      8,
+      66,
+      9,
+      86,
+      83,
+      79,
+      73,
+      114,
+      52,
+      62,
+      12
+    ],
+    [
+      123,
+      99,
+      25,
+      125,
+      33,
+      87,
+      58,
+      113,
+      41,
+      91,
+      102,
+      127,
+      45,
+      31,
+      5,
+      14
+    ],
+    [
+      6,
+      3,
+      126,
+      106,
+      47,
+      0,
+      4,
+      115,
+      72,
+      32,
+      29,
+      30,
+      42,
+      17,
+      124,
+      23
+    ],
+    [
+      61,
+      39,
+      56,
+      118,
+      40,
+      16,
+      54,
+      70,
+      88,
+      11,
+      20,
+      53,
+      120,
+      77,
+      117,
+      48
+    ]
+  ],
+  "providers": {
+    "flashinfer_separate": {
+      "correct": true,
+      "max_abs_error": 0.0,
+      "speedup_vs_torch_separate": 1.464,
+      "timing_ms": {
+        "mean": 0.0999,
+        "p50": 0.0993,
+        "p95": 0.1014
+      }
+    },
+    "l20_triton_fused": {
+      "correct": true,
+      "max_abs_error": 0.0,
+      "speedup_vs_torch_separate": 3.599,
+      "timing_ms": {
+        "mean": 0.0405,
+        "p50": 0.0404,
+        "p95": 0.043
+      }
+    },
+    "torch_separate": {
+      "correct": true,
+      "max_abs_error": 0.0,
+      "speedup_vs_torch_separate": 1.0,
+      "timing_ms": {
+        "mean": 0.1457,
+        "p50": 0.1454,
+        "p95": 0.1475
+      }
+    },
+    "vllm_separate": {
+      "correct": true,
+      "max_abs_error": 0.0,
+      "speedup_vs_torch_separate": 1.315,
+      "timing_ms": {
+        "mean": 0.1103,
+        "p50": 0.1106,
+        "p95": 0.1116
+      }
+    }
+  },
+  "shape": {
+    "block_size": 16,
+    "cache_flush_mb": 256,
+    "head_dim": 128,
+    "iters": 150,
+    "kv_heads": 8,
+    "l20_fused_warps": 4,
+    "l20_heads_per_program": 2,
+    "output": "/tmp/l20-grouped-confirm/t2048-h2-w4-r3.json",
+    "require_l20": true,
+    "sequences": 8,
+    "tokens": 2048,
+    "warmup": 25
+  },
+  "torch": "2.11.0+cu130",
+  "triton": "3.6.0",
+  "unavailable_providers": {}
+}

@@ -33,13 +33,15 @@ Implemented:
   JSON reports and fails when a stable measured winner disagrees with the code.
 - A fused RoPE + contiguous KV-cache write Triton kernel for L20 decode and
   prefill cache updates.
+- A handwritten NF4 QLoRA training loop with packing, assistant-only loss,
+  contamination checks, evaluation, adapter saves, and CUDA telemetry.
+- Real L20 QLoRA smoke runs for Qwen2.5-Coder-0.5B and 14B.
 
 Not implemented yet:
 
-- Real training loop.
-- vLLM integration.
+- Quality training on a held-out kernel coding dataset.
 - Published model weights.
-- L20-verified benchmark claims.
+- Model-quality benchmark claims.
 
 ## Quick Check
 
@@ -81,11 +83,40 @@ than a separate PyTorch rotation plus cache assignment in decode-sized batches,
 and 2.65x faster at 4096 tokens for the tested `[tokens, 8 kv_heads, 128
 head_dim]` layout.
 
-The paged V7 path in `scripts/benchmark_paged_rope_kv.py` resolves a randomized
-block table and fuses RoPE with NHD paged K/V writes. Across three L20 runs it
-beats the same-boundary FlashInfer 0.6.12 path by 5.87x-6.38x for 1-128 tokens
-and 2.31x at 4096 tokens. This is an append-path result, not a full-attention
-comparison.
+The paged V8 path in `scripts/benchmark_paged_rope_kv.py` resolves a randomized
+block table and fuses RoPE with NHD paged K/V writes. With vLLM 0.23.0 available
+on the L20 host, the same-boundary comparison shows the fused path at 0.0051 ms
+for 1-32 tokens and 0.0113 ms at 512 tokens. The V9 L20 policy groups four KV
+heads per program from 768 tokens upward, reaching 0.0379 ms at 2048 tokens
+and 0.0707 ms at 4096 tokens in three-run confirmation. It
+beats FlashInfer by 2.37x-7.43x and vLLM's separate reshape/cache op by
+2.70x-7.82x on the measured cases. This is an append-path result, not a
+full-attention comparison.
+
+The first QLoRA capacity runs reached 1.17 GiB peak allocated memory for the
+0.5B base and 13.91 GiB for the 14B base. Both completed real 4-bit backward,
+evaluation, and adapter saving on the L20. These tiny-fixture measurements
+validate the training path only; they are not quality results. The execution
+benchmark design and quality gates are documented in
+[docs/l20-qlora-research.md](docs/l20-qlora-research.md).
+
+The first 1.5B kernel-coding pilot is intentionally reported as a negative
+result: QLoRA training reached 3478 tokens/s at 6.05 GiB peak allocated memory,
+but held-out KernelBench `fast_0` remains 0/3. A new interface gate now rejects
+missing `ModelNew`, evaluator-helper leakage, placeholder implementations, and
+wrapper argument mismatches before expensive GPU evaluation. The v4 data pass
+tightened this further by learning only from interface-valid `ModelNew` labels
+copied from the reference module signature. That run reached 3524 tokens/s at
+6.06 GiB peak allocated memory with 50 gate-valid train records and 5 gate-valid
+eval records, but the held-out result is still negative: `fast_0` remains 0/3.
+The current gate also rejects executable test harnesses, `ModelNew` varargs,
+unsupported Triton `keepdims`, dynamic block-tensor reshapes, missing launcher
+arguments, and one-argument `tl.arange`.
+
+A handwritten L20 ReLU control now reaches KernelBench `fast_0=1/1` and
+`fast_1=1/1` with a memory-bounded chunked correctness comparator. This proves
+the elementwise evaluator path and canonical shape-preserving template, not the
+QLoRA model: learned generation remains `fast_0=0/3`.
 
 To regenerate the measured residual RMSNorm policy from the checked-in L20
 reports:
@@ -96,3 +127,18 @@ PYTHONPATH=src /usr/bin/python3 scripts/analyze_rmsnorm_policy.py \
   benchmarks/results/l20-flashinfer-matrix-v4/run2.json \
   benchmarks/results/l20-flashinfer-matrix-v4/run3.json
 ```
+The layer-level serving benchmark in `scripts/benchmark_decode_layer.py` keeps
+FlashInfer paged decode attention fixed and changes only the preceding
+RoPE/cache-update path. On L20, the fused append is 3.71x-3.93x faster across
+batch 1/16/128 and context 1k/4k. The measured one-layer latency reduction is
+57.5%-59.1% at batch 1, 7.9% at batch 16/context 4k, and 1.4%-2.7% at batch
+128. See `docs/l20-serving-integration.md`; these are layer-level results, not
+full-model tokens/s claims.
+
+The kernel is now wired into vLLM 0.23's existing
+`fuse_rope_kvcache` post-grad pass for CUDA SM89. On
+Qwen2.5-Coder-1.5B-Instruct, all 28 layers matched the fusion. With prefix
+caching disabled, six real serving shapes showed `+0.03%` to `+0.95%`
+throughput, while TTFT/ITL tail results were mixed. This is a small end-to-end
+gain despite the much larger append microbenchmark win; see
+`docs/l20-serving-integration.md`.

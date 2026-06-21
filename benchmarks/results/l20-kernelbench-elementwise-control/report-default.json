@@ -1,0 +1,63 @@
+{
+  "generation": {
+    "model": "handwritten-l20-control",
+    "suite": "l20-kernel-elementwise-v1",
+    "tasks": [
+      {
+        "candidate": "/home/hhai/l20-stack/benchmarks/kernelbench_baselines/relu_l20.py",
+        "level": 1,
+        "problem_id": 19,
+        "reference": "/home/hhai/KernelBench/KernelBench/level1/19_ReLU.py"
+      }
+    ]
+  },
+  "hardware": {
+    "compute_capability": "8.9",
+    "gpu": "NVIDIA L20"
+  },
+  "results": [
+    {
+      "compiled": true,
+      "correctness": false,
+      "interface_check": {
+        "errors": [],
+        "valid": true,
+        "warnings": []
+      },
+      "level": 1,
+      "metadata": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "runtime_error": "CUDA out of memory. Tried to allocate 1.50 GiB. GPU 0 has a total capacity of 44.39 GiB of which 850.00 MiB is free. Process 27569 has 2.72 GiB memory in use. Including non-PyTorch memory, this pro...",
+        "runtime_error_name": "torch.OutOfMemoryError",
+        "runtime_error_traceback": "Traceback (most recent call last):\n  File \"/home/hhai/KernelBench/src/kernelbench/eval.py\", line 804, in run_and_check_correctness\n    if not torch.allclose(\n           ^^^^^^^^^^^^^^^\ntorch.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.50 GiB. GPU 0 has a total capacity of 44.39 GiB of which 850.00 MiB is free. Process 27569 has 2.72 GiB memory in use. Including non-PyTorch memory, this process has 40.82 GiB memory in use. Of the allocated memory 40.50 GiB is allocated by PyTorch, and 0 bytes is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)\n"
+      },
+      "problem_id": 19,
+      "ref_runtime": 27.6,
+      "ref_runtime_stats": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "max": 241.0,
+        "mean": 27.6,
+        "min": 19.2,
+        "num_trials": 30,
+        "std": 39.7
+      },
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "compile_rate": 1.0,
+    "fast_0": 0.0,
+    "fast_1": 0.0,
+    "fast_2": 0.0,
+    "tasks": 1
+  }
+}

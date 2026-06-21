@@ -1,0 +1,30 @@
+{
+  "adapter": "/home/hhai/runs/l20-kernel-1.5b-v4/checkpoint-60",
+  "model": "/home/hhai/models/Qwen2.5-Coder-1.5B-Instruct",
+  "tasks": [
+    {
+      "candidate": "/tmp/l20-kb-pilot-15b-v4-prompt-v4/level1_problem19.py",
+      "level": 1,
+      "problem_id": 19,
+      "prompt_characters": 3593,
+      "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/19_ReLU.py",
+      "response_characters": 2123
+    },
+    {
+      "candidate": "/tmp/l20-kb-pilot-15b-v4-prompt-v4/level1_problem36.py",
+      "level": 1,
+      "problem_id": 36,
+      "prompt_characters": 4186,
+      "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/36_RMSNorm_.py",
+      "response_characters": 3521
+    },
+    {
+      "candidate": "/tmp/l20-kb-pilot-15b-v4-prompt-v4/level2_problem40.py",
+      "level": 2,
+      "problem_id": 40,
+      "prompt_characters": 4106,
+      "reference": "/tmp/KernelBench-l20-git/KernelBench/level2/40_Matmul_Scaling_ResidualAdd.py",
+      "response_characters": 2747
+    }
+  ]
+}

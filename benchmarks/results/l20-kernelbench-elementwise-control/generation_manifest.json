@@ -1,0 +1,12 @@
+{
+  "model": "handwritten-l20-control",
+  "suite": "l20-kernel-elementwise-v1",
+  "tasks": [
+    {
+      "candidate": "/home/hhai/l20-stack/benchmarks/kernelbench_baselines/relu_l20.py",
+      "level": 1,
+      "problem_id": 19,
+      "reference": "/home/hhai/KernelBench/KernelBench/level1/19_ReLU.py"
+    }
+  ]
+}

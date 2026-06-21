@@ -1,0 +1,18 @@
+{
+  "suite": "l20-kernel-holdout-v1",
+  "dataset": "ScalingIntelligence/KernelBench v0.1",
+  "precision": "fp32",
+  "backend": "triton",
+  "tasks": [
+    {"level": 1, "problem_id": 19},
+    {"level": 1, "problem_id": 23},
+    {"level": 1, "problem_id": 36},
+    {"level": 1, "problem_id": 40},
+    {"level": 1, "problem_id": 89},
+    {"level": 2, "problem_id": 12},
+    {"level": 2, "problem_id": 20},
+    {"level": 2, "problem_id": 40},
+    {"level": 2, "problem_id": 64},
+    {"level": 2, "problem_id": 84}
+  ]
+}

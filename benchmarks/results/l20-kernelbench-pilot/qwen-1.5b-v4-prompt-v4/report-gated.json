@@ -1,0 +1,140 @@
+{
+  "generation": {
+    "adapter": "/home/hhai/runs/l20-kernel-1.5b-v4/checkpoint-60",
+    "model": "/home/hhai/models/Qwen2.5-Coder-1.5B-Instruct",
+    "tasks": [
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-v4-prompt-v4/level1_problem19.py",
+        "level": 1,
+        "problem_id": 19,
+        "prompt_characters": 3593,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/19_ReLU.py",
+        "response_characters": 2123
+      },
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-v4-prompt-v4/level1_problem36.py",
+        "level": 1,
+        "problem_id": 36,
+        "prompt_characters": 4186,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/36_RMSNorm_.py",
+        "response_characters": 3521
+      },
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-v4-prompt-v4/level2_problem40.py",
+        "level": 2,
+        "problem_id": 40,
+        "prompt_characters": 4106,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level2/40_Matmul_Scaling_ResidualAdd.py",
+        "response_characters": 2747
+      }
+    ]
+  },
+  "hardware": {
+    "compute_capability": "8.9",
+    "gpu": "NVIDIA L20"
+  },
+  "results": [
+    {
+      "compiled": true,
+      "correctness": false,
+      "interface_check": {
+        "errors": [],
+        "valid": true,
+        "warnings": []
+      },
+      "level": 1,
+      "metadata": {
+        "correctness_issue": "Output shape mismatch: Expected torch.Size([4096, 393216]), got torch.Size([1610612736])",
+        "correctness_issue_name": "correctness_issue",
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20"
+      },
+      "problem_id": 19,
+      "ref_runtime": 19.7,
+      "ref_runtime_stats": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "max": 22.5,
+        "mean": 19.7,
+        "min": 19.4,
+        "num_trials": 100,
+        "std": 0.574
+      },
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    },
+    {
+      "compiled": true,
+      "correctness": false,
+      "interface_check": {
+        "errors": [],
+        "valid": true,
+        "warnings": []
+      },
+      "level": 1,
+      "metadata": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "runtime_error": "at 20:22:\n    BLOCK_SIZE: tl.constexpr\n):\n    pid = tl.program_id(0)\n    # Compute linear offset for this program instance\n    offs = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n    mask = offs < b...",
+        "runtime_error_name": "triton.compiler.errors.CompilationError",
+        "runtime_error_traceback": "Traceback (most recent call last):\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/language/core.py\", line 43, in wrapper\n    return fn(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^\nTypeError: arange() missing 1 required positional argument: 'end'\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/tmp/KernelBench-l20-git/src/kernelbench/eval.py\", line 782, in run_and_check_correctness\n    output_new = model_new(*inputs)\n                 ^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1778, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1789, in _call_impl\n    return forward_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/tmpp0faam8r.py\", line 117, in forward\n    return triton_kernel_wrapper(x, self.eps)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/tmpp0faam8r.py\", line 80, in triton_kernel_wrapper\n    rmsnorm_kernel[grid](\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/runtime/jit.py\", line 370, in <lambda>\n    return lambda *args, **kwargs: self.run(grid=grid, warmup=False, *args, **kwargs)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/runtime/jit.py\", line 739, in run\n    kernel = self._do_compile(key, signature, device, constexprs, options, attrs, warmup)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/runtime/jit.py\", line 884, in _do_compile\n    kernel = self.compile(src, target=target, options=options.__dict__)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/compiler/compiler.py\", line 307, in compile\n    module = src.make_ir(target, options, codegen_fns, module_map, context)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/compiler/compiler.py\", line 80, in make_ir\n    return ast_to_ttir(self.fn, self, context=context, options=options, codegen_fns=codegen_fns,\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntriton.compiler.errors.CompilationError: at 20:22:\n    BLOCK_SIZE: tl.constexpr\n):\n    pid = tl.program_id(0)\n    # Compute linear offset for this program instance\n    offs = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)\n    mask = offs < batch_size * num_features * dim1 * dim2\n\n    # Load input elements\n    x = tl.load(x_ptr + offs, mask=mask, other=0.0)\n\n    # Flatten the spatial dimensions\n    flat_idx = tl.sum(tl.arange(dim1) * dim2 + tl.arange(dim2), axis=0) + offs % dim2\n                      ^\narange() missing 1 required positional argument: 'end'\n"
+      },
+      "problem_id": 36,
+      "ref_runtime": 60.0,
+      "ref_runtime_stats": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "max": 291.0,
+        "mean": 60.0,
+        "min": 57.5,
+        "num_trials": 100,
+        "std": 23.3
+      },
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    },
+    {
+      "compiled": false,
+      "correctness": false,
+      "interface_check": {
+        "errors": [
+          "Triton kernel uses dynamic block tensor view/reshape"
+        ],
+        "valid": false,
+        "warnings": []
+      },
+      "level": 2,
+      "metadata": {
+        "interface_errors": [
+          "Triton kernel uses dynamic block tensor view/reshape"
+        ]
+      },
+      "problem_id": 40,
+      "ref_runtime": -1.0,
+      "runtime": -1.0,
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "compile_rate": 0.6666666666666666,
+    "fast_0": 0.0,
+    "fast_1": 0.0,
+    "fast_2": 0.0,
+    "tasks": 3
+  }
+}

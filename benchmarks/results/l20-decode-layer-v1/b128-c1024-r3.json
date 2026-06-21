@@ -1,0 +1,56 @@
+{
+  "benchmark_version": 1,
+  "compute_capability": "8.9",
+  "correctness": {
+    "cache_equal": true,
+    "output_close": true,
+    "output_max_abs_error": 0.0
+  },
+  "flashinfer": "0.6.12",
+  "gpu_name": "NVIDIA L20",
+  "layer_latency_reduction_pct": 2.857,
+  "layer_speedup": 1.0294,
+  "notes": [
+    "FlashInfer plan time is excluded from all measurements.",
+    "Both paths use the same FlashInfer paged decode attention implementation.",
+    "This is a layer-level serving benchmark, not full-model tokens/s."
+  ],
+  "scope": "one decode attention layer: RoPE + paged KV append + attention",
+  "shape": {
+    "batch_size": 128,
+    "block_size": 16,
+    "context_length": 1024,
+    "head_dim": 128,
+    "kv_heads": 8,
+    "qo_heads": 32
+  },
+  "timing_ms": {
+    "attention_only": {
+      "mean": 0.75982,
+      "p50": 0.75878,
+      "p95": 0.76493
+    },
+    "l20_fused_append": {
+      "mean": 0.04157,
+      "p50": 0.04096,
+      "p95": 0.05018
+    },
+    "l20_fused_layer": {
+      "mean": 0.76687,
+      "p50": 0.76595,
+      "p95": 0.77107
+    },
+    "separate_append": {
+      "mean": 0.15943,
+      "p50": 0.15462,
+      "p95": 0.1792
+    },
+    "separate_layer": {
+      "mean": 0.79039,
+      "p50": 0.78848,
+      "p95": 0.79053
+    }
+  },
+  "torch": "2.11.0+cu130",
+  "triton": "3.6.0"
+}

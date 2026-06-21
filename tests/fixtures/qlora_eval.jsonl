@@ -1,0 +1,1 @@
+{"messages":[{"role":"system","content":"Write concise GPU code."},{"role":"user","content":"Write a PyTorch function that multiplies two tensors."},{"role":"assistant","content":"import torch\n\ndef multiply(a, b):\n    return a * b\n"}]}

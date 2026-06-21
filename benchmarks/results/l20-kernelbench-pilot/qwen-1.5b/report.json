@@ -1,0 +1,116 @@
+{
+  "generation": {
+    "adapter": null,
+    "model": "/home/hhai/models/Qwen2.5-Coder-1.5B-Instruct",
+    "tasks": [
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b/level1_problem19.py",
+        "level": 1,
+        "problem_id": 19,
+        "prompt_characters": 1426,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/19_ReLU.py",
+        "response_characters": 918
+      },
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b/level1_problem36.py",
+        "level": 1,
+        "problem_id": 36,
+        "prompt_characters": 2019,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/36_RMSNorm_.py",
+        "response_characters": 2237
+      },
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b/level2_problem40.py",
+        "level": 2,
+        "problem_id": 40,
+        "prompt_characters": 1939,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level2/40_Matmul_Scaling_ResidualAdd.py",
+        "response_characters": 4931
+      }
+    ]
+  },
+  "hardware": {
+    "compute_capability": "8.9",
+    "gpu": "NVIDIA L20"
+  },
+  "results": [
+    {
+      "compiled": false,
+      "correctness": false,
+      "level": 1,
+      "metadata": {
+        "compilation_error": "cannot import name 'cuda' from 'triton' (/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/__init__.py)",
+        "compilation_error_name": "builtins.ImportError",
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20"
+      },
+      "problem_id": 19,
+      "ref_runtime": -1.0,
+      "ref_runtime_stats": {},
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        false,
+        [
+          "Missing @triton.jit or @triton.autotune"
+        ],
+        []
+      ]
+    },
+    {
+      "compiled": false,
+      "correctness": false,
+      "level": 1,
+      "metadata": {
+        "compilation_error": "cannot import name 'cuda' from 'triton' (/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/__init__.py)",
+        "compilation_error_name": "builtins.ImportError",
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20"
+      },
+      "problem_id": 36,
+      "ref_runtime": -1.0,
+      "ref_runtime_stats": {},
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        false,
+        [
+          "Missing @triton.jit or @triton.autotune"
+        ],
+        []
+      ]
+    },
+    {
+      "compiled": false,
+      "correctness": false,
+      "level": 2,
+      "metadata": {
+        "compilation_error": "cannot import name 'triton_config' from 'triton' (/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/triton/__init__.py)",
+        "compilation_error_name": "builtins.ImportError",
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20"
+      },
+      "problem_id": 40,
+      "ref_runtime": -1.0,
+      "ref_runtime_stats": {},
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        false,
+        [
+          "Contains 'pass' statement (inheritance bypass)",
+          "Missing @triton.jit or @triton.autotune"
+        ],
+        []
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "compile_rate": 0.0,
+    "fast_0": 0.0,
+    "fast_1": 0.0,
+    "fast_2": 0.0,
+    "tasks": 3
+  }
+}

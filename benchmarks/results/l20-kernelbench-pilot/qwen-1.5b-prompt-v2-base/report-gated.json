@@ -1,0 +1,129 @@
+{
+  "generation": {
+    "adapter": null,
+    "model": "/home/hhai/models/Qwen2.5-Coder-1.5B-Instruct",
+    "tasks": [
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-prompt-v2-base/level1_problem19.py",
+        "level": 1,
+        "problem_id": 19,
+        "prompt_characters": 2830,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/19_ReLU.py",
+        "response_characters": 793
+      },
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-prompt-v2-base/level1_problem36.py",
+        "level": 1,
+        "problem_id": 36,
+        "prompt_characters": 3423,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/36_RMSNorm_.py",
+        "response_characters": 1652
+      },
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-prompt-v2-base/level2_problem40.py",
+        "level": 2,
+        "problem_id": 40,
+        "prompt_characters": 3343,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level2/40_Matmul_Scaling_ResidualAdd.py",
+        "response_characters": 2085
+      }
+    ]
+  },
+  "hardware": {
+    "compute_capability": "8.9",
+    "gpu": "NVIDIA L20"
+  },
+  "results": [
+    {
+      "compiled": false,
+      "correctness": false,
+      "interface_check": {
+        "errors": [
+          "references evaluator helper get_inputs"
+        ],
+        "valid": false,
+        "warnings": []
+      },
+      "level": 1,
+      "metadata": {
+        "interface_errors": [
+          "references evaluator helper get_inputs"
+        ]
+      },
+      "problem_id": 19,
+      "ref_runtime": -1.0,
+      "runtime": -1.0,
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    },
+    {
+      "compiled": true,
+      "correctness": false,
+      "interface_check": {
+        "errors": [],
+        "valid": true,
+        "warnings": []
+      },
+      "level": 1,
+      "metadata": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "runtime_error": "The size of tensor a (512) must match the size of tensor b (64) at non-singleton dimension 2",
+        "runtime_error_name": "builtins.RuntimeError",
+        "runtime_error_traceback": "Traceback (most recent call last):\n  File \"/tmp/KernelBench-l20-git/src/kernelbench/eval.py\", line 782, in run_and_check_correctness\n    output_new = model_new(*inputs)\n                 ^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1778, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1789, in _call_impl\n    return forward_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/tmp893l8wly.py\", line 39, in forward\n    return x / rms * self.scale.unsqueeze(-1)\n           ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~\nRuntimeError: The size of tensor a (512) must match the size of tensor b (64) at non-singleton dimension 2\n"
+      },
+      "problem_id": 36,
+      "ref_runtime": 57.9,
+      "ref_runtime_stats": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "max": 63.5,
+        "mean": 57.9,
+        "min": 57.6,
+        "num_trials": 100,
+        "std": 0.848
+      },
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    },
+    {
+      "compiled": false,
+      "correctness": false,
+      "interface_check": {
+        "errors": [],
+        "valid": true,
+        "warnings": []
+      },
+      "level": 2,
+      "metadata": {
+        "exception": "AttributeError: module 'triton' has no attribute 'config'"
+      },
+      "problem_id": 40,
+      "ref_runtime": -1.0,
+      "runtime": -1.0,
+      "static_check": [
+        false,
+        [
+          "Contains 'pass' statement (inheritance bypass)"
+        ],
+        []
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "compile_rate": 0.3333333333333333,
+    "fast_0": 0.0,
+    "fast_1": 0.0,
+    "fast_2": 0.0,
+    "tasks": 3
+  }
+}

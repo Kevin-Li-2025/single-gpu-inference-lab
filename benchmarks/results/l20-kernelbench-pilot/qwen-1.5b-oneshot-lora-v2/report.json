@@ -1,0 +1,138 @@
+{
+  "generation": {
+    "adapter": "/home/hhai/runs/l20-kernel-1.5b-v3/checkpoint-60",
+    "model": "/home/hhai/models/Qwen2.5-Coder-1.5B-Instruct",
+    "tasks": [
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-oneshot-lora-v2/level1_problem19.py",
+        "level": 1,
+        "problem_id": 19,
+        "prompt_characters": 2035,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/19_ReLU.py",
+        "response_characters": 2057
+      },
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-oneshot-lora-v2/level1_problem36.py",
+        "level": 1,
+        "problem_id": 36,
+        "prompt_characters": 2628,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level1/36_RMSNorm_.py",
+        "response_characters": 3849
+      },
+      {
+        "candidate": "/tmp/l20-kb-pilot-15b-oneshot-lora-v2/level2_problem40.py",
+        "level": 2,
+        "problem_id": 40,
+        "prompt_characters": 2548,
+        "reference": "/tmp/KernelBench-l20-git/KernelBench/level2/40_Matmul_Scaling_ResidualAdd.py",
+        "response_characters": 3660
+      }
+    ]
+  },
+  "hardware": {
+    "compute_capability": "8.9",
+    "gpu": "NVIDIA L20"
+  },
+  "results": [
+    {
+      "compiled": true,
+      "correctness": false,
+      "level": 1,
+      "metadata": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "runtime_error": "CUDA out of memory. Tried to allocate 1.50 GiB. GPU 0 has a total capacity of 44.39 GiB of which 850.00 MiB is free. Process 27569 has 2.72 GiB memory in use. Including non-PyTorch memory, this pro...",
+        "runtime_error_name": "torch.OutOfMemoryError",
+        "runtime_error_traceback": "Traceback (most recent call last):\n  File \"/tmp/KernelBench-l20-git/src/kernelbench/eval.py\", line 804, in run_and_check_correctness\n    if not torch.allclose(\n           ^^^^^^^^^^^^^^^\ntorch.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.50 GiB. GPU 0 has a total capacity of 44.39 GiB of which 850.00 MiB is free. Process 27569 has 2.72 GiB memory in use. Including non-PyTorch memory, this process has 40.82 GiB memory in use. Of the allocated memory 40.50 GiB is allocated by PyTorch, and 0 bytes is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)\n"
+      },
+      "problem_id": 19,
+      "ref_runtime": 22.0,
+      "ref_runtime_stats": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "max": 248.0,
+        "mean": 22.0,
+        "min": 19.2,
+        "num_trials": 100,
+        "std": 22.7
+      },
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    },
+    {
+      "compiled": true,
+      "correctness": false,
+      "level": 1,
+      "metadata": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "runtime_error": "name 'rms_norm' is not defined",
+        "runtime_error_name": "builtins.NameError",
+        "runtime_error_traceback": "Traceback (most recent call last):\n  File \"/tmp/KernelBench-l20-git/src/kernelbench/eval.py\", line 782, in run_and_check_correctness\n    output_new = model_new(*inputs)\n                 ^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1778, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1789, in _call_impl\n    return forward_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/tmpkhwxdfgx.py\", line 53, in forward\n    return rms_norm(*args, **kwargs)\n           ^^^^^^^^\nNameError: name 'rms_norm' is not defined\n"
+      },
+      "problem_id": 36,
+      "ref_runtime": 57.6,
+      "ref_runtime_stats": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "max": 62.6,
+        "mean": 57.6,
+        "min": 57.5,
+        "num_trials": 100,
+        "std": 0.546
+      },
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        true,
+        [],
+        []
+      ]
+    },
+    {
+      "compiled": true,
+      "correctness": false,
+      "level": 2,
+      "metadata": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "runtime_error": "triton_kernel_wrapper() missing 2 required positional arguments: 'w' and 'scaling_factor'",
+        "runtime_error_name": "builtins.TypeError",
+        "runtime_error_traceback": "Traceback (most recent call last):\n  File \"/tmp/KernelBench-l20-git/src/kernelbench/eval.py\", line 782, in run_and_check_correctness\n    output_new = model_new(*inputs)\n                 ^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1778, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hhai/venvs/l20-qlora/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1789, in _call_impl\n    return forward_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/tmp_0ef4hco.py\", line 107, in forward\n    return triton_kernel_wrapper(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: triton_kernel_wrapper() missing 2 required positional arguments: 'w' and 'scaling_factor'\n"
+      },
+      "problem_id": 40,
+      "ref_runtime": 19.6,
+      "ref_runtime_stats": {
+        "device": "cuda:0",
+        "hardware": "NVIDIA L20",
+        "max": 21.1,
+        "mean": 19.6,
+        "min": 18.7,
+        "num_trials": 100,
+        "std": 0.38
+      },
+      "runtime": -1.0,
+      "runtime_stats": {},
+      "static_check": [
+        false,
+        [
+          "Contains 'pass' statement (inheritance bypass)"
+        ],
+        []
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "compile_rate": 1.0,
+    "fast_0": 0.0,
+    "fast_1": 0.0,
+    "fast_2": 0.0,
+    "tasks": 3
+  }
+}

@@ -441,3 +441,69 @@ Sources:
 - https://docs.vllm.ai/en/latest/design/fusions/
 - https://docs.vllm.ai/en/v0.14.0/api/vllm/v1/attention/ops/triton_reshape_and_cache_flash/
 - https://docs.flashinfer.ai/generated/flashinfer.page.append_paged_kv_cache.html
+
+## V8 vLLM Baseline And L20 Warp Policy
+
+After installing vLLM 0.23.0 in an isolated CUDA 13 environment on the L20 host,
+the benchmark can compare four real providers: PyTorch reference, FlashInfer
+`append_paged_kv_cache`, vLLM `triton_reshape_and_cache_flash`, and the custom
+L20 fused kernel. The vLLM provider is intentionally measured as `rotate K +
+reshape/cache`, matching the same functional boundary as FlashInfer.
+
+Three complete vLLM-enabled runs show:
+
+| Tokens | FlashInfer p50 | vLLM p50 | L20 fused p50 | vs FlashInfer | vs vLLM |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 0.0358 ms | 0.0369 ms | 0.0051 ms | 7.02x | 7.24x |
+| 8 | 0.0379 ms | 0.0399 ms | 0.0051 ms | 7.43x | 7.82x |
+| 32 | 0.0389 ms | 0.0410 ms | 0.0061 ms | 6.38x | 6.72x |
+| 128 | 0.0410 ms | 0.0440 ms | 0.0072 ms | 5.69x | 6.11x |
+| 512 | 0.0502 ms | 0.0563 ms | 0.0133 ms | 3.77x | 4.23x |
+| 4096 | 0.1690 ms | 0.1935 ms | 0.0727 ms | 2.33x | 2.66x |
+
+A follow-up L20 warp sweep found that the previous default of 4 warps was too
+heavy for the paged update path at `head_dim=128`. The new default policy uses
+1 warp below 4096 tokens and 2 warps at 4096+ tokens. Confirmation reports:
+
+| Tokens | V8 policy p50 | FlashInfer p50 | vLLM p50 | vs FlashInfer | vs vLLM |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 512 | 0.0113 ms | 0.0502 ms | 0.0563 ms | 4.44x | 4.98x |
+| 4096 | 0.0717 ms | 0.1700 ms | 0.1935 ms | 2.37x | 2.70x |
+
+The policy is deliberately conservative: the 1-vs-2 warp differences are often
+near one microsecond, so the repository only changes the default away from the
+clearly slower 4/8-warp schedules. Manual `--l20-fused-warps` remains available
+for future sweeps.
+
+Raw reports:
+
+- `benchmarks/results/l20-paged-rope-kv-v2/`
+- `benchmarks/results/l20-paged-rope-warp-confirm-v1/`
+- `benchmarks/results/l20-paged-rope-policy-v2/`
+
+## V9 Grouped-Head Paged RoPE + KV Write
+
+The V9 kernel can process four KV heads per Triton program. This reduces
+program count and avoids repeating sequence, position, and block-table lookup
+for every head, at the cost of a wider live vector and higher register demand.
+The grouped path is therefore enabled only for the measured L20 shape
+`head_dim=128`, when `kv_heads` is divisible by four.
+
+Three-run confirmation with 150 timed iterations per configuration found:
+
+| Tokens | One head/program | Four heads/program | Change |
+| ---: | ---: | ---: | ---: |
+| 768 | 0.0174 ms | 0.0154 ms | 11.5% faster |
+| 1024 | 0.0195 ms | 0.0184 ms | 5.6% faster |
+| 1536 | 0.0369 ms | 0.0348 ms | 5.7% faster |
+| 2048 | 0.0410 ms | 0.0379 ms | 7.6% faster |
+| 4096 | 0.0727 ms | 0.0707 ms | 2.8% faster |
+| 8192 | 0.1372 ms | 0.1331 ms | 3.0% faster |
+
+At 512 tokens, grouping regressed from 0.0102 ms to 0.0113 ms, so the L20
+policy retains one head/program below 768 tokens and switches to four heads
+with four warps at 768 tokens and above. The threshold is based on the tested
+8-head, 128-dimension NHD append path and is not generalized to other head
+dimensions.
+
+Raw reports: `benchmarks/results/l20-paged-rope-grouped-v1/`.

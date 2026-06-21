@@ -1,0 +1,23 @@
+{
+  "model_name": "/home/hhai/models/Qwen2.5-Coder-1.5B-Instruct",
+  "train_file": "/tmp/l20-kernel-data/processed-v4/train.jsonl",
+  "eval_file": "/tmp/l20-kernel-data/processed-v4/eval.jsonl",
+  "output_dir": "/home/hhai/runs/l20-kernel-1.5b-v4",
+  "max_length": 2048,
+  "micro_batch_size": 1,
+  "gradient_accumulation_steps": 2,
+  "learning_rate": 0.0001,
+  "max_steps": 60,
+  "warmup_steps": 4,
+  "eval_steps": 10,
+  "save_steps": 20,
+  "logging_steps": 2,
+  "lora_rank": 16,
+  "lora_alpha": 32,
+  "lora_dropout": 0.05,
+  "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+  "seed": 42,
+  "use_gradient_checkpointing": true,
+  "use_bf16": true,
+  "packing": true
+}

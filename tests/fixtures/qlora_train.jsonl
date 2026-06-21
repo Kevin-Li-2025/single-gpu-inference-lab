@@ -1,0 +1,2 @@
+{"messages":[{"role":"system","content":"Write concise GPU code."},{"role":"user","content":"Write a PyTorch function that adds two tensors."},{"role":"assistant","content":"import torch\n\ndef add(a, b):\n    return a + b\n"}]}
+{"messages":[{"role":"system","content":"Write concise GPU code."},{"role":"user","content":"Explain why contiguous memory access matters on a GPU."},{"role":"assistant","content":"Contiguous accesses let adjacent threads combine memory requests into fewer transactions, increasing effective bandwidth."}]}

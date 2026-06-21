@@ -1,0 +1,116 @@
+{
+  "all_correct": true,
+  "benchmark_version": 1,
+  "compute_capability": "8.9",
+  "gpu_name": "NVIDIA L20",
+  "layout": "NHD [blocks, block_size, kv_heads, head_dim]",
+  "physical_block_order": [
+    [
+      7,
+      3,
+      17,
+      1
+    ],
+    [
+      23,
+      27,
+      19,
+      9
+    ],
+    [
+      25,
+      15,
+      21,
+      0
+    ],
+    [
+      10,
+      4,
+      13,
+      24
+    ],
+    [
+      5,
+      29,
+      28,
+      16
+    ],
+    [
+      22,
+      18,
+      14,
+      8
+    ],
+    [
+      6,
+      11,
+      31,
+      26
+    ],
+    [
+      2,
+      12,
+      30,
+      20
+    ]
+  ],
+  "providers": {
+    "flashinfer_separate": {
+      "correct": true,
+      "max_abs_error": 0.0,
+      "speedup_vs_torch_separate": 1.755,
+      "timing_ms": {
+        "mean": 0.0506,
+        "p50": 0.0502,
+        "p95": 0.0522
+      }
+    },
+    "l20_triton_fused": {
+      "correct": true,
+      "max_abs_error": 0.0,
+      "speedup_vs_torch_separate": 7.796,
+      "timing_ms": {
+        "mean": 0.0108,
+        "p50": 0.0113,
+        "p95": 0.0113
+      }
+    },
+    "torch_separate": {
+      "correct": true,
+      "max_abs_error": 0.0,
+      "speedup_vs_torch_separate": 1.0,
+      "timing_ms": {
+        "mean": 0.0877,
+        "p50": 0.0881,
+        "p95": 0.0881
+      }
+    },
+    "vllm_separate": {
+      "correct": true,
+      "max_abs_error": 0.0,
+      "speedup_vs_torch_separate": 1.565,
+      "timing_ms": {
+        "mean": 0.0561,
+        "p50": 0.0563,
+        "p95": 0.0573
+      }
+    }
+  },
+  "shape": {
+    "block_size": 16,
+    "cache_flush_mb": 256,
+    "head_dim": 128,
+    "iters": 100,
+    "kv_heads": 8,
+    "l20_fused_warps": 4,
+    "l20_heads_per_program": 2,
+    "output": "/tmp/l20-grouped-sweep/t512-h2-w4-r2.json",
+    "require_l20": true,
+    "sequences": 8,
+    "tokens": 512,
+    "warmup": 25
+  },
+  "torch": "2.11.0+cu130",
+  "triton": "3.6.0",
+  "unavailable_providers": {}
+}
