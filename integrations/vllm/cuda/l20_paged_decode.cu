@@ -274,33 +274,36 @@ __global__ void paged_decode_merge_kernel(
     int num_splits) {
   const int q_head = blockIdx.x;
   const int batch = blockIdx.y;
-  const int dim = threadIdx.x;
+  const int pair = threadIdx.x;
   const int base = (batch * num_q_heads + q_head) * num_splits;
   __shared__ float global_max;
   __shared__ float denominator;
-  if (dim == 0) {
+  __shared__ float corrections[32];
+  if (pair == 0) {
     float max_value = partial_max[base];
     for (int split = 1; split < num_splits; ++split) {
       max_value = fmaxf(max_value, partial_max[base + split]);
     }
     float sum = 0.0f;
     for (int split = 0; split < num_splits; ++split) {
-      sum += partial_sum[base + split] *
-             expf(partial_max[base + split] - max_value);
+      corrections[split] = expf(partial_max[base + split] - max_value);
+      sum += partial_sum[base + split] * corrections[split];
     }
     global_max = max_value;
     denominator = sum;
   }
   __syncthreads();
-  float numerator = 0.0f;
+  float2 numerator = make_float2(0.0f, 0.0f);
   for (int split = 0; split < num_splits; ++split) {
-    const float correction = expf(partial_max[base + split] - global_max);
-    numerator +=
-        __half2float(partial_output[(base + split) * kHeadDim + dim]) *
-        correction;
+    const float2 partial = __half22float2(
+        *reinterpret_cast<const half2*>(
+            partial_output + (base + split) * kHeadDim + pair * 2));
+    numerator.x += partial.x * corrections[split];
+    numerator.y += partial.y * corrections[split];
   }
-  output[(batch * num_q_heads + q_head) * kHeadDim + dim] =
-      __float2half(numerator / denominator);
+  *reinterpret_cast<half2*>(
+      output + (batch * num_q_heads + q_head) * kHeadDim + pair * 2) =
+      __floats2half2_rn(numerator.x / denominator, numerator.y / denominator);
 }
 
 }  // namespace
@@ -336,6 +339,19 @@ torch::Tensor l20_paged_decode_cuda(
   return output;
 }
 
+void l20_paged_decode_split_out_cuda(
+    torch::Tensor query,
+    torch::Tensor key_cache,
+    torch::Tensor value_cache,
+    torch::Tensor block_table,
+    torch::Tensor seq_lens,
+    torch::Tensor partial_output,
+    torch::Tensor partial_max,
+    torch::Tensor partial_sum,
+    torch::Tensor output,
+    int64_t max_seq_len,
+    int64_t split_size);
+
 torch::Tensor l20_paged_decode_split_cuda(
     torch::Tensor query,
     torch::Tensor key_cache,
@@ -347,7 +363,6 @@ torch::Tensor l20_paged_decode_split_cuda(
   TORCH_CHECK(query.is_cuda(), "query must be CUDA");
   TORCH_CHECK(query.scalar_type() == torch::kFloat16, "FP16 only");
   TORCH_CHECK(query.dim() == 3 && query.size(2) == kHeadDim, "invalid query");
-  const at::cuda::CUDAGuard guard(query.device());
   TORCH_CHECK(
       split_size == 128 || split_size == 256 || split_size == 512 ||
           split_size == 1024,
@@ -361,6 +376,39 @@ torch::Tensor l20_paged_decode_split_cuda(
       torch::empty({query.size(0), query.size(1), num_splits}, float_options);
   auto partial_sum = torch::empty_like(partial_max);
   auto output = torch::empty_like(query);
+  l20_paged_decode_split_out_cuda(
+      query,
+      key_cache,
+      value_cache,
+      block_table,
+      seq_lens,
+      partial_output,
+      partial_max,
+      partial_sum,
+      output,
+      max_seq_len,
+      split_size);
+  return output;
+}
+
+void l20_paged_decode_split_out_cuda(
+    torch::Tensor query,
+    torch::Tensor key_cache,
+    torch::Tensor value_cache,
+    torch::Tensor block_table,
+    torch::Tensor seq_lens,
+    torch::Tensor partial_output,
+    torch::Tensor partial_max,
+    torch::Tensor partial_sum,
+    torch::Tensor output,
+    int64_t max_seq_len,
+    int64_t split_size) {
+  const at::cuda::CUDAGuard guard(query.device());
+  const int num_splits = (max_seq_len + split_size - 1) / split_size;
+  TORCH_CHECK(
+      partial_output.size(2) == num_splits &&
+          partial_output.size(3) == kHeadDim,
+      "partial output workspace has wrong shape");
   const auto stream = at::cuda::getDefaultCUDAStream();
   const dim3 partial_grid(query.size(1), num_splits, query.size(0));
   paged_decode_partial_kernel<<<partial_grid, 256, 0, stream>>>(
@@ -380,7 +428,7 @@ torch::Tensor l20_paged_decode_split_cuda(
       split_size);
   paged_decode_merge_kernel<<<
       dim3(query.size(1), query.size(0)),
-      kHeadDim,
+      kHeadDim / 2,
       0,
       stream>>>(
       reinterpret_cast<const half*>(partial_output.data_ptr<at::Half>()),
@@ -390,5 +438,4 @@ torch::Tensor l20_paged_decode_split_cuda(
       query.size(1),
       num_splits);
   C10_CUDA_KERNEL_LAUNCH_CHECK();
-  return output;
 }

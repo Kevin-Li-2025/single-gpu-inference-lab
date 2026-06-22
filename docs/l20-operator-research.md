@@ -343,6 +343,24 @@ The provisional L20 policy is 128 tokens for batch one and short batch-four
 decode, 256 for batch four at longer context, and 512 for larger batches until
 additional measurements are available. The kernel is now within approximately
 1.5x to 1.9x of FlashInfer for batch one, rather than 5.5x to 6.3x behind.
+
+### V22 Workspace And Merge Isolation
+
+The split-KV extension now exposes an `_out` API accepting preallocated partial
+output, maxima, sums, and final output. Reusing those buffers changes measured
+latency by only 0 to 0.6 percent, showing that PyTorch's caching allocator is
+not a material part of the remaining gap.
+
+The merge kernel now computes each split correction once in shared memory and
+combines two output dimensions per thread with `half2`. The clearest gain is at
+batch one, context 4096, where the best 128-token path improves from roughly
+0.0469 ms to 0.0459 ms, or about two percent. Merge and allocation are therefore
+secondary costs; almost all remaining time is inside the 128-token partial CTA.
+
+Nsight Compute 2025.3.1 is installed, but hardware-counter collection is
+blocked by `ERR_NVGPUCTRPERM` for the remote user. DRAM, L2, occupancy, register,
+and warp-stall counters cannot be reported until the host enables non-admin
+performance-counter access. Benchmark timing and correctness remain available.
 5. FP8 through NVIDIA Transformer Engine before writing a custom FP8 GEMM.
 6. FlashAttention/vLLM production baselines before any custom attention kernel.
 

@@ -113,6 +113,20 @@ def main():
             )
             split_reports = []
             for split_size in (128, 256, 512, 1024):
+                num_splits = (context + split_size - 1) // split_size
+                partial_output = torch.empty(
+                    batch,
+                    16,
+                    num_splits,
+                    128,
+                    device="cuda",
+                    dtype=query.dtype,
+                )
+                partial_max = torch.empty(
+                    batch, 16, num_splits, device="cuda", dtype=torch.float32
+                )
+                partial_sum = torch.empty_like(partial_max)
+                split_output = torch.empty_like(query)
                 split_actual = extension.paged_decode_split(
                     query,
                     cache[0],
@@ -133,6 +147,21 @@ def main():
                         split_size,
                     )
                 )
+                workspace_ms = latency_ms(
+                    lambda split_size=split_size: extension.paged_decode_split_out(
+                        query,
+                        cache[0],
+                        cache[1],
+                        block_table,
+                        seq_lens,
+                        partial_output,
+                        partial_max,
+                        partial_sum,
+                        split_output,
+                        context,
+                        split_size,
+                    )
+                )
                 split_reports.append(
                     {
                         "split_size": split_size,
@@ -146,6 +175,8 @@ def main():
                         ),
                         "cuda_ms": split_ms,
                         "speedup": flashinfer_ms / split_ms,
+                        "workspace_ms": workspace_ms,
+                        "workspace_speedup": flashinfer_ms / workspace_ms,
                     }
                 )
             best_split = min(split_reports, key=lambda item: item["cuda_ms"])
