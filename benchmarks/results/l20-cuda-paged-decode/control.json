@@ -3,75 +3,237 @@
   "reports": [
     {
       "batch": 1,
+      "best_split_size": 128,
       "context": 512,
       "correct": true,
-      "cuda_ms": 0.13889535903930664,
-      "flashinfer_ms": 0.025477120876312254,
-      "max_abs_error": 0.000244140625,
-      "speedup": 0.18342672536022148,
+      "cuda_ms": 0.13897727966308593,
+      "flashinfer_ms": 0.02629631996154785,
+      "max_abs_error": 0.0001220703125,
+      "speedup": 0.18921308594682815,
       "split_correct": true,
-      "split_cuda_ms": 0.14137344360351561,
-      "split_speedup": 0.1802115038504919
+      "split_cuda_ms": 0.03858432054519653,
+      "split_reports": [
+        {
+          "correct": true,
+          "cuda_ms": 0.03858432054519653,
+          "speedup": 0.6815286517938062,
+          "split_size": 128
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.07313407897949219,
+          "speedup": 0.3595631520692522,
+          "split_size": 256
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.14147583961486818,
+          "speedup": 0.18587145362157145,
+          "split_size": 512
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.14149632453918456,
+          "speedup": 0.18584454435256806,
+          "split_size": 1024
+        }
+      ],
+      "split_speedup": 0.6815286517938062
     },
     {
       "batch": 1,
+      "best_split_size": 128,
       "context": 2048,
       "correct": true,
-      "cuda_ms": 0.5496627044677734,
-      "flashinfer_ms": 0.025681920051574707,
+      "cuda_ms": 0.5494579315185547,
+      "flashinfer_ms": 0.02529279947280884,
       "max_abs_error": 6.103515625e-05,
-      "speedup": 0.04672305368879258,
+      "speedup": 0.04603227658013109,
       "split_correct": true,
-      "split_cuda_ms": 0.1415987205505371,
-      "split_speedup": 0.18137113069753152
+      "split_cuda_ms": 0.04096000194549561,
+      "split_reports": [
+        {
+          "correct": true,
+          "cuda_ms": 0.04096000194549561,
+          "speedup": 0.6174999577994478,
+          "split_size": 128
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.07479296207427978,
+          "speedup": 0.3381708488519225,
+          "split_size": 256
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.14172160148620605,
+          "speedup": 0.1784682025010183,
+          "split_size": 512
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.2793471908569336,
+          "speedup": 0.09054252307037672,
+          "split_size": 1024
+        }
+      ],
+      "split_speedup": 0.6174999577994478
     },
     {
       "batch": 1,
+      "best_split_size": 128,
       "context": 4096,
       "correct": true,
-      "cuda_ms": 1.0965196990966797,
-      "flashinfer_ms": 0.02445312023162842,
-      "max_abs_error": 6.103515625e-05,
-      "speedup": 0.02230066660158779,
-      "split_correct": true,
-      "split_cuda_ms": 0.1444051170349121,
-      "split_speedup": 0.16933693717873247
-    },
-    {
-      "batch": 4,
-      "context": 512,
-      "correct": true,
-      "cuda_ms": 0.13891584396362305,
-      "flashinfer_ms": 0.024432640075683593,
-      "max_abs_error": 0.0001220703125,
-      "speedup": 0.17588087419374282,
-      "split_correct": true,
-      "split_cuda_ms": 0.14139391899108886,
-      "split_speedup": 0.17279837952029198
-    },
-    {
-      "batch": 4,
-      "context": 2048,
-      "correct": true,
-      "cuda_ms": 0.5496627044677734,
+      "cuda_ms": 1.096785888671875,
       "flashinfer_ms": 0.02482176065444946,
-      "max_abs_error": 0.0001220703125,
-      "speedup": 0.045158167823090414,
+      "max_abs_error": 6.103515625e-05,
+      "speedup": 0.02263136397980716,
       "split_correct": true,
-      "split_cuda_ms": 0.14612480163574218,
-      "split_speedup": 0.16986685611608077
+      "split_cuda_ms": 0.04691967964172363,
+      "split_reports": [
+        {
+          "correct": true,
+          "cuda_ms": 0.04691967964172363,
+          "speedup": 0.5290266439154574,
+          "split_size": 128
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.07675903797149658,
+          "speedup": 0.32337248238659116,
+          "split_size": 256
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.14516223907470704,
+          "speedup": 0.17099323358931562,
+          "split_size": 512
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.2792243194580078,
+          "speedup": 0.08889541105384402,
+          "split_size": 1024
+        }
+      ],
+      "split_speedup": 0.5290266439154574
     },
     {
       "batch": 4,
+      "best_split_size": 128,
+      "context": 512,
+      "correct": true,
+      "cuda_ms": 0.13897727966308593,
+      "flashinfer_ms": 0.025026559829711914,
+      "max_abs_error": 0.000244140625,
+      "speedup": 0.18007662756374468,
+      "split_correct": true,
+      "split_cuda_ms": 0.040181760787963865,
+      "split_reports": [
+        {
+          "correct": true,
+          "cuda_ms": 0.040181760787963865,
+          "speedup": 0.6228338265656199,
+          "split_size": 128
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.07464960098266601,
+          "speedup": 0.3352537655964591,
+          "split_size": 256
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.14155776023864747,
+          "speedup": 0.17679397998047214,
+          "split_size": 512
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.1415167999267578,
+          "speedup": 0.17684515084191021,
+          "split_size": 1024
+        }
+      ],
+      "split_speedup": 0.6228338265656199
+    },
+    {
+      "batch": 4,
+      "best_split_size": 128,
+      "context": 2048,
+      "correct": true,
+      "cuda_ms": 0.5496831893920898,
+      "flashinfer_ms": 0.02465791940689087,
+      "max_abs_error": 0.0001220703125,
+      "speedup": 0.044858420054942484,
+      "split_correct": true,
+      "split_cuda_ms": 0.08159232139587402,
+      "split_reports": [
+        {
+          "correct": true,
+          "cuda_ms": 0.08159232139587402,
+          "speedup": 0.3022088229020259,
+          "split_size": 128
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.08437760353088379,
+          "speedup": 0.2922329904506663,
+          "split_size": 256
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.1478656005859375,
+          "speedup": 0.16675899809814126,
+          "split_size": 512
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.2852249526977539,
+          "speedup": 0.08645077919609748,
+          "split_size": 1024
+        }
+      ],
+      "split_speedup": 0.3022088229020259
+    },
+    {
+      "batch": 4,
+      "best_split_size": 128,
       "context": 4096,
       "correct": true,
-      "cuda_ms": 1.097871322631836,
-      "flashinfer_ms": 0.02588671922683716,
+      "cuda_ms": 1.0975846099853515,
+      "flashinfer_ms": 0.02598912000656128,
       "max_abs_error": 6.103515625e-05,
-      "speedup": 0.023579010302210164,
+      "speedup": 0.023678466124728313,
       "split_correct": true,
-      "split_cuda_ms": 0.16293888092041015,
-      "split_speedup": 0.1588738002900726
+      "split_cuda_ms": 0.15564800262451173,
+      "split_reports": [
+        {
+          "correct": true,
+          "cuda_ms": 0.15564800262451173,
+          "speedup": 0.16697368143719737,
+          "split_size": 128
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.1570406436920166,
+          "speedup": 0.16549295389752963,
+          "split_size": 256
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.16328704833984375,
+          "speedup": 0.15916216424263493,
+          "split_size": 512
+        },
+        {
+          "correct": true,
+          "cuda_ms": 0.291409912109375,
+          "speedup": 0.08918406315845143,
+          "split_size": 1024
+        }
+      ],
+      "split_speedup": 0.16697368143719737
     }
   ],
   "schema_version": 1

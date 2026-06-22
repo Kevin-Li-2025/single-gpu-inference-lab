@@ -25,6 +25,16 @@ def latency_ms(function, warmup=10, iterations=50):
     return start.elapsed_time(end) / iterations
 
 
+def l20_split_policy(batch, context):
+    if batch == 1:
+        return 128
+    if batch <= 4 and context <= 512:
+        return 128
+    if batch <= 4:
+        return 256
+    return 512
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path)
@@ -95,28 +105,51 @@ def main():
                 query, cache[0], cache[1], block_table, seq_lens
             )
             split_available = hasattr(extension, "paged_decode_split")
-            split_actual = (
-                extension.paged_decode_split(
-                    query, cache[0], cache[1], block_table, seq_lens, context
-                )
-                if split_available
-                else actual
-            )
             flashinfer_ms = latency_ms(lambda: wrapper.run(query, cache))
             cuda_ms = latency_ms(
                 lambda: extension.paged_decode(
                     query, cache[0], cache[1], block_table, seq_lens
                 )
             )
-            split_ms = (
-                latency_ms(
-                    lambda: extension.paged_decode_split(
-                        query, cache[0], cache[1], block_table, seq_lens, context
+            split_reports = []
+            for split_size in (128, 256, 512, 1024):
+                split_actual = extension.paged_decode_split(
+                    query,
+                    cache[0],
+                    cache[1],
+                    block_table,
+                    seq_lens,
+                    context,
+                    split_size,
+                )
+                split_ms = latency_ms(
+                    lambda split_size=split_size: extension.paged_decode_split(
+                        query,
+                        cache[0],
+                        cache[1],
+                        block_table,
+                        seq_lens,
+                        context,
+                        split_size,
                     )
                 )
-                if split_available
-                else cuda_ms
-            )
+                split_reports.append(
+                    {
+                        "split_size": split_size,
+                        "correct": bool(
+                            torch.allclose(
+                                split_actual,
+                                expected,
+                                rtol=2e-2,
+                                atol=2e-2,
+                            )
+                        ),
+                        "cuda_ms": split_ms,
+                        "speedup": flashinfer_ms / split_ms,
+                    }
+                )
+            best_split = min(split_reports, key=lambda item: item["cuda_ms"])
+            policy_split = l20_split_policy(batch, context)
             reports.append(
                 {
                     "batch": batch,
@@ -130,13 +163,14 @@ def main():
                     "flashinfer_ms": flashinfer_ms,
                     "cuda_ms": cuda_ms,
                     "speedup": flashinfer_ms / cuda_ms,
-                    "split_correct": bool(
-                        torch.allclose(
-                            split_actual, expected, rtol=2e-2, atol=2e-2
-                        )
+                    "split_reports": split_reports,
+                    "best_split_size": best_split["split_size"],
+                    "policy_split_size": policy_split,
+                    "split_correct": all(
+                        report["correct"] for report in split_reports
                     ),
-                    "split_cuda_ms": split_ms,
-                    "split_speedup": flashinfer_ms / split_ms,
+                    "split_cuda_ms": best_split["cuda_ms"],
+                    "split_speedup": best_split["speedup"],
                 }
             )
     result = {

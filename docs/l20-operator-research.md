@@ -320,6 +320,29 @@ mapping was fixed. The implementation still reaches only approximately
 0.16x-0.18x of FlashInfer, leaving a 5.5x-6.3x gap. The next bottleneck is the
 efficiency of each 512-token partial CTA and temporary-state handling, rather
 than insufficient context parallelism.
+
+### V21 Split-Size Policy
+
+The CUDA split size was parameterized and swept over 128, 256, 512, and 1024
+tokens. The previous fixed 512-token choice was substantially too large for
+L20 batch-one decode.
+
+With 128-token CTAs, batch-one latency reaches:
+
+- context 512: 0.0386 ms, 0.68x of FlashInfer;
+- context 2048: 0.0410 ms, 0.62x of FlashInfer;
+- context 4096: 0.0469 ms, 0.53x of FlashInfer.
+
+This is another 3.0x to 3.7x improvement over the 512-token split version and
+roughly 3.6x to 23.4x faster than the single-CTA CUDA baseline, depending on
+context. At batch four, 128-token splits remain best in the measured matrix,
+but 128 and 256 converge at long context because the larger CTA count begins
+to saturate scheduling and merge overhead.
+
+The provisional L20 policy is 128 tokens for batch one and short batch-four
+decode, 256 for batch four at longer context, and 512 for larger batches until
+additional measurements are available. The kernel is now within approximately
+1.5x to 1.9x of FlashInfer for batch one, rather than 5.5x to 6.3x behind.
 5. FP8 through NVIDIA Transformer Engine before writing a custom FP8 GEMM.
 6. FlashAttention/vLLM production baselines before any custom attention kernel.
 

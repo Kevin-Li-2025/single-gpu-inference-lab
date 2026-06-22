@@ -13,7 +13,8 @@ torch::Tensor l20_paged_decode_split_cuda(
     torch::Tensor value_cache,
     torch::Tensor block_table,
     torch::Tensor seq_lens,
-    int64_t max_seq_len);
+    int64_t max_seq_len,
+    int64_t split_size);
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, module) {
   module.def("paged_decode", &l20_paged_decode_cuda);

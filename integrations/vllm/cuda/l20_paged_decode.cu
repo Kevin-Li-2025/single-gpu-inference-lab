@@ -8,8 +8,6 @@
 namespace {
 
 constexpr int kHeadDim = 128;
-constexpr int kSplitSize = 512;
-
 __inline__ __device__ float warp_sum(float value) {
   for (int offset = 16; offset > 0; offset /= 2) {
     value += __shfl_down_sync(0xffffffff, value, offset);
@@ -151,7 +149,8 @@ __global__ void paged_decode_partial_kernel(
     int num_kv_heads,
     int page_size,
     int max_pages,
-    int num_splits) {
+    int num_splits,
+    int split_size) {
   const int q_head = blockIdx.x;
   const int split = blockIdx.y;
   const int batch = blockIdx.z;
@@ -159,8 +158,8 @@ __global__ void paged_decode_partial_kernel(
   const int thread = threadIdx.x;
   const int lane = thread & 31;
   const int warp = thread >> 5;
-  const int split_start = split * kSplitSize;
-  const int split_end = min(split_start + kSplitSize, seq_lens[batch]);
+  const int split_start = split * split_size;
+  const int split_end = min(split_start + split_size, seq_lens[batch]);
   __shared__ float scores[16];
   __shared__ float probabilities[16];
   __shared__ float alpha_shared;
@@ -343,12 +342,17 @@ torch::Tensor l20_paged_decode_split_cuda(
     torch::Tensor value_cache,
     torch::Tensor block_table,
     torch::Tensor seq_lens,
-    int64_t max_seq_len) {
+    int64_t max_seq_len,
+    int64_t split_size) {
   TORCH_CHECK(query.is_cuda(), "query must be CUDA");
   TORCH_CHECK(query.scalar_type() == torch::kFloat16, "FP16 only");
   TORCH_CHECK(query.dim() == 3 && query.size(2) == kHeadDim, "invalid query");
   const at::cuda::CUDAGuard guard(query.device());
-  const int num_splits = (max_seq_len + kSplitSize - 1) / kSplitSize;
+  TORCH_CHECK(
+      split_size == 128 || split_size == 256 || split_size == 512 ||
+          split_size == 1024,
+      "split_size must be 128, 256, 512, or 1024");
+  const int num_splits = (max_seq_len + split_size - 1) / split_size;
   auto partial_output = torch::empty(
       {query.size(0), query.size(1), num_splits, kHeadDim},
       query.options());
@@ -372,7 +376,8 @@ torch::Tensor l20_paged_decode_split_cuda(
       key_cache.size(2),
       key_cache.size(1),
       block_table.size(1),
-      num_splits);
+      num_splits,
+      split_size);
   paged_decode_merge_kernel<<<
       dim3(query.size(1), query.size(0)),
       kHeadDim,
