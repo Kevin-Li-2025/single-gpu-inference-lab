@@ -95,17 +95,30 @@ def main() -> int:
     new_call = """                    l20_batch = decode_query.shape[0]
                     l20_max_seq = attn_metadata.decode.max_seq_len
                     l20_enabled = (
-                        decode_query.dtype == torch.float16
-                        and decode_query.shape[1:] == (16, 128)
+                        not torch.cuda.is_current_stream_capturing()
+                        and decode_query.dtype == torch.float16
+                        and decode_query.shape[-1] == 128
+                        and decode_query.shape[1] in (12, 16)
                         and kv_cache_permute.shape[1] == 2
-                        and kv_cache_permute.shape[2:] == (16, 8, 128)
+                        and kv_cache_permute.shape[2] == 16
+                        and kv_cache_permute.shape[4] == 128
+                        and (
+                            (
+                                decode_query.shape[1] == 16
+                                and kv_cache_permute.shape[3] == 8
+                            )
+                            or (
+                                decode_query.shape[1] == 12
+                                and kv_cache_permute.shape[3] == 2
+                            )
+                        )
                         and (
                             (l20_batch == 1 and l20_max_seq <= 2304)
                             or (l20_batch <= 4 and l20_max_seq <= 640)
                         )
                     )
                     if l20_enabled:
-                        l20_shape = (4, 16, 36)
+                        l20_shape = (4, decode_query.shape[1], 64)
                         if getattr(self, "_l20_workspace_shape", None) != l20_shape:
                             self._l20_partial_output = torch.empty(
                                 (*l20_shape, 128),

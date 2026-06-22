@@ -842,3 +842,25 @@ with four warps at 768 tokens and above. The threshold is based on the tested
 dimensions.
 
 Raw reports: `benchmarks/results/l20-paged-rope-grouped-v1/`.
+
+## V28 Qwen2.5-Coder 6:1 GQA Specialization
+
+Qwen2.5-Coder-1.5B uses 12 Q heads, 2 KV heads, and head dimension 128. Native
+FlashInfer CUDA-core decode rejects GQA group size six, so the fair baseline is
+its tensor-core path. The existing independent-Q-head L20 kernel already
+supports this shape.
+
+Fair preallocated-output microbenchmarks show 1.84x at batch 1/context 512,
+1.69x at batch 1/context 2048, 1.14x at batch 1/context 4096, and 1.72x at
+batch 4/context 512.
+
+Four baseline runs bracketing two optimized eager-mode runs show:
+
+- concurrency 1, input 512: median/p95 ITL -3.76%/-3.35%, throughput +3.75%;
+- concurrency 1, input 2048: median/p95 ITL -4.83%/-3.75%, throughput +4.55%;
+- concurrency 4, input 512: median/p95 ITL -4.44%/-3.52%, throughput +4.39%.
+
+TTFT is not improved and is not claimed. Under CUDA Graphs, median ITL changes
+are between -0.004% and +0.046%, while throughput regresses 0.28% to 1.30%.
+The installer therefore captures FlashInfer during CUDA Graph creation and
+enables the L20 kernel only in eager execution.

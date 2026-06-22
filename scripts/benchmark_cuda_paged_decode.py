@@ -41,7 +41,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path)
     parser.add_argument("--build-dir", type=Path, default=Path("/tmp/l20-paged-cuda"))
+    parser.add_argument("--q-heads", type=int, default=16)
+    parser.add_argument("--kv-heads", type=int, default=8)
     args = parser.parse_args()
+    if args.q_heads % args.kv_heads:
+        raise SystemExit("q-heads must be divisible by kv-heads")
     root = Path(__file__).resolve().parents[1]
     args.build_dir.mkdir(parents=True, exist_ok=True)
     extension = load(
@@ -74,14 +78,24 @@ def main():
                 (batch,), context, device="cuda", dtype=torch.int32
             )
             query = torch.randn(
-                batch, 16, 128, device="cuda", dtype=torch.float16
+                batch, args.q_heads, 128, device="cuda", dtype=torch.float16
             )
             cache = (
                 torch.randn(
-                    num_pages, page_size, 8, 128, device="cuda", dtype=torch.float16
+                    num_pages,
+                    page_size,
+                    args.kv_heads,
+                    128,
+                    device="cuda",
+                    dtype=torch.float16,
                 ),
                 torch.randn(
-                    num_pages, page_size, 8, 128, device="cuda", dtype=torch.float16
+                    num_pages,
+                    page_size,
+                    args.kv_heads,
+                    128,
+                    device="cuda",
+                    dtype=torch.float16,
                 ),
             )
             workspace = torch.empty(
@@ -90,38 +104,57 @@ def main():
             wrappers = {}
             flashinfer_outputs = {}
             for tensor_cores in (False, True):
-                wrapper = flashinfer.BatchDecodeWithPagedKVCacheWrapper(
-                    workspace, "NHD", use_tensor_cores=tensor_cores
-                )
-                wrapper.plan(
-                    indptr,
-                    block_table.flatten(),
-                    last_page_len,
-                    16,
-                    8,
-                    128,
-                    page_size,
-                    pos_encoding_mode="NONE",
-                    q_data_type=query.dtype,
-                    kv_data_type=query.dtype,
-                )
-                wrappers[tensor_cores] = wrapper
-                flashinfer_outputs[tensor_cores] = torch.empty_like(query)
-            wrappers[False].run(query, cache, out=flashinfer_outputs[False])
-            expected = flashinfer_outputs[False]
+                try:
+                    wrapper = flashinfer.BatchDecodeWithPagedKVCacheWrapper(
+                        workspace, "NHD", use_tensor_cores=tensor_cores
+                    )
+                    wrapper.plan(
+                        indptr,
+                        block_table.flatten(),
+                        last_page_len,
+                        args.q_heads,
+                        args.kv_heads,
+                        128,
+                        page_size,
+                        pos_encoding_mode="NONE",
+                        q_data_type=query.dtype,
+                        kv_data_type=query.dtype,
+                    )
+                    wrappers[tensor_cores] = wrapper
+                    flashinfer_outputs[tensor_cores] = torch.empty_like(query)
+                except RuntimeError:
+                    continue
+            reference_mode = False if False in wrappers else True
+            wrappers[reference_mode].run(
+                query, cache, out=flashinfer_outputs[reference_mode]
+            )
+            expected = flashinfer_outputs[reference_mode]
             actual = extension.paged_decode(
                 query, cache[0], cache[1], block_table, seq_lens
             )
             split_available = hasattr(extension, "paged_decode_split")
-            flashinfer_ms = latency_ms(
-                lambda: wrappers[False].run(
-                    query, cache, out=flashinfer_outputs[False]
+            flashinfer_ms = (
+                latency_ms(
+                    lambda: wrappers[False].run(
+                        query, cache, out=flashinfer_outputs[False]
+                    )
                 )
+                if False in wrappers
+                else None
             )
-            flashinfer_tensor_core_ms = latency_ms(
-                lambda: wrappers[True].run(
-                    query, cache, out=flashinfer_outputs[True]
+            flashinfer_tensor_core_ms = (
+                latency_ms(
+                    lambda: wrappers[True].run(
+                        query, cache, out=flashinfer_outputs[True]
+                    )
                 )
+                if True in wrappers
+                else None
+            )
+            baseline_ms = (
+                flashinfer_ms
+                if flashinfer_ms is not None
+                else flashinfer_tensor_core_ms
             )
             cuda_ms = latency_ms(
                 lambda: extension.paged_decode(
@@ -133,14 +166,18 @@ def main():
                 num_splits = (context + split_size - 1) // split_size
                 partial_output = torch.empty(
                     batch,
-                    16,
+                    args.q_heads,
                     num_splits,
                     128,
                     device="cuda",
                     dtype=query.dtype,
                 )
                 partial_max = torch.empty(
-                    batch, 16, num_splits, device="cuda", dtype=torch.float32
+                    batch,
+                    args.q_heads,
+                    num_splits,
+                    device="cuda",
+                    dtype=torch.float32,
                 )
                 partial_sum = torch.empty_like(partial_max)
                 split_output = torch.empty_like(query)
@@ -207,9 +244,9 @@ def main():
                             )
                         ),
                         "cuda_ms": split_ms,
-                        "speedup": flashinfer_ms / split_ms,
+                        "speedup": baseline_ms / split_ms,
                         "workspace_ms": workspace_ms,
-                        "workspace_speedup": flashinfer_ms / workspace_ms,
+                        "workspace_speedup": baseline_ms / workspace_ms,
                         "indices_ms": indices_ms,
                         "indices_vs_block_table": workspace_ms / indices_ms,
                     }
@@ -230,9 +267,11 @@ def main():
                     "flashinfer_tensor_core_ms": flashinfer_tensor_core_ms,
                     "flashinfer_tensor_core_vs_cuda_core": (
                         flashinfer_ms / flashinfer_tensor_core_ms
+                        if flashinfer_ms is not None
+                        else None
                     ),
                     "cuda_ms": cuda_ms,
-                    "speedup": flashinfer_ms / cuda_ms,
+                    "speedup": baseline_ms / cuda_ms,
                     "split_reports": split_reports,
                     "best_split_size": best_split["split_size"],
                     "policy_split_size": policy_split,
