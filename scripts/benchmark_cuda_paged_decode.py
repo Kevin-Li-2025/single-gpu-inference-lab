@@ -31,6 +31,10 @@ def l20_split_policy(batch, context):
     return 512
 
 
+def should_use_l20_cuda_paged_decode(batch, context):
+    return batch == 1 or (batch <= 4 and context <= 512)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path)

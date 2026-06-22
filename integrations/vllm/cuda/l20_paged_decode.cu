@@ -167,6 +167,7 @@ __global__ void paged_decode_partial_kernel(
   __shared__ float alpha_shared;
   __shared__ float running_max_shared;
   __shared__ float running_sum_shared;
+  __shared__ int physical_page_shared;
 
   const int q_base = (batch * num_q_heads + q_head) * kHeadDim;
   const int pair0 = lane * 2;
@@ -183,20 +184,24 @@ __global__ void paged_decode_partial_kernel(
   __syncthreads();
 
   for (int tile_start = split_start; tile_start < split_end; tile_start += 16) {
+    if (thread == 0) {
+      const int logical_page = tile_start / page_size;
+      const int page_index = use_indptr
+          ? page_indptr[batch] + logical_page
+          : batch * max_pages + logical_page;
+      physical_page_shared = block_table[page_index];
+    }
+    __syncthreads();
 #pragma unroll
     for (int warp_token = 0; warp_token < 2; ++warp_token) {
       const int token_index = warp + warp_token * 8;
       const int token = tile_start + token_index;
       float dot = 0.0f;
       if (token < split_end) {
-        const int logical_page = token / page_size;
-        const int page_offset = token - logical_page * page_size;
-        const int page_index = use_indptr
-            ? page_indptr[batch] + logical_page
-            : batch * max_pages + logical_page;
-        const int physical_page = block_table[page_index];
+        const int page_offset = token - tile_start;
         const int cache_base =
-            ((physical_page * page_size + page_offset) * num_kv_heads + kv_head) *
+            ((physical_page_shared * page_size + page_offset) * num_kv_heads +
+             kv_head) *
             kHeadDim;
         const float2 k01f = __half22float2(
             *reinterpret_cast<const half2*>(key_cache + cache_base + pair0));
@@ -238,14 +243,8 @@ __global__ void paged_decode_partial_kernel(
       for (int index = 0; index < 16; ++index) {
         const int token = tile_start + index;
         if (token < split_end) {
-          const int logical_page = token / page_size;
-          const int page_offset = token - logical_page * page_size;
-          const int page_index = use_indptr
-              ? page_indptr[batch] + logical_page
-              : batch * max_pages + logical_page;
-          const int physical_page = block_table[page_index];
           const int cache_offset =
-              ((physical_page * page_size + page_offset) * num_kv_heads +
+              ((physical_page_shared * page_size + index) * num_kv_heads +
                kv_head) *
                   kHeadDim +
               thread * 2;

@@ -405,6 +405,24 @@ The provisional L20 rule is therefore conservative: keep CUDA-core decode for
 batch below four; at batch four require GQA ratio eight; at batch eight enable
 tensor cores from ratio four. Larger batch requires its own service-level gate
 because attention latency and scheduler behavior begin to dominate differently.
+
+### V25 Page-Shared Partial CTA
+
+The 128-token split aligns exactly with eight 16-token KV pages. V25 loads one
+physical page index per 16-token tile into shared memory and reuses the page
+base for all QK and PV address calculations.
+
+This produces the first stable win over FlashInfer on core paged attention:
+
+- batch 1, context 512: 0.0150 ms, 1.72x-1.74x faster;
+- batch 1, context 2048: 0.0166-0.0167 ms, 1.47x-1.49x faster;
+- batch 1, context 4096: 0.0210-0.0211 ms, 1.18x-1.19x faster.
+
+Two additional full runs reproduce the result within about one percent. Batch
+four wins at context 512 by 1.53x-1.56x, but regresses at 2048 and 4096. The
+production gate is therefore batch one, plus batch up to four only at context
+512 or shorter. The win comes from intra-CTA page-index reuse, not from changing
+the external metadata format.
 5. FP8 through NVIDIA Transformer Engine before writing a custom FP8 GEMM.
 6. FlashAttention/vLLM production baselines before any custom attention kernel.
 
