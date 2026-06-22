@@ -1,0 +1,513 @@
+{
+  "compute_capability": "8.9",
+  "gpu": "NVIDIA L20",
+  "notes": [
+    "Occupancy is an architectural upper-bound estimate, not measured active warps.",
+    "DRAM, L2, coalescing, and stall metrics require Nsight Compute and are not inferred here."
+  ],
+  "schema_version": 1,
+  "shapes": [
+    {
+      "block_size": 64,
+      "head_dim": 64,
+      "kv_heads": 2,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 2,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 42,
+          "warp_blocks": 24
+        },
+        "limiting_resource": "architectural_blocks",
+        "resident_blocks_per_sm": 24,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 14,
+      "registers_per_thread": 24,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 1
+    },
+    {
+      "block_size": 128,
+      "head_dim": 128,
+      "kv_heads": 2,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 4,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 21,
+          "warp_blocks": 12
+        },
+        "limiting_resource": "warp_blocks",
+        "resident_blocks_per_sm": 12,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 12,
+      "registers_per_thread": 24,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 1
+    },
+    {
+      "block_size": 128,
+      "head_dim": 128,
+      "kv_heads": 4,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 4,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 21,
+          "warp_blocks": 12
+        },
+        "limiting_resource": "warp_blocks",
+        "resident_blocks_per_sm": 12,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 32,
+      "registers_per_thread": 24,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 1
+    },
+    {
+      "block_size": 128,
+      "head_dim": 128,
+      "kv_heads": 8,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 4,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 21,
+          "warp_blocks": 12
+        },
+        "limiting_resource": "warp_blocks",
+        "resident_blocks_per_sm": 12,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 32,
+      "registers_per_thread": 24,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 1
+    },
+    {
+      "block_size": 256,
+      "head_dim": 256,
+      "kv_heads": 4,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 4,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 18,
+          "warp_blocks": 12
+        },
+        "limiting_resource": "warp_blocks",
+        "resident_blocks_per_sm": 12,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 16,
+      "registers_per_thread": 28,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 1
+    },
+    {
+      "block_size": 64,
+      "head_dim": 64,
+      "kv_heads": 2,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 2,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 42,
+          "warp_blocks": 24
+        },
+        "limiting_resource": "architectural_blocks",
+        "resident_blocks_per_sm": 24,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 14,
+      "registers_per_thread": 24,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 8
+    },
+    {
+      "block_size": 128,
+      "head_dim": 128,
+      "kv_heads": 2,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 4,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 21,
+          "warp_blocks": 12
+        },
+        "limiting_resource": "warp_blocks",
+        "resident_blocks_per_sm": 12,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 12,
+      "registers_per_thread": 24,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 8
+    },
+    {
+      "block_size": 128,
+      "head_dim": 128,
+      "kv_heads": 4,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 4,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 21,
+          "warp_blocks": 12
+        },
+        "limiting_resource": "warp_blocks",
+        "resident_blocks_per_sm": 12,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 32,
+      "registers_per_thread": 24,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 8
+    },
+    {
+      "block_size": 128,
+      "head_dim": 128,
+      "kv_heads": 8,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 4,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 21,
+          "warp_blocks": 12
+        },
+        "limiting_resource": "warp_blocks",
+        "resident_blocks_per_sm": 12,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 32,
+      "registers_per_thread": 24,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 8
+    },
+    {
+      "block_size": 256,
+      "head_dim": 256,
+      "kv_heads": 4,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 4,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 18,
+          "warp_blocks": 12
+        },
+        "limiting_resource": "warp_blocks",
+        "resident_blocks_per_sm": 12,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 16,
+      "registers_per_thread": 28,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 8
+    },
+    {
+      "block_size": 64,
+      "head_dim": 64,
+      "kv_heads": 2,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 2,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 42,
+          "warp_blocks": 24
+        },
+        "limiting_resource": "architectural_blocks",
+        "resident_blocks_per_sm": 24,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 14,
+      "registers_per_thread": 24,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 16
+    },
+    {
+      "block_size": 128,
+      "head_dim": 128,
+      "kv_heads": 2,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 4,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 21,
+          "warp_blocks": 12
+        },
+        "limiting_resource": "warp_blocks",
+        "resident_blocks_per_sm": 12,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 12,
+      "registers_per_thread": 24,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 16
+    },
+    {
+      "block_size": 128,
+      "head_dim": 128,
+      "kv_heads": 4,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 4,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 21,
+          "warp_blocks": 12
+        },
+        "limiting_resource": "warp_blocks",
+        "resident_blocks_per_sm": 12,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 32,
+      "registers_per_thread": 24,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 16
+    },
+    {
+      "block_size": 128,
+      "head_dim": 128,
+      "kv_heads": 8,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 4,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 21,
+          "warp_blocks": 12
+        },
+        "limiting_resource": "warp_blocks",
+        "resident_blocks_per_sm": 12,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 32,
+      "registers_per_thread": 24,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 16
+    },
+    {
+      "block_size": 256,
+      "head_dim": 256,
+      "kv_heads": 4,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 4,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 18,
+          "warp_blocks": 12
+        },
+        "limiting_resource": "warp_blocks",
+        "resident_blocks_per_sm": 12,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 16,
+      "registers_per_thread": 28,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 16
+    },
+    {
+      "block_size": 64,
+      "head_dim": 64,
+      "kv_heads": 2,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 2,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 42,
+          "warp_blocks": 24
+        },
+        "limiting_resource": "architectural_blocks",
+        "resident_blocks_per_sm": 24,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 14,
+      "registers_per_thread": 24,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 64
+    },
+    {
+      "block_size": 128,
+      "head_dim": 128,
+      "kv_heads": 2,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 4,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 21,
+          "warp_blocks": 12
+        },
+        "limiting_resource": "warp_blocks",
+        "resident_blocks_per_sm": 12,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 12,
+      "registers_per_thread": 24,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 64
+    },
+    {
+      "block_size": 128,
+      "head_dim": 128,
+      "kv_heads": 4,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 4,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 21,
+          "warp_blocks": 12
+        },
+        "limiting_resource": "warp_blocks",
+        "resident_blocks_per_sm": 12,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 32,
+      "registers_per_thread": 24,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 64
+    },
+    {
+      "block_size": 128,
+      "head_dim": 128,
+      "kv_heads": 8,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 4,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 21,
+          "warp_blocks": 12
+        },
+        "limiting_resource": "warp_blocks",
+        "resident_blocks_per_sm": 12,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 32,
+      "registers_per_thread": 24,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 64
+    },
+    {
+      "block_size": 256,
+      "head_dim": 256,
+      "kv_heads": 4,
+      "local_memory_bytes": 0,
+      "num_stages": 1,
+      "num_warps": 4,
+      "occupancy_estimate": {
+        "block_limits": {
+          "architectural_blocks": 24,
+          "register_blocks": 18,
+          "warp_blocks": 12
+        },
+        "limiting_resource": "warp_blocks",
+        "resident_blocks_per_sm": 12,
+        "resident_warps_per_sm": 48,
+        "theoretical_occupancy_pct": 100.0
+      },
+      "q_heads": 16,
+      "registers_per_thread": 28,
+      "shared_memory_bytes": 0,
+      "spills": null,
+      "stack_bytes": 0,
+      "tokens": 64
+    }
+  ],
+  "torch": "2.11.0+cu130",
+  "triton": "3.6.0"
+}

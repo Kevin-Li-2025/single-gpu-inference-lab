@@ -91,8 +91,9 @@ def _l20_rope_kv_kernel(
 
         slot = tl.load(slot_mapping + token)
         valid_slot = slot >= 0
-        physical_block = slot // cache_block_size
-        block_offset = slot % cache_block_size
+        safe_slot = tl.where(valid_slot, slot, 0)
+        physical_block = safe_slot // cache_block_size
+        block_offset = safe_slot % cache_block_size
         k_cache_base = (
             physical_block * kc_stride_b
             + block_offset * kc_stride_s
@@ -137,6 +138,8 @@ def l20_rope_and_cache(
         raise RuntimeError("l20_rope_and_cache supports FP16 and BF16")
     if key.dtype != query.dtype or value.dtype != query.dtype:
         raise RuntimeError("Q, K, and V must use the same dtype")
+    if query.shape[0] > 64:
+        raise RuntimeError("l20_rope_and_cache is restricted to at most 64 tokens")
     if key_cache.dtype != query.dtype or value_cache.dtype != query.dtype:
         raise RuntimeError("quantized KV cache is not supported")
     if query.ndim != 3 or key.ndim != 3 or value.ndim != 3:

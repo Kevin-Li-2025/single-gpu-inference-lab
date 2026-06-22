@@ -137,8 +137,16 @@ full-model tokens/s claims.
 
 The kernel is now wired into vLLM 0.23's existing
 `fuse_rope_kvcache` post-grad pass for CUDA SM89. On
-Qwen2.5-Coder-1.5B-Instruct, all 28 layers matched the fusion. With prefix
-caching disabled, six real serving shapes showed `+0.03%` to `+0.95%`
-throughput, while TTFT/ITL tail results were mixed. This is a small end-to-end
-gain despite the much larger append microbenchmark win; see
+Qwen2.5-Coder-1.5B-Instruct, all 28 layers matched the fusion. The wider
+correctness matrix found failures above 64 tokens for selected NeoX/GQA shapes,
+so the vLLM path is now gated to `num_tokens <= 64`. With prefix caching
+disabled, five of six tested service shapes improve throughput by
+`+0.39%` to `+1.12%`, while concurrency 16/input 3072 regresses by `1.36%`.
+Tail latency remains mixed. This is a small, shape-dependent end-to-end result
+despite the much larger append microbenchmark win; see
 `docs/l20-serving-integration.md`.
+
+The complete systems narrative, including the rejected benchmark methodology
+and bottleneck analysis behind the `7.82x -> marginal service gain` performance
+dilution, is in
+[`docs/l20-serving-case-study.md`](docs/l20-serving-case-study.md).

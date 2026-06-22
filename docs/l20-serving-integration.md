@@ -114,7 +114,7 @@ vllm serve MODEL \
     "splitting_ops": [],
     "pass_config": {
       "fuse_rope_kvcache": true,
-      "rope_kvcache_fusion_max_token_num": 256
+      "rope_kvcache_fusion_max_token_num": 64
     }
   }'
 ```
@@ -133,23 +133,32 @@ independent `vllm bench serve` runs.
 
 | Concurrency | Input | Throughput change | TTFT p50 change | ITL p50 change |
 | ---: | ---: | ---: | ---: | ---: |
-| 1 | 1024 | +0.95% | -3.81% | -0.66% |
-| 1 | 3072 | +0.49% | +0.50% | -0.63% |
-| 16 | 1024 | +0.27% | -5.19% | +0.22% |
-| 16 | 3072 | +0.03% | -1.20% | +0.80% |
-| 64 | 1024 | +0.73% | -1.61% | -0.64% |
-| 64 | 3072 | +0.74% | -0.44% | -0.53% |
+| 1 | 1024 | +0.39% | +0.67% | -0.74% |
+| 1 | 3072 | +0.67% | -0.62% | -0.74% |
+| 16 | 1024 | +0.94% | -13.36% | -0.03% |
+| 16 | 3072 | -1.36% | -7.43% | +0.98% |
+| 64 | 1024 | +1.12% | -15.34% | +0.13% |
+| 64 | 3072 | +0.81% | -0.52% | -1.20% |
 
 Raw reports and aggregation:
 
 - `benchmarks/results/l20-vllm-e2e/qwen-nopc-baseline/`
-- `benchmarks/results/l20-vllm-e2e/qwen-nopc-fused/`
-- `benchmarks/results/l20-vllm-e2e/qwen-nopc-summary.json`
+- `benchmarks/results/l20-vllm-e2e/qwen-safe64-fused/`
+- `benchmarks/results/l20-vllm-e2e/qwen-safe64-summary.json`
 
-The throughput result is positive at all six measured shapes but remains below
-1%. Tail latency is mixed, including a noisy ITL p95 regression at concurrency
-16/input 1024. This is a functional upstream-shaped CUDA path with a small Qwen
-service gain, not evidence of a broad 10-20% model-level speedup.
+Five of six shapes are throughput-positive after the stricter correctness gate,
+but the gains are only 0.39%-1.12%; concurrency 16/input 3072 regresses by
+1.36%. Tail latency is mixed, including a large ITL p95 regression at
+concurrency 16/input 1024. This is a functional upstream-shaped CUDA path with
+marginal, shape-dependent Qwen service benefit, not evidence of a broad 10-20%
+model-level speedup.
+
+The first wider correctness matrix found failures above 64 tokens for selected
+NeoX/GQA configurations. The CUDA path is now gated to `num_tokens <= 64`, where
+80/80 FP16/BF16, layout, head-dimension, GQA, and randomized-slot cases pass
+bitwise comparison. Service reports collected with the earlier threshold of 256
+must not be used as upstream correctness evidence; a threshold-64 rerun is the
+replacement result.
 
 TinyLlama 1.1B could not be downloaded because the remote host had no route to
 Hugging Face. The cached random Llama fixture has head size 4, which vLLM's
