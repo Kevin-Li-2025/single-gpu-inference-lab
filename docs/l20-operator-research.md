@@ -192,6 +192,26 @@ All measured split-KV outputs pass the BF16 correctness tolerance. These remain
 contiguous-cache results. vLLM serving uses block-table paged KV storage, so an
 end-to-end ITL claim requires a paged version and backend integration; directly
 patching the contiguous kernel into serving would not be semantically valid.
+
+### V15 Paged Split-KV Production Gate
+
+The split-KV implementation was extended to consume vLLM/FlashInfer NHD paged
+cache directly through a per-request block table. Correctness passes for batch
+1, 4, and 8 at context lengths 2048 and 4096, with maximum absolute error at
+most `1.22e-4`.
+
+The production comparison is negative. Against FlashInfer paged decode, the
+first implementation reaches only 0.19x to 0.71x. A split-size sweep over 256,
+512, 1024, and 2048 tokens does not reverse the result; the best observed case
+is approximately 0.75x. The likely costs are repeated page-index loads per
+token and FP32 partial-output traffic, while FlashInfer already uses a mature
+paged-decode schedule.
+
+The vLLM dispatch gate is therefore disabled and no optimized service ITL
+number is reported. Running an end-to-end benchmark with this kernel enabled
+would knowingly measure a regression. A future attempt needs page-granular
+address staging and a register/shared-memory merge strategy before another
+service integration attempt.
 5. FP8 through NVIDIA Transformer Engine before writing a custom FP8 GEMM.
 6. FlashAttention/vLLM production baselines before any custom attention kernel.
 
