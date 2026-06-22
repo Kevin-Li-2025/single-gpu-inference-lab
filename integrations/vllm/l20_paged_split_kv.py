@@ -227,6 +227,124 @@ def _paged_split_kv_partial_page16(
 
 
 @triton.jit
+def _paged_split_kv_partial_gqa2(
+    query,
+    key_cache,
+    value_cache,
+    block_table,
+    seq_lens,
+    partial_output,
+    partial_max,
+    partial_sum,
+    q_stride_b,
+    q_stride_h,
+    kc_stride_p,
+    kc_stride_t,
+    kc_stride_h,
+    vc_stride_p,
+    vc_stride_t,
+    vc_stride_h,
+    bt_stride_b,
+    num_q_heads: tl.constexpr,
+    num_kv_heads: tl.constexpr,
+    head_dim: tl.constexpr,
+    page_size: tl.constexpr,
+    num_splits: tl.constexpr,
+    SPLIT_SIZE: tl.constexpr,
+    BLOCK_T: tl.constexpr,
+):
+    split = tl.program_id(0)
+    kv_program = tl.program_id(1)
+    batch = kv_program // num_kv_heads
+    kv_head = kv_program % num_kv_heads
+    q_head0 = kv_head * 2
+    q_head1 = q_head0 + 1
+    seq_len = tl.load(seq_lens + batch)
+    split_start = split * SPLIT_SIZE
+    dim = tl.arange(0, head_dim)
+    q0 = tl.load(query + batch * q_stride_b + q_head0 * q_stride_h + dim).to(
+        tl.float32
+    )
+    q1 = tl.load(query + batch * q_stride_b + q_head1 * q_stride_h + dim).to(
+        tl.float32
+    )
+    scale = 1.0 / tl.sqrt(float(head_dim))
+    max0 = -float("inf")
+    max1 = -float("inf")
+    sum0 = 0.0
+    sum1 = 0.0
+    acc0 = tl.zeros((head_dim,), tl.float32)
+    acc1 = tl.zeros((head_dim,), tl.float32)
+
+    for offset in range(0, SPLIT_SIZE, BLOCK_T):
+        token = split_start + offset + tl.arange(0, BLOCK_T)
+        token_mask = token < tl.minimum(split_start + SPLIT_SIZE, seq_len)
+        logical_page = token // page_size
+        page_offset = token % page_size
+        physical_page = tl.load(
+            block_table
+            + batch * bt_stride_b
+            + tl.where(token_mask, logical_page, 0),
+            mask=token_mask,
+            other=0,
+        )
+        keys = tl.load(
+            key_cache
+            + physical_page[:, None] * kc_stride_p
+            + page_offset[:, None] * kc_stride_t
+            + kv_head * kc_stride_h
+            + dim[None, :],
+            mask=token_mask[:, None],
+            other=0.0,
+        ).to(tl.float32)
+        score0 = tl.sum(keys * q0[None, :], axis=1) * scale
+        score1 = tl.sum(keys * q1[None, :], axis=1) * scale
+        score0 = tl.where(token_mask, score0, -float("inf"))
+        score1 = tl.where(token_mask, score1, -float("inf"))
+        tile_max0 = tl.max(score0, axis=0)
+        tile_max1 = tl.max(score1, axis=0)
+        next_max0 = tl.maximum(max0, tile_max0)
+        next_max1 = tl.maximum(max1, tile_max1)
+        old_scale0 = tl.exp(max0 - next_max0)
+        old_scale1 = tl.exp(max1 - next_max1)
+        probability0 = tl.exp(score0 - next_max0)
+        probability1 = tl.exp(score1 - next_max1)
+        values = tl.load(
+            value_cache
+            + physical_page[:, None] * vc_stride_p
+            + page_offset[:, None] * vc_stride_t
+            + kv_head * vc_stride_h
+            + dim[None, :],
+            mask=token_mask[:, None],
+            other=0.0,
+        ).to(tl.float32)
+        acc0 = acc0 * old_scale0 + tl.sum(probability0[:, None] * values, axis=0)
+        acc1 = acc1 * old_scale1 + tl.sum(probability1[:, None] * values, axis=0)
+        sum0 = sum0 * old_scale0 + tl.sum(probability0, axis=0)
+        sum1 = sum1 * old_scale1 + tl.sum(probability1, axis=0)
+        max0 = next_max0
+        max1 = next_max1
+
+    valid_split = split_start < seq_len
+    head_program0 = batch * num_q_heads + q_head0
+    head_program1 = head_program0 + 1
+    index0 = head_program0 * num_splits + split
+    index1 = head_program1 * num_splits + split
+    tl.store(
+        partial_output + index0 * head_dim + dim,
+        tl.where(valid_split, acc0, 0.0),
+    )
+    tl.store(
+        partial_output + index1 * head_dim + dim,
+        tl.where(valid_split, acc1, 0.0),
+    )
+    tl.store(partial_max + index0, tl.where(valid_split, max0, -float("inf")))
+    tl.store(partial_max + index1, tl.where(valid_split, max1, -float("inf")))
+    tl.store(partial_sum + index0, tl.where(valid_split, sum0, 0.0))
+    tl.store(partial_sum + index1, tl.where(valid_split, sum1, 0.0))
+
+
+@triton.jit
 def _paged_split_kv_reduce(
     partial_output,
     partial_max,
@@ -270,6 +388,7 @@ def l20_paged_split_kv_attention(
         torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
     ] | None = None,
     page_granular: bool = False,
+    grouped_gqa: bool = False,
 ) -> torch.Tensor:
     if torch.cuda.get_device_capability(query.device) != (8, 9):
         raise RuntimeError("requires an SM89 GPU")
@@ -302,12 +421,17 @@ def l20_paged_split_kv_attention(
         or output.shape != query.shape
     ):
         raise RuntimeError("paged split-KV workspace shape does not match the request")
-    partial_kernel = (
-        _paged_split_kv_partial_page16
-        if page_size == 16 and page_granular
-        else _paged_split_kv_partial
-    )
-    partial_kernel[(num_splits, batch * num_q_heads)](
+    use_grouped_gqa = grouped_gqa and num_q_heads == 2 * num_kv_heads
+    if use_grouped_gqa:
+        partial_kernel = _paged_split_kv_partial_gqa2
+        partial_grid = (num_splits, batch * num_kv_heads)
+    elif page_size == 16 and page_granular:
+        partial_kernel = _paged_split_kv_partial_page16
+        partial_grid = (num_splits, batch * num_q_heads)
+    else:
+        partial_kernel = _paged_split_kv_partial
+        partial_grid = (num_splits, batch * num_q_heads)
+    partial_kernel[partial_grid](
         query,
         key_cache,
         value_cache,
@@ -333,9 +457,13 @@ def l20_paged_split_kv_attention(
         num_warps=4,
         num_stages=1,
         **(
-            {}
-            if page_size == 16 and page_granular
-            else {"page_size": page_size, "BLOCK_T": 32}
+            {"page_size": page_size, "BLOCK_T": 32}
+            if use_grouped_gqa
+            else (
+                {}
+                if page_size == 16 and page_granular
+                else {"page_size": page_size, "BLOCK_T": 32}
+            )
         ),
     )
     _paged_split_kv_reduce[(batch * num_q_heads,)](

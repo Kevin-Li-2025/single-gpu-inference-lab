@@ -233,6 +233,25 @@ This narrows the bottleneck. Python allocation and partial-output byte volume
 are not the dominant gap. The next viable design must change work mapping more
 substantially, for example processing several Q heads that share a KV head in
 one program so page indices and K/V loads can be reused across the GQA group.
+
+### V17 Grouped-GQA Work Mapping
+
+A Qwen3-specific 2:1 GQA kernel was implemented so one Triton program computes
+both Q heads sharing a KV head. It loads each block-table entry and K/V tile
+once, then maintains two online-softmax states and two 128-element output
+accumulators.
+
+Correctness passes across batch 1, 4, and 8 at context 2048 and 4096. However,
+same-process A/B measurements against the ungrouped implementation are only
+0.94x to 1.04x, with wins and losses alternating by shape. This is benchmark
+noise rather than a valid policy improvement. The likely cause is register
+pressure from the second accumulator and softmax state offsetting the saved
+K/V loads.
+
+Grouped GQA remains available as an experiment but is disabled by default.
+Further progress requires a lower-register mapping, such as splitting the
+head dimension across cooperating warps or using CUDA/CUTLASS primitives that
+give explicit control over shared-memory staging and warp-level reductions.
 5. FP8 through NVIDIA Transformer Engine before writing a custom FP8 GEMM.
 6. FlashAttention/vLLM production baselines before any custom attention kernel.
 

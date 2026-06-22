@@ -94,6 +94,15 @@ def main():
                 seq_lens,
                 workspace=l20_workspace,
             )
+            ungrouped = l20_paged_split_kv_attention(
+                query,
+                cache[0],
+                cache[1],
+                block_table,
+                seq_lens,
+                workspace=l20_workspace,
+                grouped_gqa=False,
+            )
             baseline_ms = latency_ms(lambda: wrapper.run(query, cache))
             fused_ms = latency_ms(
                 lambda: l20_paged_split_kv_attention(
@@ -103,6 +112,17 @@ def main():
                     block_table,
                     seq_lens,
                     workspace=l20_workspace,
+                )
+            )
+            ungrouped_ms = latency_ms(
+                lambda: l20_paged_split_kv_attention(
+                    query,
+                    cache[0],
+                    cache[1],
+                    block_table,
+                    seq_lens,
+                    workspace=l20_workspace,
+                    grouped_gqa=False,
                 )
             )
             reports.append(
@@ -118,6 +138,11 @@ def main():
                     "flashinfer_ms": baseline_ms,
                     "l20_ms": fused_ms,
                     "speedup": baseline_ms / fused_ms,
+                    "ungrouped_correct": bool(
+                        torch.allclose(ungrouped, expected, rtol=2e-2, atol=2e-2)
+                    ),
+                    "ungrouped_ms": ungrouped_ms,
+                    "grouped_vs_ungrouped": ungrouped_ms / fused_ms,
                 }
             )
     result = {
