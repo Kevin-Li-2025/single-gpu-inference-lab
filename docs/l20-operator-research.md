@@ -252,6 +252,28 @@ Grouped GQA remains available as an experiment but is disabled by default.
 Further progress requires a lower-register mapping, such as splitting the
 head dimension across cooperating warps or using CUDA/CUTLASS primitives that
 give explicit control over shared-memory staging and warp-level reductions.
+
+### V18 CUDA SM89 Control Prototype
+
+The remote L20 environment can compile and load an SM89 PyTorch CUDA extension
+despite using system NVCC 12.0 with a PyTorch cu130 wheel. A restricted
+FP16/head-dim-128/NHD paged decode kernel was implemented as a control. It uses
+one 128-thread block per Q head, warp-shuffle dot reduction, and register-held
+online-softmax output state.
+
+After fixing cross-thread normalization state, correctness passes against
+FlashInfer with maximum absolute error `2.44e-4`. Performance is intentionally
+reported as a negative result:
+
+- context 512: 0.086x to 0.087x of FlashInfer;
+- context 2048: approximately 0.022x of FlashInfer.
+
+The kernel synchronizes the full block several times per token, so latency
+scales almost linearly from 0.291 ms at 512 tokens to 1.157 ms at 2048 tokens.
+This establishes a useful lower bound and rejects a direct scalar
+online-softmax translation. A competitive CUDA version needs token tiles,
+warp-specialized QK/softmax/PV stages, asynchronous or vectorized cache loads,
+and no full-block synchronization inside the per-token loop.
 5. FP8 through NVIDIA Transformer Engine before writing a custom FP8 GEMM.
 6. FlashAttention/vLLM production baselines before any custom attention kernel.
 

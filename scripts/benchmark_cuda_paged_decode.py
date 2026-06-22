@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""Build and benchmark the CUDA SM89 paged-decode prototype."""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+
+import torch
+from torch.utils.cpp_extension import load
+
+
+def latency_ms(function, warmup=10, iterations=50):
+    for _ in range(warmup):
+        function()
+    torch.cuda.synchronize()
+    start = torch.cuda.Event(enable_timing=True)
+    end = torch.cuda.Event(enable_timing=True)
+    start.record()
+    for _ in range(iterations):
+        function()
+    end.record()
+    torch.cuda.synchronize()
+    return start.elapsed_time(end) / iterations
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--build-dir", type=Path, default=Path("/tmp/l20-paged-cuda"))
+    args = parser.parse_args()
+    root = Path(__file__).resolve().parents[1]
+    args.build_dir.mkdir(parents=True, exist_ok=True)
+    extension = load(
+        "l20_paged_decode_cuda",
+        [
+            root / "integrations/vllm/cuda/l20_paged_decode.cpp",
+            root / "integrations/vllm/cuda/l20_paged_decode.cu",
+        ],
+        extra_cuda_cflags=["-O3", "-gencode=arch=compute_89,code=sm_89"],
+        build_directory=args.build_dir,
+    )
+    import flashinfer
+
+    reports = []
+    for batch in (1, 4):
+        for context in (512, 2048):
+            page_size = 16
+            pages = context // page_size
+            num_pages = batch * pages
+            block_table = torch.randperm(
+                num_pages, device="cuda", dtype=torch.int32
+            ).reshape(batch, pages)
+            indptr = (
+                torch.arange(batch + 1, device="cuda", dtype=torch.int32) * pages
+            )
+            last_page_len = torch.full(
+                (batch,), page_size, device="cuda", dtype=torch.int32
+            )
+            seq_lens = torch.full(
+                (batch,), context, device="cuda", dtype=torch.int32
+            )
+            query = torch.randn(
+                batch, 16, 128, device="cuda", dtype=torch.float16
+            )
+            cache = (
+                torch.randn(
+                    num_pages, page_size, 8, 128, device="cuda", dtype=torch.float16
+                ),
+                torch.randn(
+                    num_pages, page_size, 8, 128, device="cuda", dtype=torch.float16
+                ),
+            )
+            workspace = torch.empty(
+                128 * 1024 * 1024, device="cuda", dtype=torch.uint8
+            )
+            wrapper = flashinfer.BatchDecodeWithPagedKVCacheWrapper(
+                workspace, "NHD"
+            )
+            wrapper.plan(
+                indptr,
+                block_table.flatten(),
+                last_page_len,
+                16,
+                8,
+                128,
+                page_size,
+                pos_encoding_mode="NONE",
+                q_data_type=query.dtype,
+                kv_data_type=query.dtype,
+            )
+            expected = wrapper.run(query, cache)
+            actual = extension.paged_decode(
+                query, cache[0], cache[1], block_table, seq_lens
+            )
+            flashinfer_ms = latency_ms(lambda: wrapper.run(query, cache))
+            cuda_ms = latency_ms(
+                lambda: extension.paged_decode(
+                    query, cache[0], cache[1], block_table, seq_lens
+                )
+            )
+            reports.append(
+                {
+                    "batch": batch,
+                    "context": context,
+                    "correct": bool(
+                        torch.allclose(actual, expected, rtol=2e-2, atol=2e-2)
+                    ),
+                    "max_abs_error": float(
+                        (actual.float() - expected.float()).abs().max()
+                    ),
+                    "flashinfer_ms": flashinfer_ms,
+                    "cuda_ms": cuda_ms,
+                    "speedup": flashinfer_ms / cuda_ms,
+                }
+            )
+    result = {
+        "schema_version": 1,
+        "gpu": torch.cuda.get_device_name(),
+        "reports": reports,
+    }
+    rendered = json.dumps(result, indent=2, sort_keys=True)
+    print(rendered)
+    if args.output:
+        args.output.write_text(rendered + "\n")
+
+
+if __name__ == "__main__":
+    main()
