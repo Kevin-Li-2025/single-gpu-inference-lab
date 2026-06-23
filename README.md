@@ -149,6 +149,12 @@ from -0.86% to +0.58%. This is a small, shape-dependent end-to-end result
 despite the larger kernel win; see
 `docs/l20-serving-integration.md`.
 
+For hardware-counter validation, use `scripts/profile_kernel.sh` plus
+`scripts/summarize_ncu_profile.py`. The profiler emits Nsight Compute reports,
+raw CSV, parsed JSON, and a Markdown roofline dashboard with DRAM/L2/occupancy,
+sector, and warp-stall metrics. Missing counters remain explicit `null` values;
+the repo does not infer cache efficiency from proxy timings.
+
 The complete systems narrative, including the rejected benchmark methodology
 and bottleneck analysis behind the `7.82x -> marginal service gain` performance
 dilution, is in

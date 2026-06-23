@@ -232,23 +232,35 @@ outputs and exact comparison for V cache writes, across:
 
 Static cubin inspection reports 24 registers per thread for the interleaved
 path. The race-free NeoX path uses 26-28 registers per thread. All measured
-variants use zero stack,
-local, and shared memory, and the SM89 architectural occupancy upper bound is
-100%. This rules out register pressure, spills, and shared-memory conflicts as
-the obvious next optimization target. It does not measure active occupancy,
-DRAM bandwidth, L2 hit rate, sector excess, or warp stalls.
+variants use zero stack, local, and shared memory, and the SM89 architectural
+occupancy upper bound is 100%. This rules out register pressure, spills, and
+shared-memory conflicts as the obvious next optimization target, but it is not a
+substitute for hardware counters.
 
-The L20 host currently lacks Nsight Compute. The checked-in
-`scripts/profile_vllm_l20_rope_kv_ncu.sh` requests SpeedOfLight, Occupancy,
-MemoryWorkloadAnalysis, and LaunchStats sections once `ncu` is installed. Until
-that report exists, claims about coalescing, cache efficiency, or instruction
-stalls remain explicitly open.
+The repo now includes a generic Nsight-driven roofline workflow:
+
+```bash
+scripts/profile_kernel.sh \
+  --output benchmarks/results/l20-vllm-rope-kv-profile/ncu/tokens-1024 \
+  --kernel-name 'regex:_l20_.*rope_kv_kernel' \
+  -- env PYTHONPATH=src python scripts/profile_vllm_l20_rope_kv.py \
+    --execute-tokens 1024
+```
+
+The wrapper emits `.ncu-rep`, raw `.csv`, parsed `.json`, and a Markdown
+dashboard. `scripts/summarize_ncu_profile.py` extracts arithmetic intensity,
+DRAM throughput, L2 throughput, active-warps, sector-excess, and warp-stall
+metrics without inferring missing counters. If `ncu` is not available on the
+host or hardware counters are blocked by permissions, the profile step fails
+explicitly instead of silently falling back to proxy data.
 
 Artifacts:
 
 - `scripts/validate_vllm_l20_rope_kv.py`
 - `scripts/profile_vllm_l20_rope_kv.py`
 - `scripts/profile_vllm_l20_rope_kv_ncu.sh`
+- `scripts/profile_kernel.sh`
+- `scripts/summarize_ncu_profile.py`
 - `benchmarks/results/l20-vllm-rope-kv-profile/validation.json`
 - `benchmarks/results/l20-vllm-rope-kv-profile/resources.json`
 
