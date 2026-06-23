@@ -23,7 +23,7 @@ def test_paged_split_kv_stays_disabled_until_it_beats_flashinfer():
     assert not policy(8, 4096)
 
 
-def test_paged_fp8_split_kv_gate_is_only_the_confirmed_win_shape():
+def test_paged_fp8_split_kv_stays_disabled_after_serving_regression():
     source = Path("integrations/vllm/l20_paged_split_kv.py").read_text()
     tree = ast.parse(source)
     function = next(
@@ -40,4 +40,4 @@ def test_paged_fp8_split_kv_gate_is_only_the_confirmed_win_shape():
     assert not policy(1, 4096)
     assert not policy(4, 4096)
     assert not policy(8, 2048)
-    assert policy(8, 4096)
+    assert not policy(8, 4096)

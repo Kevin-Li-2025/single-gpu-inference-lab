@@ -7,6 +7,10 @@ import torch
 from vllm.triton_utils import tl, triton
 
 
+def _next_power_of_two(value: int) -> int:
+    return 1 << (value - 1).bit_length()
+
+
 def allocate_l20_paged_split_kv_workspace(
     query: torch.Tensor,
     max_seq_len: int,
@@ -14,7 +18,7 @@ def allocate_l20_paged_split_kv_workspace(
     split_size: int = 512,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     batch, num_q_heads, head_dim = query.shape
-    num_splits = triton.cdiv(max_seq_len, split_size)
+    num_splits = _next_power_of_two(triton.cdiv(max_seq_len, split_size))
     partial_shape = (batch, num_q_heads, num_splits)
     return (
         torch.empty(
@@ -513,7 +517,7 @@ def l20_paged_split_kv_attention(
     ):
         raise RuntimeError("requires compatible head_dim=128 GQA tensors")
     max_seq_len = int(seq_lens.max().item())
-    num_splits = triton.cdiv(max_seq_len, split_size)
+    num_splits = _next_power_of_two(triton.cdiv(max_seq_len, split_size))
     if num_splits > 16:
         raise RuntimeError("supports at most 16 split-KV partitions")
     partial_shape = (batch, num_q_heads, num_splits)
@@ -599,7 +603,9 @@ def l20_paged_split_kv_attention_fp8(
     *,
     k_scale: float,
     v_scale: float,
+    max_seq_len: int | None = None,
     split_size: int = 512,
+    output: torch.Tensor | None = None,
     workspace: tuple[
         torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
     ] | None = None,
@@ -623,8 +629,9 @@ def l20_paged_split_kv_attention_fp8(
         or seq_lens.numel() != batch
     ):
         raise RuntimeError("requires compatible head_dim=128 GQA tensors")
-    max_seq_len = int(seq_lens.max().item())
-    num_splits = triton.cdiv(max_seq_len, split_size)
+    if max_seq_len is None:
+        max_seq_len = int(seq_lens.max().item())
+    num_splits = _next_power_of_two(triton.cdiv(max_seq_len, split_size))
     if num_splits > 16:
         raise RuntimeError("supports at most 16 split-KV partitions")
     partial_shape = (batch, num_q_heads, num_splits)
@@ -632,7 +639,9 @@ def l20_paged_split_kv_attention_fp8(
         workspace = allocate_l20_paged_split_kv_workspace(
             query, max_seq_len, split_size=split_size
         )
-    partial_output, partial_max, partial_sum, output = workspace
+    partial_output, partial_max, partial_sum, workspace_output = workspace
+    if output is None:
+        output = workspace_output
     if (
         partial_output.shape != (*partial_shape, head_dim)
         or partial_max.shape != partial_shape
@@ -694,7 +703,7 @@ def should_use_l20_paged_split_kv(batch: int, max_seq_len: int) -> bool:
 
 
 def should_use_l20_paged_fp8_split_kv(batch: int, max_seq_len: int) -> bool:
-    # Three-run L20 confirmation only beat the FlashInfer BF16-on-dequant
-    # reference at batch 8, context 4096. Keep this gate narrow until a vLLM FP8
-    # KV-cache integration proves broader serving wins.
-    return batch >= 8 and max_seq_len >= 4096
+    # The microbenchmark win at batch 8/context 4096 did not survive the first
+    # vLLM FP8 KV-cache ITL smoke, so production dispatch remains disabled.
+    del batch, max_seq_len
+    return False

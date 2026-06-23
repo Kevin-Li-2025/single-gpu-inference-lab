@@ -1134,20 +1134,42 @@ Median ratios across the three runs:
 | 8 | 2048 | 0.22x | 1.02x | 6.14x |
 | 8 | 4096 | 1.07x | 1.43x | 11.88x |
 
-The result is now more useful but still gated. Paged FP8 fused dequant removes
+The microbenchmark result is useful but still gated. Paged FP8 fused dequant removes
 materialization cost in every row, and it starts beating the local BF16 paged
 kernel at larger work sizes. It only beats the production FlashInfer
 BF16-on-dequant reference in the measured `batch=8, context=4096` row. The
-repository therefore exposes `should_use_l20_paged_fp8_split_kv` with the
-conservative gate `batch >= 8 and max_seq_len >= 4096`.
+first policy candidate was therefore `batch >= 8 and max_seq_len >= 4096`.
 
-The next step is not broader enabling. It is a vLLM FP8 KV-cache integration
-that compares against vLLM's native FP8 cache path and records Nsight counters
-for the winning and losing rows. If the same gate survives real ITL, then the
-kernel is worth wiring into a serving dispatch path.
+That gate did not survive real serving. `install_l20_fp8_paged_decode.py`
+patches vLLM's FlashInfer backend and routes FP8 KV-cache decode through the
+L20 Triton path only when `VLLM_ENABLE_L20_FP8_PAGED_DECODE=1`. The first
+Qwen3-0.6B smoke with local FP8 KV cache, input 4096, output 16, concurrency 8,
+and eager execution entered the custom path 28 times, as confirmed by
+`l20-fp8-paged-trace.jsonl`. After removing an extra output copy from the
+integration, the valid one-run ITL result was still negative:
+
+| Metric | FlashInfer FP8 KV baseline | L20 FP8 paged path | Change |
+| --- | ---: | ---: | ---: |
+| request throughput | 9.61187 req/s | 9.12369 req/s | -5.079% |
+| output throughput | 153.78997 tok/s | 145.97900 tok/s | -5.079% |
+| median TTFT | 249.45738 ms | 253.87057 ms | +1.769% |
+| median ITL | 37.46396 ms | 38.01972 ms | +1.483% |
+| p95 ITL | 44.60851 ms | 45.24479 ms | +1.426% |
+
+An earlier multi-run attempt also exposed an OOM after the first candidate run
+under the experimental path, so the production policy is disabled:
+`should_use_l20_paged_fp8_split_kv` returns `False`. The kernel remains useful
+as a controlled experiment, but the current Python/Triton serving integration
+does not beat vLLM/FlashInfer end-to-end.
+
+The next valid optimization is lower-level: eliminate Python dispatch overhead
+and the split reduce launch by moving the FP8 paged path into the existing CUDA
+extension, or fuse dequantization into the production FlashInfer-style decode
+kernel boundary. More microbenchmark tuning is not enough.
 
 Raw reports:
-`benchmarks/results/l20-paged-fp8-kv-decode-attention/paged-fp8-kv-v{1,2,3}.json`.
+`benchmarks/results/l20-paged-fp8-kv-decode-attention/paged-fp8-kv-v{1,2,3}.json`
+and `benchmarks/results/l20-vllm-fp8-paged-e2e/qwen3-copyless-summary.json`.
 
 ## Upstream-Oriented Dispatcher Integration
 

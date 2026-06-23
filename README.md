@@ -209,9 +209,12 @@ The paged NHD version is now implemented as
 path beats materializing dequantized K/V in every measured row, but it only
 beats the FlashInfer BF16-on-dequant reference at `batch=8, context=4096`,
 where the median ratio is 1.07x versus FlashInfer, 1.43x versus local BF16
-paged attention, and 11.88x versus materialized FP8. The policy is therefore
-narrow: `should_use_l20_paged_fp8_split_kv` only enables `batch >= 8` and
-`max_seq_len >= 4096`.
+paged attention, and 11.88x versus materialized FP8. The real vLLM FP8
+KV-cache smoke is negative, though: Qwen3-0.6B with FP8 KV, input 4096, output
+16, concurrency 8, and eager FlashInfer serving entered the custom path 28
+times, but median ITL regressed from 37.46 ms to 38.02 ms and output throughput
+fell 5.08%. `should_use_l20_paged_fp8_split_kv` is therefore disabled; the
+experimental installer remains only for reproducing the result.
 
 The first speculative decoding follow-up is an L20 hybrid tree-attention
 prototype for irregular draft-token masks. On the measured L20, the contiguous

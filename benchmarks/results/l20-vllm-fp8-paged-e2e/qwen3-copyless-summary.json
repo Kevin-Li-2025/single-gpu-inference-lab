@@ -1,0 +1,43 @@
+{
+  "aggregation": "median across runs; prefix caching disabled",
+  "schema_version": 1,
+  "shapes": [
+    {
+      "input_tokens": 4096,
+      "max_concurrency": 8,
+      "metrics": {
+        "median_itl_ms": {
+          "baseline": 37.46396,
+          "change_pct": 1.483,
+          "fused": 38.01972
+        },
+        "median_ttft_ms": {
+          "baseline": 249.45738,
+          "change_pct": 1.769,
+          "fused": 253.87057
+        },
+        "output_throughput": {
+          "baseline": 153.78997,
+          "change_pct": -5.079,
+          "fused": 145.979
+        },
+        "p95_itl_ms": {
+          "baseline": 44.60851,
+          "change_pct": 1.426,
+          "fused": 45.24479
+        },
+        "p95_ttft_ms": {
+          "baseline": 670.576,
+          "change_pct": 0.501,
+          "fused": 673.93274
+        },
+        "request_throughput": {
+          "baseline": 9.61187,
+          "change_pct": -5.079,
+          "fused": 9.12369
+        }
+      },
+      "runs_per_provider": 1
+    }
+  ]
+}
