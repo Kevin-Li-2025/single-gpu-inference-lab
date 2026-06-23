@@ -506,6 +506,45 @@ CPU-disabled sampler branch, not a final benchmark claim. Artifacts:
 `benchmarks/results/l20-vllm-sampling-e2e/torch/sampling-path.json`, and
 `benchmarks/results/l20-vllm-sampling-e2e/flashinfer/sampling-path.json`.
 
+The v2 campaign expands that smoke to a 3-run matrix for
+Qwen2.5-Coder-1.5B-Instruct with input lengths 128, 512, and 2048, concurrency
+1, 4, 16, and 64, output length 32, FlashInfer attention, prefix caching
+disabled, and the same stochastic sampling parameters. Both server logs contain
+the expected branch evidence: the baseline logs
+`FlashInfer top-p/top-k sampling disabled via VLLM_USE_FLASHINFER_SAMPLER=0`,
+while the candidate logs `Using FlashInfer for top-p & top-k sampling`.
+
+Median-over-three summary:
+
+| concurrency | input | ITL change | p95 ITL change | output tok/s change | TTFT p50 change |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 128 | -2.01% | -1.27% | +1.08% | +3.24% |
+| 1 | 512 | -2.04% | -1.37% | -0.78% | +17.96% |
+| 1 | 2048 | -2.23% | -0.73% | +0.10% | +3.40% |
+| 4 | 128 | -5.92% | -7.30% | +4.55% | +4.23% |
+| 4 | 512 | -5.91% | -7.69% | +3.56% | +2.46% |
+| 4 | 2048 | -5.67% | -6.03% | +3.21% | -10.26% |
+| 16 | 128 | -2.94% | +5.43% | +1.69% | -1.41% |
+| 16 | 512 | -2.97% | -8.00% | +0.89% | -3.74% |
+| 16 | 2048 | -3.30% | +0.59% | +1.12% | +11.00% |
+| 64 | 128 | -0.84% | -8.44% | +1.04% | +10.20% |
+| 64 | 512 | -1.79% | +0.07% | +1.37% | -1.14% |
+| 64 | 2048 | +0.47% | -1.83% | +0.12% | +0.49% |
+
+This makes the decision clearer than the smoke. FlashInfer's sampler path is a
+real service-level improvement for moderate batching, especially concurrency 4,
+where median ITL improves 5.7%-5.9% and throughput improves 3.2%-4.5%. At
+concurrency 1 the gain is consistently about 2% ITL with mixed throughput and
+TTFT. At concurrency 64 the effect is mostly hidden by queueing and batching.
+The result does not justify writing a conventional standalone sampler to compete
+with FlashInfer. The next worthwhile kernel target is either hardening the vLLM
+FlashInfer sampler route for production use, or fusing sampling with the logits
+producer / LM-head epilogue so logits are not fully materialized before
+top-k/top-p/multinomial. Artifacts:
+`benchmarks/results/l20-vllm-sampling-e2e-v2/qwen25-1p5b-summary.json`,
+`benchmarks/results/l20-vllm-sampling-e2e-v2/qwen25-1p5b-torch/`, and
+`benchmarks/results/l20-vllm-sampling-e2e-v2/qwen25-1p5b-flashinfer/`.
+
 ### V23 Tensor-Core Hypothesis Check
 
 FlashInfer exposes both CUDA-core decode and a tensor-core path. The wrapper

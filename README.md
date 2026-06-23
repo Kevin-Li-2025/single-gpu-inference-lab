@@ -186,6 +186,14 @@ ITL by 9.74%. The server log confirms `Using FlashInfer for top-p & top-k
 sampling`; the disabled baseline confirms `FlashInfer top-p/top-k sampling
 disabled`. This is a one-run smoke, so it proves routing and gives a small
 positive signal rather than a final benchmark claim.
+The v2 3-run matrix makes the signal more credible. Across Qwen2.5-Coder-1.5B
+with input 128/512/2048 and concurrency 1/4/16/64, FlashInfer sampling improves
+median ITL by about 2% at concurrency 1, 5.7%-5.9% at concurrency 4, and about
+3% at concurrency 16; at concurrency 64 the effect is mostly hidden by queueing.
+The best sustained regime is c4, where output throughput also improves
+3.2%-4.5%. This says the right next target is not a standalone sampler, but
+either production-hardening this vLLM route or fusing sampling into the logits
+producer / LM-head epilogue.
 
 The first speculative decoding follow-up is an L20 hybrid tree-attention
 prototype for irregular draft-token masks. On the measured L20, the contiguous
