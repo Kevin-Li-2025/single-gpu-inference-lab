@@ -72,3 +72,13 @@ def test_triton_tree_attention_kernel_uses_online_softmax_and_ancestor_mask():
     assert "suffix_mask = (draft_token < draft_length) & (draft_token <= draft_index)" in source
     assert "max_score" in source
     assert "normalizer" in source
+
+
+def test_longspec_irregular_benchmark_generates_non_chain_masks():
+    source = Path("scripts/benchmark_longspec_irregular_tree.py").read_text()
+    assert "make_random_tree_mask" in source
+    assert "make_balanced_tree_mask" in source
+    assert "ancestor_mask_from_parent" in source
+    assert '"density"' in source
+    assert '"mean_visible_draft_tokens"' in source
+    assert "hybrid_tree_attention_paged_prefix" in source

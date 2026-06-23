@@ -207,3 +207,8 @@ hook (`0.0686 ms` vs `0.2161 ms` median). The causal hook therefore stays
 experimental/off by default; the next meaningful optimization would need tiled
 Tensor Core QK/PV or a true irregular LongSpec-style workload, not more
 launch-count-only fusion.
+The v14 benchmark adds that true irregular LongSpec-style workload with
+balanced/random ancestor trees. All 16 rows are correct; at `cached=4096`, the
+split prefix/suffix design beats monolithic tree attention by 1.23x median on
+L20, while the paged-prefix serving-shaped path still trails contiguous split by
+about 8-10%. That makes page metadata/cache layout the next measured bottleneck.

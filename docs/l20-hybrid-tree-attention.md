@@ -215,6 +215,9 @@ correct paged-prefix tree attention result:
 - v13 CUDA Event timing: in the real vLLM causal verifier path, native
   FlashInfer prefill is faster (`0.0686 ms` median) than the current L20 causal
   verifier hook (`0.2161 ms` median)
+- v14 irregular LongSpec workload: all 16 balanced/random tree rows are
+  correct; at `cached=4096`, split prefix/suffix attention beats monolithic by
+  1.23x median, while the paged-prefix path still trails contiguous split
 - `should_dispatch=true`
 
 This is a backend-visible dispatch smoke plus a guarded native-prefill insertion
@@ -270,6 +273,45 @@ median is already enough to explain why no-trace e2e only ties. The serving
 bottleneck is not mainly scheduler dilution; the single-kernel causal verifier
 is still slower than FlashInfer's native prefill path for the causal packed
 verifier shape that vLLM actually emits.
+The v14 step returns to the original LongSpec-style target: an explicitly
+irregular ancestor mask rather than vLLM's causal packed verifier. The new
+`scripts/benchmark_longspec_irregular_tree.py` benchmark generates balanced and
+random draft trees, records mask density/depth, and compares three paths:
+monolithic tree attention, LongSpec split prefix/suffix attention, and the
+vLLM-shaped paged-prefix split path.
+
+Command:
+
+```bash
+PYTHONPATH=src python scripts/benchmark_longspec_irregular_tree.py \
+  --batches 1 \
+  --cached 2048 4096 \
+  --draft 16 32 \
+  --trees balanced random \
+  --branches 2 4 \
+  --iterations 80 \
+  --output benchmarks/results/l20-tree-attention-v14/longspec-irregular-matrix.json
+```
+
+All 16 rows were correct against the dense PyTorch reference. The LongSpec
+split is the real winner at long context:
+
+| cached | rows | median split / monolithic | median paged / monolithic | median paged / split |
+|---:|---:|---:|---:|---:|
+| 2048 | 8 | 1.03x | 1.07x | 1.03x |
+| 4096 | 8 | 1.23x | 1.13x | 0.92x |
+
+Representative random tree row:
+
+| cached | draft | branch | density | monolithic ms | split ms | paged ms |
+|---:|---:|---:|---:|---:|---:|---:|
+| 4096 | 32 | 4 | 0.109 | 0.3958 | 0.3244 | 0.3514 |
+
+This is the first workload in this repo that cleanly exercises the non-causal
+irregular ancestor-mask problem LongSpec is about. The result also sharpens the
+next systems bottleneck: the split idea is good on L20, but the paged-prefix
+serving-shaped implementation loses about 8-10% versus contiguous split at
+4096 tokens because page-table/cache layout overhead is still visible.
 
 ## Current Limits
 
@@ -284,6 +326,9 @@ verifier shape that vLLM actually emits.
   remains unentered under that workload.
 - Real draft-model speculative serving also uses causal padded verifier
   metadata in the measured run; no irregular tree mask was observed.
+- The standalone v14 irregular workload now covers the LongSpec-style ancestor
+  mask problem, but no current vLLM serving path in this repo emits that
+  metadata yet.
 - The causal verifier hook works and is now single-kernel, but should remain
   experimental/off by default because measured full-serving benefit is only
   noise-level and per-call CUDA timing is slower than native FlashInfer on the
@@ -299,8 +344,7 @@ verifier shape that vLLM actually emits.
 2. If continuing the causal path, replace scalar online dot/PV with a tiled
    Tensor Core QK/PV path or split-KV design; small launch-count fusion alone is
    not enough.
-3. Keep the non-causal tree-attention kernel as a separate LongSpec-style path
+3. Optimize the v14 paged-prefix split path: page metadata preprocessing and
+   cache layout are now the measured gap versus contiguous LongSpec split.
+4. Keep the non-causal tree-attention kernel as a separate LongSpec-style path
    until a vLLM method exposes real ancestor/tree masks.
-4. For the original LongSpec claim, find or build a workload that actually
-   emits irregular ancestor masks; current vLLM ngram/draft-model serving emits
-   causal packed verifier passes instead.
