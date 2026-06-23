@@ -1,0 +1,41 @@
+{
+  "benchmark": "paged NHD split-KV decode attention; FP8 E4M3 KV scalar dequant",
+  "gpu": "NVIDIA L20",
+  "reports": [
+    {
+      "batch": 8,
+      "context": 4096,
+      "correctness": {
+        "bf16_vs_flashinfer_dequant_reference": true,
+        "flashinfer_supported": true,
+        "fp8_fused_max_abs_error": 0.00048828125,
+        "fp8_fused_vs_flashinfer_dequant_reference": true,
+        "fp8_predequantized_vs_flashinfer_dequant_reference": true
+      },
+      "latency_ms": {
+        "flashinfer_bf16_on_dequant_kv": 0.1923072052001953,
+        "l20_bf16_paged": 0.2692300796508789,
+        "l20_fp8_fused_dequant_paged": 0.1823948860168457,
+        "l20_fp8_materialize_dequant_then_paged": 2.147553253173828,
+        "l20_fp8_predequantized_paged": 0.2671615982055664
+      },
+      "ratios": {
+        "fused_fp8_vs_flashinfer_bf16_dequant": 1.0543453788634958,
+        "fused_fp8_vs_l20_bf16": 1.4760834885799006,
+        "fused_fp8_vs_materialized_fp8": 11.774196634962031,
+        "fused_fp8_vs_predequantized_fp8": 1.4647428118181547
+      },
+      "scales": {
+        "k": 0.01171875,
+        "v": 0.012625558035714286
+      },
+      "shape": {
+        "gqa_ratio": 2,
+        "head_dim": 128,
+        "kv_heads": 8,
+        "q_heads": 16
+      }
+    }
+  ],
+  "schema_version": 1
+}

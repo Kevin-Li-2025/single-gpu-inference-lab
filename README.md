@@ -215,6 +215,12 @@ KV-cache smoke is negative, though: Qwen3-0.6B with FP8 KV, input 4096, output
 times, but median ITL regressed from 37.46 ms to 38.02 ms and output throughput
 fell 5.08%. `should_use_l20_paged_fp8_split_kv` is therefore disabled; the
 experimental installer remains only for reproducing the result.
+The parameterized multi-model check adds one more boundary: Qwen3-0.6B
+16Q/8KV still shows a 1.05x micro win over FlashInfer at batch 8/context 4096,
+while Qwen2.5-Coder-1.5B's 12Q/2KV shape has no FlashInfer CUDA-core baseline
+because group size 6 is unsupported; there the fused FP8 path is only 1.08x
+over local BF16 paged attention. The next serious implementation has to remove
+Python/Triton dispatch and split-reduce overhead, not widen the current gate.
 
 The first speculative decoding follow-up is an L20 hybrid tree-attention
 prototype for irregular draft-token masks. On the measured L20, the contiguous

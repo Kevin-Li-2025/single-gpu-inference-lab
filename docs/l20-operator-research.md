@@ -1167,8 +1167,28 @@ and the split reduce launch by moving the FP8 paged path into the existing CUDA
 extension, or fuse dequantization into the production FlashInfer-style decode
 kernel boundary. More microbenchmark tuning is not enough.
 
+### Multi-Model Shape Check
+
+The paged FP8 benchmark is now parameterized by Q/KV head count, so the same
+kernel can test both Qwen3-style 2:1 GQA and Qwen2.5-Coder-style 6:1 GQA.
+
+| Shape | Batch/context | FlashInfer CUDA-core support | Fused FP8 vs FlashInfer | Fused FP8 vs local BF16 | Fused FP8 vs materialized FP8 |
+| --- | ---: | --- | ---: | ---: | ---: |
+| Qwen3-0.6B, 16Q/8KV | 8/4096 | yes | 1.05x | 1.48x | 11.77x |
+| Qwen2.5-Coder-1.5B, 12Q/2KV | 8/4096 | no, unsupported group size 6 | n/a | 1.08x | 2.15x |
+
+This narrows the opportunity. Qwen3 already has a strong FlashInfer decode
+baseline; the L20 FP8 path can beat it in a microbenchmark but loses in vLLM
+ITL. Qwen2.5-Coder has a baseline gap because FlashInfer CUDA-core decode
+rejects 6:1 GQA, but the current FP8 path is only 1.08x faster than local BF16
+paged attention and is slightly slower than predequantized local paged
+attention. That is not enough to justify a serving hook without a lower-overhead
+implementation.
+
 Raw reports:
 `benchmarks/results/l20-paged-fp8-kv-decode-attention/paged-fp8-kv-v{1,2,3}.json`
+`benchmarks/results/l20-paged-fp8-kv-decode-attention/qwen3-shape-v4.json`,
+`benchmarks/results/l20-paged-fp8-kv-decode-attention/qwen25-coder-shape-v1.json`,
 and `benchmarks/results/l20-vllm-fp8-paged-e2e/qwen3-copyless-summary.json`.
 
 ## Upstream-Oriented Dispatcher Integration

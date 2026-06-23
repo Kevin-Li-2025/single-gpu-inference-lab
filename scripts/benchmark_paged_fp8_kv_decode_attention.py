@@ -38,6 +38,10 @@ def main():
     parser.add_argument("--output", type=Path)
     parser.add_argument("--iterations", type=int, default=100)
     parser.add_argument("--warmup", type=int, default=20)
+    parser.add_argument("--q-heads", type=int, default=16)
+    parser.add_argument("--kv-heads", type=int, default=8)
+    parser.add_argument("--batches", type=int, nargs="+", default=[1, 4, 8])
+    parser.add_argument("--contexts", type=int, nargs="+", default=[2048, 4096])
     args = parser.parse_args()
 
     import flashinfer
@@ -54,8 +58,11 @@ def main():
 
     reports = []
     torch.manual_seed(293)
-    for batch in (1, 4, 8):
-        for context in (2048, 4096):
+    if args.q_heads % args.kv_heads:
+        raise RuntimeError("--q-heads must be divisible by --kv-heads")
+
+    for batch in args.batches:
+        for context in args.contexts:
             page_size = 16
             pages_per_sequence = context // page_size
             num_pages = batch * pages_per_sequence
@@ -74,10 +81,15 @@ def main():
                 (batch,), context, device="cuda", dtype=torch.int32
             )
             query = torch.randn(
-                batch, 16, 128, device="cuda", dtype=torch.bfloat16
+                batch, args.q_heads, 128, device="cuda", dtype=torch.bfloat16
             )
             key_bf16 = torch.randn(
-                num_pages, page_size, 8, 128, device="cuda", dtype=torch.bfloat16
+                num_pages,
+                page_size,
+                args.kv_heads,
+                128,
+                device="cuda",
+                dtype=torch.bfloat16,
             )
             value_bf16 = torch.randn_like(key_bf16)
             key_fp8, k_scale = quantize_fp8_e4m3(key_bf16)
@@ -91,19 +103,26 @@ def main():
             wrapper = flashinfer.BatchDecodeWithPagedKVCacheWrapper(
                 flashinfer_workspace, "NHD"
             )
-            wrapper.plan(
-                indptr,
-                indices,
-                last_page_len,
-                16,
-                8,
-                128,
-                page_size,
-                pos_encoding_mode="NONE",
-                q_data_type=query.dtype,
-                kv_data_type=query.dtype,
-            )
-            expected = wrapper.run(query, (key_dequant, value_dequant))
+            flashinfer_supported = True
+            try:
+                wrapper.plan(
+                    indptr,
+                    indices,
+                    last_page_len,
+                    args.q_heads,
+                    args.kv_heads,
+                    128,
+                    page_size,
+                    pos_encoding_mode="NONE",
+                    q_data_type=query.dtype,
+                    kv_data_type=query.dtype,
+                )
+                expected = wrapper.run(query, (key_dequant, value_dequant))
+            except RuntimeError as error:
+                if "Unsupported group_size" not in str(error):
+                    raise
+                flashinfer_supported = False
+                expected = None
             bf16_workspace = allocate_l20_paged_split_kv_workspace(query, context)
             fp8_workspace = allocate_l20_paged_split_kv_workspace(query, context)
             materialized_workspace = allocate_l20_paged_split_kv_workspace(
@@ -136,10 +155,14 @@ def main():
                 workspace=fp8_workspace,
             )
 
-            flashinfer_ms = latency_ms(
-                lambda: wrapper.run(query, (key_dequant, value_dequant)),
-                args.warmup,
-                args.iterations,
+            flashinfer_ms = (
+                latency_ms(
+                    lambda: wrapper.run(query, (key_dequant, value_dequant)),
+                    args.warmup,
+                    args.iterations,
+                )
+                if flashinfer_supported
+                else None
             )
             bf16_ms = latency_ms(
                 lambda: l20_paged_split_kv_attention(
@@ -196,23 +219,55 @@ def main():
                 {
                     "batch": batch,
                     "context": context,
+                    "shape": {
+                        "q_heads": args.q_heads,
+                        "kv_heads": args.kv_heads,
+                        "head_dim": 128,
+                        "gqa_ratio": args.q_heads // args.kv_heads,
+                    },
                     "correctness": {
-                        "bf16_vs_flashinfer_dequant_reference": bool(
-                            torch.allclose(bf16_actual, expected, rtol=2e-2, atol=2e-2)
-                        ),
-                        "fp8_predequantized_vs_flashinfer_dequant_reference": bool(
-                            torch.allclose(
-                                fp8_predequantized,
-                                expected,
-                                rtol=2e-2,
-                                atol=2e-2,
+                        "flashinfer_supported": flashinfer_supported,
+                        "bf16_vs_flashinfer_dequant_reference": (
+                            bool(
+                                torch.allclose(
+                                    bf16_actual, expected, rtol=2e-2, atol=2e-2
+                                )
                             )
+                            if expected is not None
+                            else None
                         ),
-                        "fp8_fused_vs_flashinfer_dequant_reference": bool(
-                            torch.allclose(fp8_fused, expected, rtol=2e-2, atol=2e-2)
+                        "fp8_predequantized_vs_flashinfer_dequant_reference": (
+                            bool(
+                                torch.allclose(
+                                    fp8_predequantized,
+                                    expected,
+                                    rtol=2e-2,
+                                    atol=2e-2,
+                                )
+                            )
+                            if expected is not None
+                            else None
+                        ),
+                        "fp8_fused_vs_flashinfer_dequant_reference": (
+                            bool(
+                                torch.allclose(
+                                    fp8_fused, expected, rtol=2e-2, atol=2e-2
+                                )
+                            )
+                            if expected is not None
+                            else None
                         ),
                         "fp8_fused_max_abs_error": float(
-                            (fp8_fused.float() - expected.float()).abs().max()
+                            (
+                                fp8_fused.float()
+                                - (
+                                    expected.float()
+                                    if expected is not None
+                                    else fp8_predequantized.float()
+                                )
+                            )
+                            .abs()
+                            .max()
                         ),
                     },
                     "latency_ms": {
@@ -225,6 +280,8 @@ def main():
                     "ratios": {
                         "fused_fp8_vs_flashinfer_bf16_dequant": (
                             flashinfer_ms / fp8_fused_ms
+                            if flashinfer_ms is not None
+                            else None
                         ),
                         "fused_fp8_vs_l20_bf16": bf16_ms / fp8_fused_ms,
                         "fused_fp8_vs_predequantized_fp8": (
