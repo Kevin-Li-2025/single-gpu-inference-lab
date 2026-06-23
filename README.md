@@ -212,3 +212,8 @@ balanced/random ancestor trees. All 16 rows are correct; at `cached=4096`, the
 split prefix/suffix design beats monolithic tree attention by 1.23x median on
 L20, while the paged-prefix serving-shaped path still trails contiguous split by
 about 8-10%. That makes page metadata/cache layout the next measured bottleneck.
+The v15 paged-prefix pass reduces that gap. Page-granular metadata loading
+improves random-page `paged/split` from `0.923x` to `0.942x`, and a
+contiguous-physical-pages fast path reaches `0.986x`. The remaining gap is now
+clearly tied to random physical page layout rather than the irregular ancestor
+mask or tile policy.

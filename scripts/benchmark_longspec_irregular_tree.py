@@ -34,15 +34,22 @@ def latency_ms(function, warmup=20, iterations=100):
     return start.elapsed_time(end) / iterations
 
 
-def make_paged_prefix(prefix_key, prefix_value, page_size: int = 16):
+def make_paged_prefix(prefix_key, prefix_value, page_size: int = 16, page_order: str = "random"):
     batch, cached_length, num_kv_heads, head_dim = prefix_key.shape
     if cached_length % page_size:
         raise ValueError("cached_length must be divisible by page_size")
     pages_per_batch = cached_length // page_size
     num_pages = batch * pages_per_batch
-    block_table = torch.randperm(num_pages, device=prefix_key.device, dtype=torch.int32).reshape(
-        batch, pages_per_batch
-    )
+    if page_order == "random":
+        block_table = torch.randperm(
+            num_pages, device=prefix_key.device, dtype=torch.int32
+        ).reshape(batch, pages_per_batch)
+    elif page_order == "contiguous":
+        block_table = torch.arange(num_pages, device=prefix_key.device, dtype=torch.int32).reshape(
+            batch, pages_per_batch
+        )
+    else:
+        raise ValueError(f"unknown page order: {page_order}")
     key_cache = torch.empty(
         num_pages,
         page_size,
@@ -108,7 +115,15 @@ def mask_stats(mask, parent):
     }
 
 
-def run_case(batch: int, cached: int, draft: int, tree: str, branch: int, iterations: int):
+def run_case(
+    batch: int,
+    cached: int,
+    draft: int,
+    tree: str,
+    branch: int,
+    page_order: str,
+    iterations: int,
+):
     torch.manual_seed(123 + batch * 13 + cached + draft + branch)
     num_q_heads = 16
     num_kv_heads = 8
@@ -132,7 +147,9 @@ def run_case(batch: int, cached: int, draft: int, tree: str, branch: int, iterat
         )
     else:
         raise ValueError(f"unknown tree shape: {tree}")
-    key_cache, value_cache, block_table = make_paged_prefix(prefix_key, prefix_value)
+    key_cache, value_cache, block_table = make_paged_prefix(
+        prefix_key, prefix_value, page_order=page_order
+    )
     expected = torch_tree_attention_reference(query, key, value, mask, cached)
     workspace = allocate_tree_attention_workspace(query)
     monolithic = hybrid_tree_attention(query, key, value, mask, cached)
@@ -147,6 +164,7 @@ def run_case(batch: int, cached: int, draft: int, tree: str, branch: int, iterat
         mask,
         cached,
         workspace=workspace,
+        contiguous_pages=page_order == "contiguous",
     )
     monolithic_ms = latency_ms(
         lambda: hybrid_tree_attention(query, key, value, mask, cached),
@@ -167,6 +185,7 @@ def run_case(batch: int, cached: int, draft: int, tree: str, branch: int, iterat
             mask,
             cached,
             workspace=workspace,
+            contiguous_pages=page_order == "contiguous",
         ),
         iterations=iterations,
     )
@@ -183,6 +202,7 @@ def run_case(batch: int, cached: int, draft: int, tree: str, branch: int, iterat
         "draft_length": draft,
         "tree": tree,
         "mask": stats,
+        "page_order": page_order,
         "monolithic_correct": bool(torch.allclose(monolithic, expected, rtol=2e-2, atol=2e-2)),
         "split_correct": bool(torch.allclose(split, expected, rtol=2e-2, atol=2e-2)),
         "paged_correct": bool(torch.allclose(paged, expected, rtol=2e-2, atol=2e-2)),
@@ -211,6 +231,7 @@ def main():
     parser.add_argument("--draft", type=int, nargs="+", default=[16, 32])
     parser.add_argument("--trees", nargs="+", default=["balanced", "random"])
     parser.add_argument("--branches", type=int, nargs="+", default=[2, 4])
+    parser.add_argument("--page-orders", nargs="+", default=["random"])
     args = parser.parse_args()
 
     reports = []
@@ -219,9 +240,18 @@ def main():
             for draft in args.draft:
                 for tree in args.trees:
                     for branch in args.branches:
-                        reports.append(
-                            run_case(batch, cached, draft, tree, branch, args.iterations)
-                        )
+                        for page_order in args.page_orders:
+                            reports.append(
+                                run_case(
+                                    batch,
+                                    cached,
+                                    draft,
+                                    tree,
+                                    branch,
+                                    page_order,
+                                    args.iterations,
+                                )
+                            )
     result = {
         "schema_version": 1,
         "gpu": torch.cuda.get_device_name(),

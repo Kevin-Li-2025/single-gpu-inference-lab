@@ -225,14 +225,22 @@ if triton is not None:  # pragma: no cover - requires CUDA
         accumulator = tl.zeros((head_dim,), tl.float32)
 
         for start in range(0, cached_length, BLOCK_T):
-            token = start + tl.arange(0, BLOCK_T)
+            tile_offset = tl.arange(0, BLOCK_T)
+            token = start + tile_offset
             token_mask = token < cached_length
-            logical_page = token // 16
-            page_offset = token % 16
-            physical_page = tl.load(
-                block_table + batch * bt_stride_b + tl.where(token_mask, logical_page, 0),
-                mask=token_mask,
+            page_slot = tile_offset // 16
+            page_index = tl.arange(0, BLOCK_T // 16)
+            logical_page_base = start // 16
+            page_mask = logical_page_base + page_index < (cached_length + 15) // 16
+            tile_pages = tl.load(
+                block_table + batch * bt_stride_b + logical_page_base + page_index,
+                mask=page_mask,
                 other=0,
+            )
+            page_offset = token % 16
+            physical_page = tl.sum(
+                tl.where(page_slot[:, None] == page_index[None, :], tile_pages[None, :], 0),
+                axis=1,
             )
             keys = tl.load(
                 key_cache
@@ -330,6 +338,83 @@ if triton is not None:  # pragma: no cover - requires CUDA
             values = tl.load(
                 value_cache
                 + physical_page * vc_stride_p
+                + page_offset[:, None] * vc_stride_t
+                + kv_head * vc_stride_h
+                + dim[None, :],
+                mask=token_mask[:, None],
+                other=0.0,
+            ).to(tl.float32)
+            accumulator = accumulator * old_scale + tl.sum(probabilities[:, None] * values, axis=0)
+            normalizer = normalizer * old_scale + tl.sum(probabilities, axis=0)
+            max_score = next_max
+
+        partial_index = program
+        tl.store(partial_output + partial_index * head_dim + dim, accumulator)
+        tl.store(partial_max + partial_index, max_score)
+        tl.store(partial_sum + partial_index, normalizer)
+
+    @triton.jit
+    def _tree_paged_prefix_summary_contiguous_pages_kernel(
+        query,
+        key_cache,
+        value_cache,
+        partial_output,
+        partial_max,
+        partial_sum,
+        q_stride_b,
+        q_stride_s,
+        q_stride_h,
+        kc_stride_p,
+        kc_stride_t,
+        kc_stride_h,
+        vc_stride_p,
+        vc_stride_t,
+        vc_stride_h,
+        cached_length: tl.constexpr,
+        draft_length: tl.constexpr,
+        num_q_heads: tl.constexpr,
+        num_kv_heads: tl.constexpr,
+        head_dim: tl.constexpr,
+        pages_per_batch: tl.constexpr,
+        BLOCK_T: tl.constexpr,
+    ):
+        program = tl.program_id(0)
+        q_head = program % num_q_heads
+        draft_index = (program // num_q_heads) % draft_length
+        batch = program // (num_q_heads * draft_length)
+        kv_head = q_head // (num_q_heads // num_kv_heads)
+        dim = tl.arange(0, head_dim)
+        q = tl.load(
+            query + batch * q_stride_b + draft_index * q_stride_s + q_head * q_stride_h + dim
+        ).to(tl.float32)
+        scale = 1.0 / tl.sqrt(float(head_dim))
+        max_score = -float("inf")
+        normalizer = 0.0
+        accumulator = tl.zeros((head_dim,), tl.float32)
+
+        for start in range(0, cached_length, BLOCK_T):
+            token = start + tl.arange(0, BLOCK_T)
+            token_mask = token < cached_length
+            physical_page = batch * pages_per_batch + token // 16
+            page_offset = token % 16
+            keys = tl.load(
+                key_cache
+                + physical_page[:, None] * kc_stride_p
+                + page_offset[:, None] * kc_stride_t
+                + kv_head * kc_stride_h
+                + dim[None, :],
+                mask=token_mask[:, None],
+                other=0.0,
+            ).to(tl.float32)
+            scores = tl.sum(keys * q[None, :], axis=1) * scale
+            scores = tl.where(token_mask, scores, -float("inf"))
+            tile_max = tl.max(scores, axis=0)
+            next_max = tl.maximum(max_score, tile_max)
+            old_scale = tl.exp(max_score - next_max)
+            probabilities = tl.exp(scores - next_max)
+            values = tl.load(
+                value_cache
+                + physical_page[:, None] * vc_stride_p
                 + page_offset[:, None] * vc_stride_t
                 + kv_head * vc_stride_h
                 + dim[None, :],
@@ -510,14 +595,22 @@ if triton is not None:  # pragma: no cover - requires CUDA
         accumulator = tl.zeros((head_dim,), tl.float32)
 
         for start in range(0, cached_length, BLOCK_T):
-            token = start + tl.arange(0, BLOCK_T)
+            tile_offset = tl.arange(0, BLOCK_T)
+            token = start + tile_offset
             token_mask = token < cached_length
-            logical_page = token // 16
-            page_offset = token % 16
-            physical_page = tl.load(
-                block_table + batch * bt_stride_b + tl.where(token_mask, logical_page, 0),
-                mask=token_mask,
+            page_slot = tile_offset // 16
+            page_index = tl.arange(0, BLOCK_T // 16)
+            logical_page_base = start // 16
+            page_mask = logical_page_base + page_index < (cached_length + 15) // 16
+            tile_pages = tl.load(
+                block_table + batch * bt_stride_b + logical_page_base + page_index,
+                mask=page_mask,
                 other=0,
+            )
+            page_offset = token % 16
+            physical_page = tl.sum(
+                tl.where(page_slot[:, None] == page_index[None, :], tile_pages[None, :], 0),
+                axis=1,
             )
             keys = tl.load(
                 key_cache
@@ -954,6 +1047,7 @@ def hybrid_tree_attention_paged_prefix(
     *,
     workspace=None,
     block_t: Optional[int] = None,
+    contiguous_pages: bool = False,
 ):
     """Run split tree attention with a page-table cached prefix.
 
@@ -991,33 +1085,61 @@ def hybrid_tree_attention_paged_prefix(
     ) = workspace
     output = torch.empty_like(query)
     grid = (batch * draft_length * num_q_heads,)
-    _tree_paged_prefix_summary_kernel[grid](
-        query,
-        key_cache,
-        value_cache,
-        block_table,
-        prefix_output,
-        prefix_max,
-        prefix_sum,
-        query.stride(0),
-        query.stride(1),
-        query.stride(2),
-        key_cache.stride(0),
-        key_cache.stride(1),
-        key_cache.stride(2),
-        value_cache.stride(0),
-        value_cache.stride(1),
-        value_cache.stride(2),
-        block_table.stride(0),
-        cached_length=cached_length,
-        draft_length=draft_length,
-        num_q_heads=num_q_heads,
-        num_kv_heads=num_kv_heads,
-        head_dim=head_dim,
-        BLOCK_T=block_t,
-        num_warps=4,
-        num_stages=1,
-    )
+    if contiguous_pages:
+        _tree_paged_prefix_summary_contiguous_pages_kernel[grid](
+            query,
+            key_cache,
+            value_cache,
+            prefix_output,
+            prefix_max,
+            prefix_sum,
+            query.stride(0),
+            query.stride(1),
+            query.stride(2),
+            key_cache.stride(0),
+            key_cache.stride(1),
+            key_cache.stride(2),
+            value_cache.stride(0),
+            value_cache.stride(1),
+            value_cache.stride(2),
+            cached_length=cached_length,
+            draft_length=draft_length,
+            num_q_heads=num_q_heads,
+            num_kv_heads=num_kv_heads,
+            head_dim=head_dim,
+            pages_per_batch=cached_length // 16,
+            BLOCK_T=block_t,
+            num_warps=4,
+            num_stages=1,
+        )
+    else:
+        _tree_paged_prefix_summary_kernel[grid](
+            query,
+            key_cache,
+            value_cache,
+            block_table,
+            prefix_output,
+            prefix_max,
+            prefix_sum,
+            query.stride(0),
+            query.stride(1),
+            query.stride(2),
+            key_cache.stride(0),
+            key_cache.stride(1),
+            key_cache.stride(2),
+            value_cache.stride(0),
+            value_cache.stride(1),
+            value_cache.stride(2),
+            block_table.stride(0),
+            cached_length=cached_length,
+            draft_length=draft_length,
+            num_q_heads=num_q_heads,
+            num_kv_heads=num_kv_heads,
+            head_dim=head_dim,
+            BLOCK_T=block_t,
+            num_warps=4,
+            num_stages=1,
+        )
     _tree_suffix_summary_kernel[grid](
         query,
         suffix_key,

@@ -1,0 +1,47 @@
+{
+  "paged": [
+    {
+      "block_t": 32,
+      "correct": true,
+      "max_abs_error": 6.103515625e-05,
+      "ms": 0.5426773071289063,
+      "page_order": "random"
+    },
+    {
+      "block_t": 64,
+      "correct": true,
+      "max_abs_error": 6.103515625e-05,
+      "ms": 0.3439359982808431,
+      "page_order": "random"
+    },
+    {
+      "block_t": 128,
+      "correct": true,
+      "max_abs_error": 6.103515625e-05,
+      "ms": 0.3390720049540202,
+      "page_order": "random"
+    },
+    {
+      "block_t": 32,
+      "correct": true,
+      "max_abs_error": 6.103515625e-05,
+      "ms": 0.5419861475626627,
+      "page_order": "contiguous"
+    },
+    {
+      "block_t": 64,
+      "correct": true,
+      "max_abs_error": 6.103515625e-05,
+      "ms": 0.3429888089497884,
+      "page_order": "contiguous"
+    },
+    {
+      "block_t": 128,
+      "correct": true,
+      "max_abs_error": 6.103515625e-05,
+      "ms": 0.3461375872294108,
+      "page_order": "contiguous"
+    }
+  ],
+  "split_ms": 0.3234901428222656
+}

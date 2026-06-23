@@ -218,6 +218,9 @@ correct paged-prefix tree attention result:
 - v14 irregular LongSpec workload: all 16 balanced/random tree rows are
   correct; at `cached=4096`, split prefix/suffix attention beats monolithic by
   1.23x median, while the paged-prefix path still trails contiguous split
+- v15 paged-prefix optimization: page-granular metadata loads improve random
+  paged-prefix median `paged / split` from 0.923x to 0.942x; a contiguous-pages
+  fast path reaches 0.986x and nearly closes the gap
 - `should_dispatch=true`
 
 This is a backend-visible dispatch smoke plus a guarded native-prefill insertion
@@ -312,6 +315,25 @@ irregular ancestor-mask problem LongSpec is about. The result also sharpens the
 next systems bottleneck: the split idea is good on L20, but the paged-prefix
 serving-shaped implementation loses about 8-10% versus contiguous split at
 4096 tokens because page-table/cache layout overhead is still visible.
+The v15 step attacks that paged-prefix gap. The first change is page-granular
+metadata loading: for `BLOCK_T=128`, the prefix kernel now loads 8 page IDs per
+tile instead of redundantly loading one page ID per token. On the v14 4096-token
+irregular matrix, this improves median `paged / split` from `0.923x` to
+`0.942x` and median `paged / monolithic` from `1.132x` to `1.157x`.
+
+The second change adds a contiguous-physical-pages fast path. This is not a
+replacement for general vLLM random page tables; it is an upper-bound and a
+usable path for allocators that preserve per-sequence page contiguity. On the
+focused `cached=4096,draft=32,random tree` ablation:
+
+| page order | median paged / split | median paged ms |
+|---|---:|---:|
+| random | 0.932x | 0.3468 |
+| contiguous fast path | 0.986x | 0.3293 |
+
+This closes almost all of the original 8-10% gap when physical pages are
+contiguous. The remaining random-page gap is therefore a cache-layout/allocation
+problem more than an ancestor-mask or tile-policy problem.
 
 ## Current Limits
 
@@ -344,7 +366,8 @@ serving-shaped implementation loses about 8-10% versus contiguous split at
 2. If continuing the causal path, replace scalar online dot/PV with a tiled
    Tensor Core QK/PV path or split-KV design; small launch-count fusion alone is
    not enough.
-3. Optimize the v14 paged-prefix split path: page metadata preprocessing and
-   cache layout are now the measured gap versus contiguous LongSpec split.
+3. For serving integration, preserve or create per-sequence contiguous physical
+   page runs where possible; the v15 fast path shows this nearly closes the
+   paged-prefix gap.
 4. Keep the non-causal tree-attention kernel as a separate LongSpec-style path
    until a vLLM method exposes real ancestor/tree masks.
