@@ -11,6 +11,8 @@ from pathlib import Path
 
 import torch
 
+from l20_stack.flashinfer_env import configure_flashinfer_cuda13_env
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -86,6 +88,7 @@ def main() -> int:
     args = parse_args()
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is required")
+    flashinfer_cuda_env = configure_flashinfer_cuda13_env(required=True)
     import flashinfer
     import flashinfer.sampling as flashinfer_sampling
 
@@ -114,6 +117,7 @@ def main() -> int:
         "schema_version": 1,
         "hardware": torch.cuda.get_device_name(),
         "flashinfer_version": getattr(flashinfer, "__version__", "unknown"),
+        "flashinfer_cuda_env": flashinfer_cuda_env.to_dict(),
         "shape": {
             "batch": args.batch,
             "vocab": args.vocab,

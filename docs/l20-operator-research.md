@@ -438,8 +438,12 @@ solves deterministic GPU argmax well.
 FlashInfer 0.6.12 provides the production fused-sampler baseline on this L20,
 but its sampling module must be JIT-compiled with CUDA 13 nvcc. The host's
 system `/usr/bin/nvcc` is CUDA 12.0 and fails against FlashInfer's vendored
-CCCL/CUB with `BlockAdjacentDifference::FlagHeads` errors. Pointing
-`CUDA_HOME` and `PATH` at the venv CUDA 13 nvcc package fixes the build:
+CCCL/CUB with `BlockAdjacentDifference::FlagHeads` errors. The repo now fixes
+this automatically through `l20_stack.flashinfer_env`: before importing
+FlashInfer sampling, benchmark and prewarm scripts discover the venv CUDA 13
+toolkit, set `CUDA_HOME`, `CUDACXX`, and prepend CUDA 13 `bin` to `PATH`.
+
+Manual fallback:
 
 ```bash
 CUDA_HOME=$HOME/venvs/vllm-l20/lib/python3.12/site-packages/nvidia/cu13 \
@@ -447,6 +451,12 @@ PATH=$HOME/venvs/vllm-l20/lib/python3.12/site-packages/nvidia/cu13/bin:$HOME/ven
 PYTHONPATH=src \
 python scripts/benchmark_flashinfer_sampling.py \
   --batch 16 --vocab 151936 --top-k 50 --top-p 0.9
+```
+
+Recommended prewarm:
+
+```bash
+PYTHONPATH=src python scripts/prewarm_flashinfer_sampling.py
 ```
 
 With `top_k=50`, `top_p=0.9`, temperature 0.8, and vocab 151936:
