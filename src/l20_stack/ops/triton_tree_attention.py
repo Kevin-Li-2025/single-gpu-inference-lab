@@ -358,6 +358,7 @@ if triton is not None:  # pragma: no cover - requires CUDA
         query,
         key_cache,
         value_cache,
+        page_base,
         partial_output,
         partial_max,
         partial_sum,
@@ -370,12 +371,12 @@ if triton is not None:  # pragma: no cover - requires CUDA
         vc_stride_p,
         vc_stride_t,
         vc_stride_h,
+        pb_stride_b,
         cached_length: tl.constexpr,
         draft_length: tl.constexpr,
         num_q_heads: tl.constexpr,
         num_kv_heads: tl.constexpr,
         head_dim: tl.constexpr,
-        pages_per_batch: tl.constexpr,
         BLOCK_T: tl.constexpr,
     ):
         program = tl.program_id(0)
@@ -391,11 +392,12 @@ if triton is not None:  # pragma: no cover - requires CUDA
         max_score = -float("inf")
         normalizer = 0.0
         accumulator = tl.zeros((head_dim,), tl.float32)
+        base_page = tl.load(page_base + batch * pb_stride_b)
 
         for start in range(0, cached_length, BLOCK_T):
             token = start + tl.arange(0, BLOCK_T)
             token_mask = token < cached_length
-            physical_page = batch * pages_per_batch + token // 16
+            physical_page = base_page + token // 16
             page_offset = token % 16
             keys = tl.load(
                 key_cache
@@ -1048,6 +1050,7 @@ def hybrid_tree_attention_paged_prefix(
     workspace=None,
     block_t: Optional[int] = None,
     contiguous_pages: bool = False,
+    page_base=None,
 ):
     """Run split tree attention with a page-table cached prefix.
 
@@ -1073,6 +1076,11 @@ def hybrid_tree_attention_paged_prefix(
         raise ValueError("block_t must be one of 32, 64, or 128")
     if draft_length > 64:
         raise ValueError("paged suffix path currently supports draft_length <= 64")
+    if contiguous_pages:
+        if page_base is None:
+            raise ValueError("contiguous_pages=True requires page_base=[B]")
+        if page_base.ndim != 1 or page_base.shape[0] != batch:
+            raise ValueError("page_base must have shape [B]")
     if workspace is None:
         workspace = allocate_tree_attention_workspace(query)
     (
@@ -1090,6 +1098,7 @@ def hybrid_tree_attention_paged_prefix(
             query,
             key_cache,
             value_cache,
+            page_base,
             prefix_output,
             prefix_max,
             prefix_sum,
@@ -1102,12 +1111,12 @@ def hybrid_tree_attention_paged_prefix(
             value_cache.stride(0),
             value_cache.stride(1),
             value_cache.stride(2),
+            page_base.stride(0),
             cached_length=cached_length,
             draft_length=draft_length,
             num_q_heads=num_q_heads,
             num_kv_heads=num_kv_heads,
             head_dim=head_dim,
-            pages_per_batch=cached_length // 16,
             BLOCK_T=block_t,
             num_warps=4,
             num_stages=1,

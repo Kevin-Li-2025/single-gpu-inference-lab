@@ -221,6 +221,9 @@ correct paged-prefix tree attention result:
 - v15 paged-prefix optimization: page-granular metadata loads improve random
   paged-prefix median `paged / split` from 0.923x to 0.942x; a contiguous-pages
   fast path reaches 0.986x and nearly closes the gap
+- v16 page-run metadata API: `hybrid_tree_attention_paged_prefix(...,
+  contiguous_pages=True, page_base=...)` provides the serving-shaped hook for
+  per-sequence contiguous physical page runs
 - `should_dispatch=true`
 
 This is a backend-visible dispatch smoke plus a guarded native-prefill insertion
@@ -334,6 +337,14 @@ focused `cached=4096,draft=32,random tree` ablation:
 This closes almost all of the original 8-10% gap when physical pages are
 contiguous. The remaining random-page gap is therefore a cache-layout/allocation
 problem more than an ancestor-mask or tile-policy problem.
+The v16 step turns the contiguous fast path into an explicit page-run metadata
+interface. Instead of hard-coding `batch * pages_per_batch`, the wrapper accepts
+`page_base=[batch]` and the kernel addresses prefix pages as
+`page_base[batch] + logical_page`. This is the serving-shaped contract a KV
+manager can provide when it allocates a request's prefix as one physical page
+run. A remote L20 smoke with `cached=4096,draft=32,random tree,branch=4` passed
+correctness through this API; performance remains reported from the broader v15
+ablation because the single v16 smoke was intended as an API/correctness check.
 
 ## Current Limits
 

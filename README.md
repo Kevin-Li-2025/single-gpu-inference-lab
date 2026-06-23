@@ -217,3 +217,7 @@ improves random-page `paged/split` from `0.923x` to `0.942x`, and a
 contiguous-physical-pages fast path reaches `0.986x`. The remaining gap is now
 clearly tied to random physical page layout rather than the irregular ancestor
 mask or tile policy.
+The v16 interface makes that fast path serving-shaped: callers can pass
+`page_base=[batch]` with `contiguous_pages=True`, so a KV manager that allocates
+per-sequence page runs can avoid block-table lookups without relying on a
+hard-coded page layout.

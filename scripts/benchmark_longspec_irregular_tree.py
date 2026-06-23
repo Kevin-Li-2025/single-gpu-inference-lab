@@ -44,10 +44,12 @@ def make_paged_prefix(prefix_key, prefix_value, page_size: int = 16, page_order:
         block_table = torch.randperm(
             num_pages, device=prefix_key.device, dtype=torch.int32
         ).reshape(batch, pages_per_batch)
+        page_base = None
     elif page_order == "contiguous":
         block_table = torch.arange(num_pages, device=prefix_key.device, dtype=torch.int32).reshape(
             batch, pages_per_batch
         )
+        page_base = block_table[:, 0].contiguous()
     else:
         raise ValueError(f"unknown page order: {page_order}")
     key_cache = torch.empty(
@@ -64,7 +66,7 @@ def make_paged_prefix(prefix_key, prefix_value, page_size: int = 16, page_order:
     for batch_index in range(batch):
         key_cache[block_table[batch_index].long()] = key_pages[batch_index]
         value_cache[block_table[batch_index].long()] = value_pages[batch_index]
-    return key_cache, value_cache, block_table
+    return key_cache, value_cache, block_table, page_base
 
 
 def make_balanced_tree_mask(draft_length: int, *, branch: int, device):
@@ -147,7 +149,7 @@ def run_case(
         )
     else:
         raise ValueError(f"unknown tree shape: {tree}")
-    key_cache, value_cache, block_table = make_paged_prefix(
+    key_cache, value_cache, block_table, page_base = make_paged_prefix(
         prefix_key, prefix_value, page_order=page_order
     )
     expected = torch_tree_attention_reference(query, key, value, mask, cached)
@@ -165,6 +167,7 @@ def run_case(
         cached,
         workspace=workspace,
         contiguous_pages=page_order == "contiguous",
+        page_base=page_base,
     )
     monolithic_ms = latency_ms(
         lambda: hybrid_tree_attention(query, key, value, mask, cached),
@@ -186,6 +189,7 @@ def run_case(
             cached,
             workspace=workspace,
             contiguous_pages=page_order == "contiguous",
+            page_base=page_base,
         ),
         iterations=iterations,
     )

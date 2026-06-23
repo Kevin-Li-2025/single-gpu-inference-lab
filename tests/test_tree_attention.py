@@ -67,6 +67,8 @@ def test_triton_tree_attention_kernel_uses_online_softmax_and_ancestor_mask():
     assert "_tree_paged_prefix_summary_kernel" in source
     assert "_tree_paged_prefix_summary_page16_kernel" in source
     assert "_tree_paged_prefix_summary_contiguous_pages_kernel" in source
+    assert "base_page = tl.load(page_base + batch * pb_stride_b)" in source
+    assert "physical_page = base_page + token // 16" in source
     assert "_tree_suffix_summary_kernel" in source
     assert "_tree_summary_merge_kernel" in source
     assert "_causal_verifier_paged_attention_kernel" in source
@@ -87,3 +89,5 @@ def test_longspec_irregular_benchmark_generates_non_chain_masks():
     assert '"mean_visible_draft_tokens"' in source
     assert "hybrid_tree_attention_paged_prefix" in source
     assert 'contiguous_pages=page_order == "contiguous"' in source
+    assert "page_base = block_table[:, 0].contiguous()" in source
+    assert "page_base=page_base" in source
