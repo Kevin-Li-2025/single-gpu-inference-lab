@@ -435,6 +435,35 @@ gather are separate framework operations with synchronization and launch cost.
 A fused L20 sampler has real room to improve there even though PyTorch already
 solves deterministic GPU argmax well.
 
+FlashInfer 0.6.12 provides the production fused-sampler baseline on this L20,
+but its sampling module must be JIT-compiled with CUDA 13 nvcc. The host's
+system `/usr/bin/nvcc` is CUDA 12.0 and fails against FlashInfer's vendored
+CCCL/CUB with `BlockAdjacentDifference::FlagHeads` errors. Pointing
+`CUDA_HOME` and `PATH` at the venv CUDA 13 nvcc package fixes the build:
+
+```bash
+CUDA_HOME=$HOME/venvs/vllm-l20/lib/python3.12/site-packages/nvidia/cu13 \
+PATH=$HOME/venvs/vllm-l20/lib/python3.12/site-packages/nvidia/cu13/bin:$HOME/venvs/vllm-l20/bin:$PATH \
+PYTHONPATH=src \
+python scripts/benchmark_flashinfer_sampling.py \
+  --batch 16 --vocab 151936 --top-k 50 --top-p 0.9
+```
+
+With `top_k=50`, `top_p=0.9`, temperature 0.8, and vocab 151936:
+
+| batch | PyTorch GPU top-k/top-p | FlashInfer fused | CPU round-trip | FlashInfer vs PyTorch | FlashInfer vs CPU |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 0.3533 ms | 0.1167 ms | 0.7161 ms | 3.03x | 6.13x |
+| 16 | 0.3461 ms | 0.1300 ms | 5.3727 ms | 2.66x | 41.31x |
+| 64 | 0.3461 ms | 0.2048 ms | 18.2607 ms | 1.69x | 89.16x |
+
+This establishes the baseline for any custom L20 stochastic sampler. A local
+Triton/CUDA sampler is only worth writing if it beats FlashInfer on the exact
+serving shapes or fuses with the logits producer to remove logits materialization
+entirely. Otherwise the right engineering work is vLLM integration: route L20
+serving through the FlashInfer sampler, keep seed/offset CUDA-graph compatible,
+and avoid CPU-side sampling fallbacks.
+
 ### V23 Tensor-Core Hypothesis Check
 
 FlashInfer exposes both CUDA-core decode and a tensor-core path. The wrapper

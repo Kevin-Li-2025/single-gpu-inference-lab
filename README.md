@@ -171,7 +171,10 @@ next useful sampling kernel must fuse top-k/top-p/multinomial work rather than
 claim a pure-argmax win. The measured top-k=50 stochastic pipeline is
 0.218 ms on GPU versus 0.663 ms through CPU round-trip at batch 1, and
 0.217 ms versus 5.254 ms at batch 16, which confirms the real fusion target is
-top-k/top-p/softmax/multinomial rather than deterministic argmax.
+top-k/top-p/softmax/multinomial rather than deterministic argmax. FlashInfer
+0.6.12 is the current production baseline: with top-k=50/top-p=0.9 it runs in
+0.117/0.130/0.205 ms at batch 1/16/64, 1.69x-3.03x faster than the PyTorch GPU
+pipeline and 6.13x-89.16x faster than CPU round-trip sampling.
 
 The first speculative decoding follow-up is an L20 hybrid tree-attention
 prototype for irregular draft-token masks. On the measured L20, the contiguous
