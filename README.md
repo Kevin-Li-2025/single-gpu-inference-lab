@@ -1,311 +1,146 @@
 # L20 Stack
 
-Single-GPU LLM Infra Reference Stack for an NVIDIA L20 48 GB machine.
+Single-GPU LLM infrastructure experiments for an NVIDIA L20 48 GB machine.
 
-This repo starts deliberately small. The near-term target is not to claim a complete replacement for Megatron-LM, vLLM, PEFT, or TRL. The target is to build a reproducible experimental stack that can answer one question at a time:
+This repository is a measured L20 reference stack: training smoke tests,
+serving hooks, custom kernels, benchmark harnesses, and negative results are
+kept together so performance claims stay reproducible. It is not a replacement
+for vLLM, FlashInfer, Megatron-LM, PEFT, or TRL. The goal is narrower:
 
-> What can a single L20 actually train, fine-tune, serve, and benchmark without hand-wavy claims?
+> Find which LLM training and serving optimizations are actually worth doing on
+> one L20, and document the boundary between kernel wins and end-to-end wins.
 
-## Initial Scope
+## What Is Here
 
-- QLoRA planning and smoke tests for single-card fine-tuning.
-- Memory budgeting before launching expensive jobs.
-- Reproducible experiment manifests.
-- Inference benchmark harness design before custom kernels.
-- Clear research notes that separate implemented results from hypotheses.
+- L20 hardware and memory budgeting helpers.
+- QLoRA planning, smoke training, contamination checks, adapter saves, and CUDA
+  telemetry.
+- Triton and CUDA kernels for RMSNorm, RoPE + KV-cache writes, paged decode,
+  FP8 KV-cache decode experiments, GPU sampling, and speculative verifier
+  attention.
+- vLLM integration patches guarded behind conservative runtime gates.
+- Benchmark scripts plus checked-in JSON reports for the measured L20 runs.
+- Research notes that separate production-worthy paths from experiments and
+  rejected hypotheses.
 
-## Current State
+## Current Conclusions
 
-Implemented:
+The most important result is not that every custom kernel wins. Several kernels
+win at the microbenchmark boundary and then disappear under vLLM scheduling,
+FlashInfer attention, CUDA Graphs, or sampling overhead. The repository keeps
+those negative results because they are the useful part of the L20 study.
 
-- Standard-library memory estimator for LoRA and QLoRA training plans.
-- JSON experiment config loader.
-- CLI entry point for producing a machine-readable plan.
-- Unit tests that run without CUDA, PyTorch, or model downloads.
-- SM89 Triton RMSNorm and fused residual RMSNorm forward kernels.
-- CUDA Event benchmark matrix for PyTorch eager, `torch.compile`, and Triton.
-- Three cold-cache L20 benchmark runs with shape-specific 4/8-warp launch choices.
-- A measured residual RMSNorm dispatcher that avoids slower custom paths below
-  the 8192 hidden-size crossover.
-- An L20 production in-place dispatcher benchmarked across decode and prefill
-  rows against FlashInfer.
-- A benchmark-policy analyzer that rebuilds L20 dispatch decisions from repeated
-  JSON reports and fails when a stable measured winner disagrees with the code.
-- A fused RoPE + contiguous KV-cache write Triton kernel for L20 decode and
-  prefill cache updates.
-- A handwritten NF4 QLoRA training loop with packing, assistant-only loss,
-  contamination checks, evaluation, adapter saves, and CUDA telemetry.
-- Real L20 QLoRA smoke runs for Qwen2.5-Coder-0.5B and 14B.
+| Area | Status | L20 result |
+| --- | --- | --- |
+| RoPE + KV-cache append | Strong kernel win, small serving win | Paged append is 2.37x-7.82x faster than FlashInfer/vLLM write-path baselines on measured cases, but full vLLM ITL improves only about 0.46%-0.72% under the safe gate. |
+| Residual RMSNorm | Shape-gated | Custom fused path is useful only above the measured hidden-size crossover; smaller shapes stay on the baseline path. |
+| GPU sampling | Real serving signal | FlashInfer top-k/top-p sampling improves Qwen2.5-Coder-1.5B ITL by about 2%-6% in the measured c1/c4/c16 regimes. |
+| FP8 KV-cache decode | Correct, not production-ready | Fused FP8 dequant beats materializing K/V, but current CUDA/Triton split-decode kernels are still slower than BF16 predequantized attention, so vLLM dispatch is disabled. |
+| Speculative verifier attention | Experimental | Custom causal verifier kernels improved direct latency, but real vLLM serving remains tied or slower than native FlashInfer. |
+| Kernel-coding QLoRA | Negative so far | Training runs are healthy, but held-out KernelBench `fast_0` is still 0/3. A handwritten ReLU control proves the evaluator path. |
 
-Not implemented yet:
+## Reproducibility
 
-- Quality training on a held-out kernel coding dataset.
-- Published model weights.
-- Model-quality benchmark claims.
-
-## Quick Check
-
-Use the system Python on this machine if the default `python3` shim is broken:
+Run the CPU-safe checks:
 
 ```bash
 PYTHONPATH=src /usr/bin/python3 -m unittest discover -s tests
 PYTHONPATH=src /usr/bin/python3 -m l20_stack.cli plan --config configs/qlora_l20.json
 ```
 
-## Repo Policy
-
-- Do not commit API keys, Hugging Face tokens, wandb tokens, SSH keys, or local credential files.
-- Do not commit raw datasets, checkpoints, model weights, or generated benchmark output.
-- Keep every performance claim tied to a config, hardware note, and command that reproduced it.
-
-## First Milestones
-
-1. Add a real QLoRA fine-tuning runner with a tiny local fixture and a real dataset switch.
-2. Add vLLM baseline serving benchmarks before any custom kernel work.
-3. Run L20-specific profiling and record memory, throughput, and latency numbers.
-4. Only then decide whether a custom PagedAttention or quantization kernel is justified.
-
-See [docs/roadmap.md](docs/roadmap.md) for the v0.1 to v1.0 release plan and commit-sized task breakdown.
-
-Measured operator results and raw reports are documented in
-[docs/l20-operator-research.md](docs/l20-operator-research.md). The current custom fused
-residual kernel wins only at hidden size 8192; the repository does not claim a universal
-fused-kernel speedup.
-
-For production inference, install the optional `production-kernels` extra and
-use `residual_rmsnorm_l20_inplace`. On the measured L20, its speedup over
-PyTorch eager ranges from 1.62x-2.28x for decode batches and 1.01x-1.18x for
-4096-row prefill, depending on hidden size.
-
-The larger fusion target is now RoPE + KV-cache write. On the measured L20,
-`scripts/benchmark_rope_kv.py` shows the fused Triton path is 8.0x-8.6x faster
-than a separate PyTorch rotation plus cache assignment in decode-sized batches,
-and 2.65x faster at 4096 tokens for the tested `[tokens, 8 kv_heads, 128
-head_dim]` layout.
-
-The paged V8 path in `scripts/benchmark_paged_rope_kv.py` resolves a randomized
-block table and fuses RoPE with NHD paged K/V writes. With vLLM 0.23.0 available
-on the L20 host, the same-boundary comparison shows the fused path at 0.0051 ms
-for 1-32 tokens and 0.0113 ms at 512 tokens. The V9 L20 policy groups four KV
-heads per program from 768 tokens upward, reaching 0.0379 ms at 2048 tokens
-and 0.0707 ms at 4096 tokens in three-run confirmation. It
-beats FlashInfer by 2.37x-7.43x and vLLM's separate reshape/cache op by
-2.70x-7.82x on the measured cases. This is an append-path result, not a
-full-attention comparison.
-
-The first QLoRA capacity runs reached 1.17 GiB peak allocated memory for the
-0.5B base and 13.91 GiB for the 14B base. Both completed real 4-bit backward,
-evaluation, and adapter saving on the L20. These tiny-fixture measurements
-validate the training path only; they are not quality results. The execution
-benchmark design and quality gates are documented in
-[docs/l20-qlora-research.md](docs/l20-qlora-research.md).
-
-The first 1.5B kernel-coding pilot is intentionally reported as a negative
-result: QLoRA training reached 3478 tokens/s at 6.05 GiB peak allocated memory,
-but held-out KernelBench `fast_0` remains 0/3. A new interface gate now rejects
-missing `ModelNew`, evaluator-helper leakage, placeholder implementations, and
-wrapper argument mismatches before expensive GPU evaluation. The v4 data pass
-tightened this further by learning only from interface-valid `ModelNew` labels
-copied from the reference module signature. That run reached 3524 tokens/s at
-6.06 GiB peak allocated memory with 50 gate-valid train records and 5 gate-valid
-eval records, but the held-out result is still negative: `fast_0` remains 0/3.
-The current gate also rejects executable test harnesses, `ModelNew` varargs,
-unsupported Triton `keepdims`, dynamic block-tensor reshapes, missing launcher
-arguments, and one-argument `tl.arange`.
-
-A handwritten L20 ReLU control now reaches KernelBench `fast_0=1/1` and
-`fast_1=1/1` with a memory-bounded chunked correctness comparator. This proves
-the elementwise evaluator path and canonical shape-preserving template, not the
-QLoRA model: learned generation remains `fast_0=0/3`.
-
-To regenerate the measured residual RMSNorm policy from the checked-in L20
-reports:
+Run the pytest checks used for the recent CUDA/vLLM integration work:
 
 ```bash
-PYTHONPATH=src /usr/bin/python3 scripts/analyze_rmsnorm_policy.py \
-  benchmarks/results/l20-flashinfer-matrix-v4/run1.json \
-  benchmarks/results/l20-flashinfer-matrix-v4/run2.json \
-  benchmarks/results/l20-flashinfer-matrix-v4/run3.json
+PYTHONPYCACHEPREFIX=/tmp/l20-pycache PYTHONPATH=src \
+  /usr/bin/python3 -m pytest -q tests
 ```
-The layer-level serving benchmark in `scripts/benchmark_decode_layer.py` keeps
-FlashInfer paged decode attention fixed and changes only the preceding
-RoPE/cache-update path. On L20, the fused append is 3.71x-3.93x faster across
-batch 1/16/128 and context 1k/4k. The measured one-layer latency reduction is
-57.5%-59.1% at batch 1, 7.9% at batch 16/context 4k, and 1.4%-2.7% at batch
-128. See `docs/l20-serving-integration.md`; these are layer-level results, not
-full-model tokens/s claims.
 
-The kernel is now wired into vLLM 0.23's existing
-`fuse_rope_kvcache` post-grad pass for CUDA SM89. On
-Qwen2.5-Coder-1.5B-Instruct, all 28 layers matched the fusion. A wider
-correctness matrix exposed a cross-warp in-place race in the NeoX layout. The
-race-free paired-lane kernel now passes 280/280 L20 cases through 1024 tokens.
-The measured warp policy raises kernel-level speedup to 1.51x at 128 tokens,
-1.18x at 512, and 1.09x at 1024. Nsight Compute shows 509.6 GB/s, 59.1% peak
-DRAM throughput, and 77.7% long-scoreboard stall at 1024 tokens.
-However, a wider serving gate regresses high-concurrency throughput, so the
-recommended vLLM gate remains `num_tokens <= 64`. Under full CUDA Graphs, ITL
-improves consistently by 0.46%-0.72%, while request throughput remains mixed
-from -0.86% to +0.58%. This is a small, shape-dependent end-to-end result
-despite the larger kernel win; see
-`docs/l20-serving-integration.md`.
+The GPU benchmarks expect an L20 host with PyTorch, Triton, FlashInfer, and
+vLLM installed. Most scripts write JSON under `benchmarks/results/`.
 
-For hardware-counter validation, use `scripts/profile_kernel.sh` plus
-`scripts/summarize_ncu_profile.py`. The profiler emits Nsight Compute reports,
-raw CSV, parsed JSON, and a Markdown roofline dashboard with DRAM/L2/occupancy,
-sector, and warp-stall metrics. Missing counters remain explicit `null` values;
-the repo does not infer cache efficiency from proxy timings.
+## Key Benchmarks
 
-The complete systems narrative, including the rejected benchmark methodology
-and bottleneck analysis behind the `7.82x -> marginal service gain` performance
-dilution, is in
-[`docs/l20-serving-case-study.md`](docs/l20-serving-case-study.md).
+RoPE + paged KV write:
 
-The next L20-specific system target is GPU-side sampling. A first Triton
-`top_k=1` greedy sampler avoids the PCIe logits round trip and uses a
-preallocated two-stage vocab reduction for Qwen-sized vocabularies. On L20 with
-batch 1/16/64 and vocab 151936, the preallocated path runs in
-48.1/46.1/47.1 us and is 23x/63x/232x faster than forcing logits to CPU.
-However, PyTorch's GPU `argmax` remains faster at 19.5/20.5/29.7 us, so the
-next useful sampling kernel must fuse top-k/top-p/multinomial work rather than
-claim a pure-argmax win. The measured top-k=50 stochastic pipeline is
-0.218 ms on GPU versus 0.663 ms through CPU round-trip at batch 1, and
-0.217 ms versus 5.254 ms at batch 16, which confirms the real fusion target is
-top-k/top-p/softmax/multinomial rather than deterministic argmax. FlashInfer
-0.6.12 is the current production baseline: with top-k=50/top-p=0.9 it runs in
-0.117/0.130/0.205 ms at batch 1/16/64, 1.69x-3.03x faster than the PyTorch GPU
-pipeline and 6.13x-89.16x faster than CPU round-trip sampling. FlashInfer
-sampling JIT is now guarded by `l20_stack.flashinfer_env`, which forces CUDA 13
-nvcc for this cu130 environment and avoids the system CUDA 12 compiler failure.
-The first real vLLM stochastic-serving smoke now wires that path into
-`vllm serve`: with Qwen2.5-Coder-1.5B, input 512, output 32, `top_k=50`,
-`top_p=0.9`, and FlashInfer attention, enabling FlashInfer sampling changes
-median ITL from 5.16 to 5.05 ms at concurrency 1 and from 5.83 to 5.76 ms at
-concurrency 16. The c16 row also improves output throughput by 2.02% and p95
-ITL by 9.74%. The server log confirms `Using FlashInfer for top-p & top-k
-sampling`; the disabled baseline confirms `FlashInfer top-p/top-k sampling
-disabled`. This is a one-run smoke, so it proves routing and gives a small
-positive signal rather than a final benchmark claim.
-The v2 3-run matrix makes the signal more credible. Across Qwen2.5-Coder-1.5B
-with input 128/512/2048 and concurrency 1/4/16/64, FlashInfer sampling improves
-median ITL by about 2% at concurrency 1, 5.7%-5.9% at concurrency 4, and about
-3% at concurrency 16; at concurrency 64 the effect is mostly hidden by queueing.
-The best sustained regime is c4, where output throughput also improves
-3.2%-4.5%. This says the right next target is not a standalone sampler, but
-either production-hardening this vLLM route or fusing sampling into the logits
-producer / LM-head epilogue.
+```bash
+PYTHONPATH=src python scripts/benchmark_paged_rope_kv.py \
+  --output benchmarks/results/l20-paged-rope-policy-v3/t4096.json
+```
 
-The first FP8 KV-cache attention prototype now fuses E4M3 K/V dequantization
-inside the contiguous split-KV decode attention kernel. On L20 with
-`q_heads=16`, `kv_heads=8`, `head_dim=128`, and contexts 512/2048/4096, all
-rows match the dequantized BF16 reference within `0.001953125` max absolute
-error. Compared with materializing dequantized K/V before attention, the fused
-path is 2.03x-24.07x faster; compared with an already predequantized BF16
-attention kernel, it only wins in the batch-16 long-context rows, reaching
-2.30x at 2048 context and 1.68x at 4096 context. This is a contiguous
-prototype, not a paged vLLM integration yet.
-The paged NHD version is now implemented as
-`l20_paged_split_kv_attention_fp8`. Three L20 confirmation runs show the fused
-path beats materializing dequantized K/V in every measured row, but it only
-beats the FlashInfer BF16-on-dequant reference at `batch=8, context=4096`,
-where the median ratio is 1.07x versus FlashInfer, 1.43x versus local BF16
-paged attention, and 11.88x versus materialized FP8. The real vLLM FP8
-KV-cache smoke is negative, though: Qwen3-0.6B with FP8 KV, input 4096, output
-16, concurrency 8, and eager FlashInfer serving entered the custom path 28
-times, but median ITL regressed from 37.46 ms to 38.02 ms and output throughput
-fell 5.08%. `should_use_l20_paged_fp8_split_kv` is therefore disabled; the
-experimental installer remains only for reproducing the result.
-The parameterized multi-model check adds one more boundary: Qwen3-0.6B
-16Q/8KV still shows a 1.05x micro win over FlashInfer at batch 8/context 4096,
-while Qwen2.5-Coder-1.5B's 12Q/2KV shape has no FlashInfer CUDA-core baseline
-because group size 6 is unsupported; there the fused FP8 path is only 1.08x
-over local BF16 paged attention. The next serious implementation has to remove
-Python/Triton dispatch and split-reduce overhead, not widen the current gate.
-The vLLM installer now reflects that conclusion: `VLLM_ENABLE_L20_FP8_PAGED_DECODE=1`
-still has to pass `should_use_l20_paged_fp8_split_kv`, which is disabled after
-the ITL regression. Reproducing the negative experiment requires the explicit
-`VLLM_L20_FP8_PAGED_FORCE=1` override used by the campaign script.
-The first CUDA-extension FP8 variant moves E4M3 dequantization out of the
-Python/Triton hook and into `l20_paged_decode.cu`, using CUDA's FP8 conversion
-intrinsics and an `fp8x2 -> half2` conversion path. Correctness holds on L20
-for Qwen3-style 16Q/8KV and Qwen2.5-Coder-style 12Q/2KV shapes. The result is
-still not a serving candidate: at batch 8/context 4096, Qwen3 improves over
-materializing K/V by 5.77x but remains 1.80x slower than the CUDA BF16
-predequantized path; Qwen2.5-Coder remains slower than both materialized and
-predequantized CUDA baselines. This narrows the next optimization to fusing
-FP8 dequant into a production-quality attention kernel boundary, not just
-porting the current split-decode structure to CUDA.
-A split-size sweep confirmed that smaller L20 FP8 partitions are better for
-this scalar split-decode structure. At batch 8/context 4096, `split_size=64`
-improves Qwen3 FP8 latency from 0.364 ms to 0.342 ms and Qwen2.5-Coder from
-0.334 ms to 0.261 ms. The default CUDA FP8 benchmark now uses 64. This is a
-real scheduling improvement, but it still leaves FP8 slower than the BF16
-predequantized CUDA path, so the production gate remains closed.
+Layer-level decode integration:
 
-The first speculative decoding follow-up is an L20 hybrid tree-attention
-prototype for irregular draft-token masks. On the measured L20, the contiguous
-v1 kernel matches both a dense PyTorch reference and repeated decode attention
-for chain drafts. Representative chain rows show 9.78x at
-`batch=1,cached=512,draft=8`, 21.50x at `batch=1,cached=2048,draft=16`, and
-25.49x at `batch=1,cached=4096,draft=16` versus repeated decode launches. See
-[`docs/l20-hybrid-tree-attention.md`](docs/l20-hybrid-tree-attention.md).
-The v2 split prefix/suffix path now performs an explicit log-sum-exp merge and
-beats the monolithic path only in the measured long-context regime, so its gate
-is `cached_length >= 4096`.
-The v3 path replaces the contiguous cached prefix with a randomized page-16 NHD
-block table. It is correct against the dense reference; the measured page-table
-overhead is small in the default wide-tile kernel, while a page16-specialized
-loop was rejected as a negative result.
-The v5 smoke installs the operator under
-`vllm.v1.attention.ops.l20_tree_attention`, adds
-`vllm.v1.attention.ops.l20_tree_attention_dispatch`, and validates the
-`VLLM_ENABLE_L20_TREE_ATTENTION=1` dispatch gate on the L20 host; full
-speculative serving integration is still pending.
-The v6 smoke also patches FlashInfer's backend module with
-`maybe_run_l20_tree_attention(...)`, giving the future speculative metadata path
-a backend-local hook with the same fallback behavior.
-The v7 patch adds a guarded non-causal native-prefill insertion point,
-`maybe_run_l20_tree_attention_from_prefill(...)`, for conservative chain-draft
-speculative verification shapes.
-The v8 smoke calls that backend hook directly with vLLM-shaped tensors and
-threads `max_seq_len` through metadata to avoid a hot-path GPU scalar sync.
-The v9 real serving smoke runs Qwen2.5-Coder-1.5B-Instruct with vLLM ngram
-speculative decoding and FlashInfer attention. It reaches the native-prefill
-site 140 times, but all observed calls are causal, so the current non-causal
-tree hook is not entered (`prefill_hook_run=0`).
-The v10 verifier trace repeats the test for both ngram and draft-model
-speculative decoding. Both paths verify draft tokens through causal multi-token
-target passes (`[draft + 1, vocab]` logits) rather than a non-causal irregular
-tree mask, so the next serving target is a causal speculative-verifier hook.
-The v11 hook implements that causal verifier path and does enter real
-draft-model serving (`causal_verifier_run=140` for the first measured request).
-Direct FP16/BF16 correctness passes, but the current three-kernel implementation
-is slightly slower than native FlashInfer in warm e2e smoke
-(`0.5713 s` vs `0.5506 s` median), so it remains experimental rather than a
-default win.
-The v12 causal verifier replaces that three-kernel path with a single paged
-online-softmax kernel. Direct L20 hook latency improves from about `0.184 ms` to
-about `0.084 ms` at `cached=2048,draft=9`, and a long-context draft-model
-serving smoke enters the hook 1064 times. With tracing disabled, hook-on and
-hook-off are effectively tied (`1.0982 s` vs `1.1009 s` post-warm median), so
-this is a real kernel improvement but still only a noise-level service result.
-The v13 CUDA Event timing pass explains the tie: in the real vLLM causal
-verifier path, native FlashInfer prefill is still faster than the current L20
-hook (`0.0686 ms` vs `0.2161 ms` median). The causal hook therefore stays
-experimental/off by default; the next meaningful optimization would need tiled
-Tensor Core QK/PV or a true irregular LongSpec-style workload, not more
-launch-count-only fusion.
-The v14 benchmark adds that true irregular LongSpec-style workload with
-balanced/random ancestor trees. All 16 rows are correct; at `cached=4096`, the
-split prefix/suffix design beats monolithic tree attention by 1.23x median on
-L20, while the paged-prefix serving-shaped path still trails contiguous split by
-about 8-10%. That makes page metadata/cache layout the next measured bottleneck.
-The v15 paged-prefix pass reduces that gap. Page-granular metadata loading
-improves random-page `paged/split` from `0.923x` to `0.942x`, and a
-contiguous-physical-pages fast path reaches `0.986x`. The remaining gap is now
-clearly tied to random physical page layout rather than the irregular ancestor
-mask or tile policy.
-The v16 interface makes that fast path serving-shaped: callers can pass
-`page_base=[batch]` with `contiguous_pages=True`, so a KV manager that allocates
-per-sequence page runs can avoid block-table lookups without relying on a
-hard-coded page layout.
+```bash
+PYTHONPATH=src python scripts/benchmark_decode_layer.py \
+  --output benchmarks/results/l20-decode-layer-v1/example.json
+```
+
+Nsight Compute roofline summary:
+
+```bash
+scripts/profile_kernel.sh \
+  --output benchmarks/results/l20-vllm-rope-kv-profile/ncu/tokens-1024 \
+  -- python scripts/benchmark_paged_rope_kv.py --tokens 1024
+```
+
+FP8 paged decode CUDA experiment:
+
+```bash
+PYTHONPATH=src python scripts/benchmark_cuda_paged_fp8_decode.py \
+  --output benchmarks/results/l20-cuda-fp8-paged-decode/qwen3.json \
+  --batches 8 --contexts 4096 --q-heads 16 --kv-heads 8
+```
+
+Speculative verifier and LongSpec-style tree attention:
+
+```bash
+PYTHONPATH=src python scripts/benchmark_tree_attention.py \
+  --output benchmarks/results/l20-tree-attention-v14/longspec-irregular-matrix.json
+```
+
+## vLLM Hooks
+
+The vLLM integrations are intentionally gated. They are useful for reproducing
+results and testing local patches, but they should not be treated as default
+production paths unless their policy function enables them.
+
+- `integrations/vllm/install_l20_rope_kv.py` installs the safe RoPE + KV-cache
+  append hook.
+- `integrations/vllm/install_l20_paged_decode.py` installs the CUDA paged-decode
+  prototype.
+- `integrations/vllm/install_l20_fp8_paged_decode.py` installs the FP8 paged
+  decode experiment. The policy is disabled after a real serving regression;
+  reproducing the experiment requires `VLLM_L20_FP8_PAGED_FORCE=1`.
+- `integrations/vllm/install_l20_tree_attention.py` installs the speculative
+  verifier/tree-attention hooks, which remain experimental.
+
+## Documentation
+
+- `docs/l20-serving-case-study.md` gives the main systems narrative: why a
+  `7.82x` write-path kernel win becomes a marginal service gain.
+- `docs/l20-serving-integration.md` covers vLLM integration, CUDA Graphs,
+  Nsight counters, and serving gates.
+- `docs/l20-operator-research.md` tracks operator-level experiments and raw
+  benchmark interpretation.
+- `docs/l20-hybrid-tree-attention.md` covers speculative decoding and
+  LongSpec-style irregular attention.
+- `docs/l20-qlora-research.md` covers QLoRA capacity and kernel-coding
+  training results.
+- `docs/roadmap.md` contains the broader v0.1 to v1.0 roadmap.
+
+## Repository Policy
+
+- Do not commit API keys, Hugging Face tokens, wandb tokens, SSH keys, or local
+  credential files.
+- Do not commit raw datasets, checkpoints, model weights, or downloaded model
+  artifacts.
+- Keep performance claims tied to hardware, config, command, and raw JSON.
+- Prefer conservative dispatch gates over optimistic benchmark stories.
+
+## Current Next Step
+
+The strongest next technical target is not another split-decode FP8 tweak. The
+measured FP8 path already shows the boundary: avoiding materialized dequant is
+necessary, but not sufficient. The next useful implementation should fuse FP8
+dequantization into a production-quality paged attention kernel boundary, where
+K/V tile load, dequant, QK, online softmax, PV, and rescale are scheduled
+together.
