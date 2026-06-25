@@ -1,0 +1,48 @@
+{
+  "base_url": "http://127.0.0.1:8031",
+  "max_tokens": 16,
+  "model": "qwen3-0.6b-l20",
+  "prefix_chars": 4096,
+  "reports": [
+    {
+      "e2e_ms": 306.58427299931645,
+      "generated_chars": 78,
+      "prompt_chars": 4255,
+      "stream_chunks": 16,
+      "ttft_ms": 81.31565595977008,
+      "turn": 0
+    },
+    {
+      "e2e_ms": 252.93034291826189,
+      "generated_chars": 78,
+      "prompt_chars": 4414,
+      "stream_chunks": 16,
+      "ttft_ms": 40.32144392840564,
+      "turn": 1
+    },
+    {
+      "e2e_ms": 237.65127698425204,
+      "generated_chars": 79,
+      "prompt_chars": 4574,
+      "stream_chunks": 16,
+      "ttft_ms": 35.32948100473732,
+      "turn": 2
+    },
+    {
+      "e2e_ms": 237.13329003658146,
+      "generated_chars": 80,
+      "prompt_chars": 4735,
+      "stream_chunks": 16,
+      "ttft_ms": 35.17373092472553,
+      "turn": 3
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "first_turn_ttft_ms": 81.31565595977008,
+    "last_turn_ttft_ms": 35.17373092472553,
+    "max_ttft_ms": 81.31565595977008,
+    "total_e2e_ms": 1034.2991829384118
+  },
+  "turns": 4
+}

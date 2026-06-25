@@ -183,3 +183,29 @@ FP8 KV-cache serving paths can run on the current shared L20 with aggressive
 memory limits, but the context is too short for FP8 KV bandwidth savings to
 amortize scale/quant overhead. The next meaningful run must increase turns and
 prefix length on a clean GPU window.
+
+4K shared-GPU pressure result:
+
+```text
+benchmarks/results/l20-kv-pressure/qwen3-pressure-4k-v1/kv-pressure-summary.json
+Qwen3-0.6B, max_model_len=8192, turns=4, prefix_chars=4096, output_tokens=16
+prefix_cache=0
+BF16/auto KV: median TTFT 49.84 ms, median E2E 238.58 ms
+FP8 KV:       median TTFT 37.83 ms, median E2E 245.29 ms
+```
+
+This is the first useful signal for the KV-pressure direction: FP8 KV improves
+median TTFT by about 24% over BF16/auto KV when prefix caching is disabled, but
+does not improve median end-to-end latency in this short-output run.
+
+```text
+benchmarks/results/l20-kv-pressure/qwen3-pressure-4k-prefix-v1/kv-pressure-summary.json
+same shape, prefix_cache=1
+BF16/auto KV: median TTFT 48.05 ms, median E2E 240.82 ms
+FP8 KV:       median TTFT 47.53 ms, median E2E 243.46 ms
+```
+
+With prefix caching enabled, FP8 KV is roughly tied on median TTFT and still
+slightly slower on E2E. The next experiment should push to longer resident
+prefixes and more turns, then measure whether late-turn TTFT scales better for
+FP8 before implementing a custom INT8/4-bit KV cache.

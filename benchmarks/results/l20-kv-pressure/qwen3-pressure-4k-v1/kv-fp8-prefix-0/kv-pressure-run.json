@@ -1,0 +1,18 @@
+{
+  "attention_backend": "FLASHINFER",
+  "calculate_kv_scales": "1",
+  "enforce_eager": "1",
+  "extra_vllm_args": "--gpu-memory-utilization 0.35 --max-num-seqs 1 --max-num-batched-tokens 2048",
+  "flashinfer_sampler": "0",
+  "kv_cache_dtype": "fp8",
+  "max_model_len": 8192,
+  "max_tokens": 16,
+  "model": "/home/hhai/models/Qwen3-0.6B",
+  "port": 8031,
+  "prefix_caching": "0",
+  "prefix_chars": 4096,
+  "schema_version": 1,
+  "served_name": "qwen3-0.6b-l20",
+  "temperature": 0,
+  "turns": 4
+}
