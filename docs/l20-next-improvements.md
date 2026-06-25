@@ -309,10 +309,47 @@ Use this to compare BF16/auto and FP8 runs on DRAM throughput, L2 traffic,
 active warps, and long-scoreboard stalls before writing a new kernel.
 
 Current Nsight status: the L20 host has Nsight Compute installed
-(`/usr/local/cuda-13.0/bin/ncu`), but profiling vLLM attention kernels currently
-fails with `ERR_NVGPUCTRPERM`. That means the user can run the serving workload,
-but cannot read GPU performance counters such as DRAM bytes, L2 sectors, active
-warps, or long-scoreboard stalls. The campaign writes `ncu-status.json` whenever
-`NCU_OUTPUT_PREFIX` is set, so this blocker is explicit. A valid Nsight diagnosis
-requires an admin to enable GPU performance counters for non-root users or a run
-under an account with counter access.
+(`/usr/local/cuda-13.0/bin/ncu`). Counter access is now available through a
+narrow root wrapper (`/tmp/ncu-root`) that only permits Nsight Compute, not broad
+passwordless sudo. The first root-counter smoke is:
+
+```text
+benchmarks/results/l20-kv-pressure-ncu/qwen3-ncu-root-smoke/profile.json
+reshape_and_cache_flash_kernel, duration 2.72 us
+DRAM 11.29 GB/s, L2 hit 87.57%, active warps 32.61%, reg/thread 40
+long-scoreboard ratio 21.82, tensor pipe 0%
+```
+
+This smoke proves the Nsight permission and JSON/Markdown export path. It is
+not a serving bottleneck diagnosis because the profiled kernel is a tiny cache
+write during server startup.
+
+The attempted direct vLLM HTTP-server profile also established an important
+boundary:
+
+```text
+benchmarks/results/l20-kv-pressure-ncu/qwen3-8k-auto-root-v1/kv-pressure-failure.json
+status: server_start_failed
+reason: server_process_exited_before_health
+```
+
+With a small `--launch-count`, Nsight Compute finishes its startup-kernel window
+before the long-lived vLLM server becomes healthy. Therefore, serving ITL must
+continue to be measured with the HTTP benchmark harness, while kernel roofline
+diagnosis should use deterministic standalone workloads that exit normally.
+
+Fresh standalone decode-attention Nsight result:
+
+```text
+benchmarks/results/l20-decode-attention-ncu/root-b1-c4096-best/profile.json
+_gqa_decode_attention_partial_kernel, batch=1, context=4096
+duration 47.68 us, DRAM 405.81 GB/s, L2 hit 50.50%
+active warps 11.77%, reg/thread 72, long-scoreboard ratio 4.75
+SM throughput 13.55%, tensor pipe 0%
+```
+
+This confirms the next attention-kernel bottleneck: the current split-KV path is
+still scalar/LSU dominated and does not use Tensor Cores. The next serious
+kernel implementation should either introduce a Tensor-Core tiled QK/PV path
+for shapes where occupancy survives, or reduce register pressure enough to raise
+resident warps before trying more FP8/4-bit KV-cache variants.

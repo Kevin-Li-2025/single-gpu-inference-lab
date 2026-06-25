@@ -35,6 +35,7 @@ def test_multiturn_kv_pressure_uses_streaming_openai_endpoint():
     assert "--section MemoryWorkloadAnalysis" in runner
     assert "ncu-status.json" in runner
     assert "ERR_NVGPUCTRPERM" in runner
+    assert 'env PATH="$PATH" PYTHONPATH="$PYTHONPATH"' in runner
     assert "MAX_MODEL_LEN" in runner
     assert "--enforce-eager" in runner
     assert "kv-pressure-prefix-cache" in runner
@@ -64,3 +65,9 @@ def test_qk_norm_benchmark_can_import_repo_local_kernel():
     source = Path("scripts/benchmark_qk_norm_rope_kv.py").read_text()
     assert "import_source" in source
     assert "integrations/vllm" in source
+
+
+def test_ncu_summary_accepts_cuda_13_stall_metric_names():
+    source = Path("scripts/summarize_ncu_profile.py").read_text()
+    assert "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio" in source
+    assert "smsp__average_warps_issue_stalled_short_scoreboard_per_issue_active.ratio" in source

@@ -1,0 +1,32 @@
+{
+  "flashinfer_observed": false,
+  "metadata": {
+    "attention_backend": "FLASHINFER",
+    "calculate_kv_scales": "0",
+    "enforce_eager": "1",
+    "extra_vllm_args": "",
+    "flashinfer_sampler": "0",
+    "kv_cache_dtype": "auto",
+    "max_model_len": 12288,
+    "max_tokens": 4,
+    "model": "/home/hhai/models/Qwen3-0.6B",
+    "ncu_bin": "/tmp/ncu-root",
+    "ncu_kernel_name": "regex:.*(BatchPrefillWithPagedKVCacheKernel|reshape_and_cache_flash_kernel|splitKreduce_kernel).*",
+    "ncu_launch_count": "3",
+    "ncu_launch_skip": "0",
+    "ncu_output_prefix": "benchmarks/results/l20-kv-pressure-ncu/qwen3-8k-auto-root-v1/profile",
+    "port": 8021,
+    "prefix_caching": "1",
+    "prefix_chars": 8192,
+    "schema_version": 1,
+    "served_name": "qwen3-ncu-auto",
+    "temperature": 0,
+    "turns": 1,
+    "vllm_bin": "/home/hhai/venvs/vllm-l20/bin/vllm"
+  },
+  "oom_suspected": false,
+  "reason": "server_process_exited_before_health",
+  "schema_version": 1,
+  "server_log_tail": "",
+  "status": "server_start_failed"
+}

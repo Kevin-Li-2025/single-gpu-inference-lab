@@ -35,6 +35,14 @@ python_dir=$(dirname "$("$python_bin" -c 'import sys; print(sys.executable)')")
 if [[ -x "$python_dir/vllm" || -x "$python_dir/ninja" ]]; then
   export PATH="$python_dir:$PATH"
 fi
+vllm_bin=${VLLM_BIN:-}
+if [[ -z "$vllm_bin" ]]; then
+  if [[ -x "$python_dir/vllm" ]]; then
+    vllm_bin="$python_dir/vllm"
+  else
+    vllm_bin=$(command -v vllm)
+  fi
+fi
 
 prefix_args=()
 case "$prefix_caching" in
@@ -107,6 +115,7 @@ payload = {
     "max_model_len": $max_model_len,
     "enforce_eager": "$enforce_eager",
     "extra_vllm_args": os.environ.get("VLLM_EXTRA_ARGS", ""),
+    "vllm_bin": "$vllm_bin",
     "ncu_output_prefix": "$ncu_output_prefix",
     "ncu_kernel_name": "$ncu_kernel_name" if "$ncu_output_prefix" else None,
     "ncu_bin": "$ncu_bin" if "$ncu_output_prefix" else None,
@@ -116,8 +125,8 @@ payload = {
 open(path, "w", encoding="utf-8").write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 PY
 
-setsid "${server_prefix[@]}" env PYTHONPATH="$PYTHONPATH" VLLM_USE_FLASHINFER_SAMPLER="$flashinfer_sampler" \
-  vllm serve "$model" \
+setsid "${server_prefix[@]}" env PATH="$PATH" PYTHONPATH="$PYTHONPATH" VLLM_USE_FLASHINFER_SAMPLER="$flashinfer_sampler" \
+  "$vllm_bin" serve "$model" \
     --served-model-name "$served_name" \
     --host 127.0.0.1 \
     --port "$port" \

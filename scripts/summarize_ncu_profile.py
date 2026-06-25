@@ -30,10 +30,22 @@ METRIC_ALIASES = {
     "l1_global_load_sectors": ["l1tex__t_sectors_pipe_lsu_mem_global_op_ld.sum"],
     "l1_global_store_sectors": ["l1tex__t_sectors_pipe_lsu_mem_global_op_st.sum"],
     "l1_sector_hit_rate_pct": ["l1tex__t_sector_hit_rate.pct"],
-    "long_scoreboard_pct": ["smsp__warp_issue_stalled_long_scoreboard_per_warp_active.pct"],
-    "short_scoreboard_pct": ["smsp__warp_issue_stalled_short_scoreboard_per_warp_active.pct"],
-    "barrier_pct": ["smsp__warp_issue_stalled_barrier_per_warp_active.pct"],
-    "membar_pct": ["smsp__warp_issue_stalled_membar_per_warp_active.pct"],
+    "long_scoreboard_pct": [
+        "smsp__warp_issue_stalled_long_scoreboard_per_warp_active.pct",
+        "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio",
+    ],
+    "short_scoreboard_pct": [
+        "smsp__warp_issue_stalled_short_scoreboard_per_warp_active.pct",
+        "smsp__average_warps_issue_stalled_short_scoreboard_per_issue_active.ratio",
+    ],
+    "barrier_pct": [
+        "smsp__warp_issue_stalled_barrier_per_warp_active.pct",
+        "smsp__average_warps_issue_stalled_barrier_per_issue_active.ratio",
+    ],
+    "membar_pct": [
+        "smsp__warp_issue_stalled_membar_per_warp_active.pct",
+        "smsp__average_warps_issue_stalled_membar_per_issue_active.ratio",
+    ],
     "registers_per_thread": ["launch__registers_per_thread"],
     "waves_per_sm": ["launch__waves_per_multiprocessor"],
     "fadd": ["smsp__sass_thread_inst_executed_op_fadd_pred_on.sum"],
