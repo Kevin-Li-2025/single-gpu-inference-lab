@@ -25,6 +25,10 @@ enforce_eager=${ENFORCE_EAGER:-1}
 extra_vllm_args=${VLLM_EXTRA_ARGS:-}
 extra_vllm_pythonpath=${VLLM_SOURCE_TREE:-"$HOME/vllm-l20-upstream"}
 python_bin=${PYTHON:-python}
+ncu_output_prefix=${NCU_OUTPUT_PREFIX:-}
+ncu_kernel_name=${NCU_KERNEL_NAME:-regex:.*(flashinfer|paged|attention|decode).*}
+ncu_launch_skip=${NCU_LAUNCH_SKIP:-20}
+ncu_launch_count=${NCU_LAUNCH_COUNT:-5}
 mkdir -p "$output_dir"
 python_dir=$(dirname "$("$python_bin" -c 'import sys; print(sys.executable)')")
 if [[ -x "$python_dir/vllm" || -x "$python_dir/ninja" ]]; then
@@ -50,6 +54,23 @@ if [[ "$calculate_kv_scales" == "1" && "$kv_cache_dtype" != "auto" ]]; then
 fi
 # shellcheck disable=SC2206
 extra_args=(${extra_vllm_args})
+server_prefix=()
+if [[ -n "$ncu_output_prefix" ]]; then
+  mkdir -p "$(dirname "$ncu_output_prefix")"
+  server_prefix=(
+    ncu
+    --target-processes all
+    --kernel-name "$ncu_kernel_name"
+    --launch-skip "$ncu_launch_skip"
+    --launch-count "$ncu_launch_count"
+    --section SpeedOfLight
+    --section Occupancy
+    --section MemoryWorkloadAnalysis
+    --section WarpStateStats
+    --section LaunchStats
+    --export "$ncu_output_prefix"
+  )
+fi
 
 export PYTHONPATH="$extra_vllm_pythonpath${PYTHONPATH:+:$PYTHONPATH}"
 server_log="$output_dir/server.log"
@@ -77,11 +98,15 @@ payload = {
     "max_model_len": $max_model_len,
     "enforce_eager": "$enforce_eager",
     "extra_vllm_args": os.environ.get("VLLM_EXTRA_ARGS", ""),
+    "ncu_output_prefix": "$ncu_output_prefix",
+    "ncu_kernel_name": "$ncu_kernel_name" if "$ncu_output_prefix" else None,
+    "ncu_launch_skip": "$ncu_launch_skip" if "$ncu_output_prefix" else None,
+    "ncu_launch_count": "$ncu_launch_count" if "$ncu_output_prefix" else None,
 }
 open(path, "w", encoding="utf-8").write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 PY
 
-setsid env PYTHONPATH="$PYTHONPATH" VLLM_USE_FLASHINFER_SAMPLER="$flashinfer_sampler" \
+setsid "${server_prefix[@]}" env PYTHONPATH="$PYTHONPATH" VLLM_USE_FLASHINFER_SAMPLER="$flashinfer_sampler" \
   vllm serve "$model" \
     --served-model-name "$served_name" \
     --host 127.0.0.1 \

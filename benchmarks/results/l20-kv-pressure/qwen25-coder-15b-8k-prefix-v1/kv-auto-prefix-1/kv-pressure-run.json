@@ -1,0 +1,18 @@
+{
+  "attention_backend": "FLASHINFER",
+  "calculate_kv_scales": "1",
+  "enforce_eager": "1",
+  "extra_vllm_args": "--gpu-memory-utilization 0.55 --max-num-seqs 1 --max-num-batched-tokens 4096",
+  "flashinfer_sampler": "0",
+  "kv_cache_dtype": "auto",
+  "max_model_len": 16384,
+  "max_tokens": 16,
+  "model": "/home/hhai/models/Qwen2.5-Coder-1.5B-Instruct",
+  "port": 8100,
+  "prefix_caching": "1",
+  "prefix_chars": 8192,
+  "schema_version": 1,
+  "served_name": "qwen25-coder-15b-l20",
+  "temperature": 0,
+  "turns": 8
+}

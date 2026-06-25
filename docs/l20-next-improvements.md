@@ -269,3 +269,33 @@ real but not stable enough to justify a custom fused FP8/4-bit KV kernel. The
 next useful step is either a larger model where KV bandwidth dominates more, or
 Nsight-backed profiling of why vLLM FP8 KV adds enough overhead to erase the
 bandwidth savings on Qwen3-0.6B.
+
+Larger-model check:
+
+```text
+benchmarks/results/l20-kv-pressure/qwen25-coder-15b-8k-prefix-v1/kv-pressure-summary.json
+Qwen2.5-Coder-1.5B-Instruct, max_model_len=16384, turns=8,
+prefix_chars=8192, output_tokens=16, prefix_cache=1
+BF16/auto KV: median TTFT 44.78 ms, median E2E 211.80 ms
+FP8 KV:       median TTFT 45.45 ms, median E2E 219.52 ms
+```
+
+The 1.5B check does not rescue the FP8 KV hypothesis. FP8 improves first-turn
+TTFT by 1.25x, but median TTFT is 0.99x and median E2E is 0.96x versus BF16.
+This reinforces the gate: do not implement a custom FP8/4-bit KV kernel until
+profiling identifies removable overhead in the vLLM FP8 path.
+
+Nsight profile entry:
+
+```bash
+NCU_OUTPUT_PREFIX=benchmarks/results/l20-kv-pressure-ncu/qwen3-8k-fp8 \
+NCU_KERNEL_NAME='regex:.*(flashinfer|paged|attention|decode).*' \
+NCU_LAUNCH_SKIP=20 NCU_LAUNCH_COUNT=5 \
+KV_CACHE_DTYPE=fp8 CALCULATE_KV_SCALES=1 PREFIX_CACHING=1 \
+MAX_MODEL_LEN=16384 TURNS=2 PREFIX_CHARS=8192 OUTPUT_TOKENS=16 \
+scripts/run_vllm_l20_kv_pressure_campaign.sh \
+  MODEL SERVED_NAME benchmarks/results/l20-kv-pressure-ncu/qwen3-8k-fp8
+```
+
+Use this to compare BF16/auto and FP8 runs on DRAM throughput, L2 traffic,
+active warps, and long-scoreboard stalls before writing a new kernel.
