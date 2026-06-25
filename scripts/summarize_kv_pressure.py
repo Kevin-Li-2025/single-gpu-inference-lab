@@ -88,20 +88,60 @@ def ratio(numerator: float | None, denominator: float | None) -> float | None:
 
 def build_comparisons(reports: list[dict]) -> list[dict]:
     comparisons = []
-    groups: dict[tuple, dict[str, dict]] = {}
+    groups: dict[tuple, dict[str, list[dict]]] = {}
     for report in reports:
         if report.get("status") != "ok":
             continue
         kv_dtype = report.get("metadata", {}).get("kv_cache_dtype")
         if kv_dtype is None:
             continue
-        groups.setdefault(workload_key(report), {})[kv_dtype] = report
+        groups.setdefault(workload_key(report), {}).setdefault(kv_dtype, []).append(report)
 
     for key, rows in sorted(groups.items(), key=lambda item: repr(item[0])):
-        baseline = rows.get("auto")
-        fp8 = rows.get("fp8")
-        if not baseline or not fp8:
+        baseline_runs = rows.get("auto", [])
+        fp8_runs = rows.get("fp8", [])
+        if not baseline_runs or not fp8_runs:
             continue
+        pair_count = min(len(baseline_runs), len(fp8_runs))
+        paired = []
+        for baseline, fp8 in zip(baseline_runs[:pair_count], fp8_runs[:pair_count]):
+            paired.append(
+                {
+                    "baseline_path": baseline.get("path"),
+                    "candidate_path": fp8.get("path"),
+                    "median_ttft_speedup_fp8_over_auto": ratio(
+                        baseline.get("median_ttft_ms"),
+                        fp8.get("median_ttft_ms"),
+                    ),
+                    "median_e2e_speedup_fp8_over_auto": ratio(
+                        baseline.get("median_e2e_ms"),
+                        fp8.get("median_e2e_ms"),
+                    ),
+                    "last_turn_ttft_speedup_fp8_over_auto": ratio(
+                        baseline.get("last_turn_ttft_ms"),
+                        fp8.get("last_turn_ttft_ms"),
+                    ),
+                    "first_turn_ttft_speedup_fp8_over_auto": ratio(
+                        baseline.get("first_turn_ttft_ms"),
+                        fp8.get("first_turn_ttft_ms"),
+                    ),
+                }
+            )
+        median_ttft_speedups = [
+            row["median_ttft_speedup_fp8_over_auto"]
+            for row in paired
+            if row["median_ttft_speedup_fp8_over_auto"] is not None
+        ]
+        median_e2e_speedups = [
+            row["median_e2e_speedup_fp8_over_auto"]
+            for row in paired
+            if row["median_e2e_speedup_fp8_over_auto"] is not None
+        ]
+        last_turn_speedups = [
+            row["last_turn_ttft_speedup_fp8_over_auto"]
+            for row in paired
+            if row["last_turn_ttft_speedup_fp8_over_auto"] is not None
+        ]
         comparisons.append(
             {
                 "workload_key": {
@@ -116,22 +156,15 @@ def build_comparisons(reports: list[dict]) -> list[dict]:
                 },
                 "baseline_kv_cache_dtype": "auto",
                 "candidate_kv_cache_dtype": "fp8",
-                "median_ttft_speedup_fp8_over_auto": ratio(
-                    baseline.get("median_ttft_ms"),
-                    fp8.get("median_ttft_ms"),
-                ),
-                "median_e2e_speedup_fp8_over_auto": ratio(
-                    baseline.get("median_e2e_ms"),
-                    fp8.get("median_e2e_ms"),
-                ),
-                "last_turn_ttft_speedup_fp8_over_auto": ratio(
-                    baseline.get("last_turn_ttft_ms"),
-                    fp8.get("last_turn_ttft_ms"),
-                ),
-                "first_turn_ttft_speedup_fp8_over_auto": ratio(
-                    baseline.get("first_turn_ttft_ms"),
-                    fp8.get("first_turn_ttft_ms"),
-                ),
+                "paired_run_count": pair_count,
+                "paired_runs": paired,
+                "median_ttft_speedup_fp8_over_auto": median_or_none(median_ttft_speedups),
+                "median_e2e_speedup_fp8_over_auto": median_or_none(median_e2e_speedups),
+                "last_turn_ttft_speedup_fp8_over_auto": median_or_none(last_turn_speedups),
+                "median_ttft_speedup_range": [
+                    min(median_ttft_speedups) if median_ttft_speedups else None,
+                    max(median_ttft_speedups) if median_ttft_speedups else None,
+                ],
             }
         )
     return comparisons

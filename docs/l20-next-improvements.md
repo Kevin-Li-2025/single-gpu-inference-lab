@@ -252,3 +252,20 @@ The combined summary in
 an 8K sweet spot on this shared L20 run: FP8 gives 1.25x median TTFT and 1.41x
 last-turn TTFT at 8K, but only 1.00x and 0.95x at 16K. The next gate is repeated
 8K cached-prefix runs, not a new quantized KV kernel yet.
+
+8K repeated-run gate:
+
+```text
+benchmarks/results/l20-kv-pressure/qwen3-8k-prefix-repeats-summary-v1.json
+Qwen3-0.6B, max_model_len=16384, turns=8, prefix_chars=8192, output_tokens=16
+prefix_cache=1, paired runs=3
+FP8/BF16 median TTFT speedup: median 1.05x, range 0.99x-1.25x
+FP8/BF16 last-turn TTFT speedup: median 1.07x
+FP8/BF16 median E2E speedup: median 0.96x
+```
+
+The repeated runs do not support a robust FP8 serving win. The first 8K run was
+real but not stable enough to justify a custom fused FP8/4-bit KV kernel. The
+next useful step is either a larger model where KV bandwidth dominates more, or
+Nsight-backed profiling of why vLLM FP8 KV adds enough overhead to erase the
+bandwidth savings on Qwen3-0.6B.

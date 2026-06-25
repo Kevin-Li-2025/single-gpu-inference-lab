@@ -1,0 +1,80 @@
+{
+  "base_url": "http://127.0.0.1:8090",
+  "max_tokens": 16,
+  "model": "qwen3-0.6b-l20",
+  "prefix_chars": 8192,
+  "reports": [
+    {
+      "e2e_ms": 301.3908100547269,
+      "generated_chars": 89,
+      "prompt_chars": 8362,
+      "stream_chunks": 16,
+      "ttft_ms": 104.41463498864323,
+      "turn": 0
+    },
+    {
+      "e2e_ms": 238.23539598379284,
+      "generated_chars": 89,
+      "prompt_chars": 8532,
+      "stream_chunks": 16,
+      "ttft_ms": 55.18024601042271,
+      "turn": 1
+    },
+    {
+      "e2e_ms": 232.80229605734348,
+      "generated_chars": 89,
+      "prompt_chars": 8702,
+      "stream_chunks": 16,
+      "ttft_ms": 49.374595982953906,
+      "turn": 2
+    },
+    {
+      "e2e_ms": 233.70853904634714,
+      "generated_chars": 89,
+      "prompt_chars": 8872,
+      "stream_chunks": 15,
+      "ttft_ms": 54.11121994256973,
+      "turn": 3
+    },
+    {
+      "e2e_ms": 231.45954904612154,
+      "generated_chars": 89,
+      "prompt_chars": 9042,
+      "stream_chunks": 15,
+      "ttft_ms": 50.92992493882775,
+      "turn": 4
+    },
+    {
+      "e2e_ms": 234.22724998090416,
+      "generated_chars": 89,
+      "prompt_chars": 9212,
+      "stream_chunks": 16,
+      "ttft_ms": 52.85412899684161,
+      "turn": 5
+    },
+    {
+      "e2e_ms": 236.7260999744758,
+      "generated_chars": 89,
+      "prompt_chars": 9382,
+      "stream_chunks": 16,
+      "ttft_ms": 55.941145052202046,
+      "turn": 6
+    },
+    {
+      "e2e_ms": 232.49592201318592,
+      "generated_chars": 89,
+      "prompt_chars": 9552,
+      "stream_chunks": 16,
+      "ttft_ms": 52.15302493888885,
+      "turn": 7
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "first_turn_ttft_ms": 104.41463498864323,
+    "last_turn_ttft_ms": 52.15302493888885,
+    "max_ttft_ms": 104.41463498864323,
+    "total_e2e_ms": 1941.0458621568978
+  },
+  "turns": 8
+}

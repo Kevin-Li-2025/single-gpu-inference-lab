@@ -1,0 +1,90 @@
+{
+  "comparisons": [
+    {
+      "baseline_kv_cache_dtype": "auto",
+      "candidate_kv_cache_dtype": "fp8",
+      "first_turn_ttft_speedup_fp8_over_auto": 1.0755121672360592,
+      "last_turn_ttft_speedup_fp8_over_auto": 1.0284460531865092,
+      "median_e2e_speedup_fp8_over_auto": 0.9363312772650138,
+      "median_ttft_speedup_fp8_over_auto": 1.046300245994366,
+      "workload_key": {
+        "attention_backend": "FLASHINFER",
+        "max_model_len": 16384,
+        "max_tokens": 16,
+        "model": "/home/hhai/models/Qwen3-0.6B",
+        "prefix_caching": "1",
+        "prefix_chars": 8192,
+        "served_name": "qwen3-0.6b-l20",
+        "turns": 8
+      }
+    }
+  ],
+  "reports": [
+    {
+      "first_turn_ttft_ms": 104.41463498864323,
+      "last_turn_ttft_ms": 52.15302493888885,
+      "late_over_first_ttft": 0.49948002925606483,
+      "max_ttft_ms": 104.41463498864323,
+      "median_e2e_ms": 233.96789451362565,
+      "median_ttft_ms": 53.48267446970567,
+      "metadata": {
+        "attention_backend": "FLASHINFER",
+        "calculate_kv_scales": "1",
+        "enforce_eager": "1",
+        "extra_vllm_args": "--gpu-memory-utilization 0.42 --max-num-seqs 1 --max-num-batched-tokens 4096",
+        "flashinfer_sampler": "0",
+        "kv_cache_dtype": "auto",
+        "max_model_len": 16384,
+        "max_tokens": 16,
+        "model": "/home/hhai/models/Qwen3-0.6B",
+        "port": 8090,
+        "prefix_caching": "1",
+        "prefix_chars": 8192,
+        "schema_version": 1,
+        "served_name": "qwen3-0.6b-l20",
+        "temperature": 0,
+        "turns": 8
+      },
+      "path": "benchmarks/results/l20-kv-pressure/qwen3-pressure-8k-prefix-r3/kv-auto-prefix-1",
+      "status": "ok",
+      "turns_completed": 8
+    },
+    {
+      "first_turn_ttft_ms": 97.08363900426775,
+      "last_turn_ttft_ms": 50.710511044599116,
+      "late_over_first_ttft": 0.5223383833229603,
+      "max_ttft_ms": 97.08363900426775,
+      "median_e2e_ms": 249.87726053223014,
+      "median_ttft_ms": 51.11599148949608,
+      "metadata": {
+        "attention_backend": "FLASHINFER",
+        "calculate_kv_scales": "1",
+        "enforce_eager": "1",
+        "extra_vllm_args": "--gpu-memory-utilization 0.42 --max-num-seqs 1 --max-num-batched-tokens 4096",
+        "flashinfer_sampler": "0",
+        "kv_cache_dtype": "fp8",
+        "max_model_len": 16384,
+        "max_tokens": 16,
+        "model": "/home/hhai/models/Qwen3-0.6B",
+        "port": 8091,
+        "prefix_caching": "1",
+        "prefix_chars": 8192,
+        "schema_version": 1,
+        "served_name": "qwen3-0.6b-l20",
+        "temperature": 0,
+        "turns": 8
+      },
+      "path": "benchmarks/results/l20-kv-pressure/qwen3-pressure-8k-prefix-r3/kv-fp8-prefix-1",
+      "status": "ok",
+      "turns_completed": 8
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "best_median_ttft_ms": 51.11599148949608,
+    "comparison_count": 1,
+    "failed_runs": 0,
+    "ok_runs": 2,
+    "total_runs": 2
+  }
+}
