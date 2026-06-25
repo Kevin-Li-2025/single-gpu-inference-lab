@@ -40,6 +40,9 @@ def test_multiturn_kv_pressure_uses_streaming_openai_endpoint():
     assert "summarize_kv_pressure.py" in matrix
     assert "late_over_first_ttft" in summary
     assert "best_median_ttft_ms" in summary
+    assert "build_comparisons" in summary
+    assert "median_ttft_speedup_fp8_over_auto" in summary
+    assert "last_turn_ttft_speedup_fp8_over_auto" in summary
 
 
 def test_next_improvement_doc_tracks_all_five_workstreams():

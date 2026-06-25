@@ -234,3 +234,21 @@ With prefix caching enabled, FP8 KV improves median TTFT by about 20% and also
 slightly improves median E2E. This is now the strongest serving-level evidence
 for continuing the L20 KV-compression line: the target workload should be
 cached long prefixes with repeated short turns, not raw no-cache decode.
+
+16K cached-prefix follow-up:
+
+```text
+benchmarks/results/l20-kv-pressure/qwen3-pressure-16k-prefix-v1/kv-pressure-summary.json
+Qwen3-0.6B, max_model_len=32768, turns=8, prefix_chars=16384, output_tokens=16
+prefix_cache=1
+BF16/auto KV: median TTFT 61.23 ms, median E2E 243.37 ms
+FP8 KV:       median TTFT 61.27 ms, median E2E 261.85 ms
+```
+
+The FP8 advantage does not grow monotonically with prefix length. At 16K it is
+TTFT-neutral and E2E-negative, even though the first turn is slightly faster.
+The combined summary in
+`benchmarks/results/l20-kv-pressure/qwen3-cached-prefix-summary-v1.json` shows
+an 8K sweet spot on this shared L20 run: FP8 gives 1.25x median TTFT and 1.41x
+last-turn TTFT at 8K, but only 1.00x and 0.95x at 16K. The next gate is repeated
+8K cached-prefix runs, not a new quantized KV kernel yet.

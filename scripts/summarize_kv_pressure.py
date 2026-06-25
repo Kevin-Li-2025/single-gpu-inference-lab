@@ -66,6 +66,77 @@ def summarize_run_dir(run_dir: Path) -> dict:
     return summarize_success(run_dir, load_json(candidates[0]), metadata)
 
 
+def workload_key(report: dict) -> tuple:
+    metadata = report.get("metadata", {})
+    return (
+        metadata.get("model"),
+        metadata.get("served_name"),
+        metadata.get("prefix_caching"),
+        metadata.get("prefix_chars"),
+        metadata.get("turns"),
+        metadata.get("max_tokens"),
+        metadata.get("max_model_len"),
+        metadata.get("attention_backend"),
+    )
+
+
+def ratio(numerator: float | None, denominator: float | None) -> float | None:
+    if numerator is None or denominator in (None, 0):
+        return None
+    return numerator / denominator
+
+
+def build_comparisons(reports: list[dict]) -> list[dict]:
+    comparisons = []
+    groups: dict[tuple, dict[str, dict]] = {}
+    for report in reports:
+        if report.get("status") != "ok":
+            continue
+        kv_dtype = report.get("metadata", {}).get("kv_cache_dtype")
+        if kv_dtype is None:
+            continue
+        groups.setdefault(workload_key(report), {})[kv_dtype] = report
+
+    for key, rows in sorted(groups.items(), key=lambda item: repr(item[0])):
+        baseline = rows.get("auto")
+        fp8 = rows.get("fp8")
+        if not baseline or not fp8:
+            continue
+        comparisons.append(
+            {
+                "workload_key": {
+                    "model": key[0],
+                    "served_name": key[1],
+                    "prefix_caching": key[2],
+                    "prefix_chars": key[3],
+                    "turns": key[4],
+                    "max_tokens": key[5],
+                    "max_model_len": key[6],
+                    "attention_backend": key[7],
+                },
+                "baseline_kv_cache_dtype": "auto",
+                "candidate_kv_cache_dtype": "fp8",
+                "median_ttft_speedup_fp8_over_auto": ratio(
+                    baseline.get("median_ttft_ms"),
+                    fp8.get("median_ttft_ms"),
+                ),
+                "median_e2e_speedup_fp8_over_auto": ratio(
+                    baseline.get("median_e2e_ms"),
+                    fp8.get("median_e2e_ms"),
+                ),
+                "last_turn_ttft_speedup_fp8_over_auto": ratio(
+                    baseline.get("last_turn_ttft_ms"),
+                    fp8.get("last_turn_ttft_ms"),
+                ),
+                "first_turn_ttft_speedup_fp8_over_auto": ratio(
+                    baseline.get("first_turn_ttft_ms"),
+                    fp8.get("first_turn_ttft_ms"),
+                ),
+            }
+        )
+    return comparisons
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("paths", nargs="+", type=Path)
@@ -93,13 +164,16 @@ def main() -> int:
                 reports.append(summarize_run_dir(path))
 
     ok_reports = [row for row in reports if row["status"] == "ok"]
+    comparisons = build_comparisons(reports)
     result = {
         "schema_version": 1,
         "reports": reports,
+        "comparisons": comparisons,
         "summary": {
             "total_runs": len(reports),
             "ok_runs": len(ok_reports),
             "failed_runs": len(reports) - len(ok_reports),
+            "comparison_count": len(comparisons),
             "best_median_ttft_ms": min(
                 (row["median_ttft_ms"] for row in ok_reports if row["median_ttft_ms"] is not None),
                 default=None,
