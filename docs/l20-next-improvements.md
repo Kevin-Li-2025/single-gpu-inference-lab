@@ -590,3 +590,35 @@ overhead is about 3-5% in the high-confidence B16 cases, which is small enough
 to justify a vLLM prototype. The next gate is no longer a synthetic contiguous
 layout; it is a scheduler hook that groups requests by shared prefix-cache block
 chain and reports real TPOT/ITL.
+
+vLLM import-path dispatch smoke:
+
+```bash
+PYTHONPATH=/home/hhai/l20-stack:/home/hhai/l20-stack/src:/home/hhai/vllm-l20-upstream \
+  /home/hhai/venvs/vllm-l20/bin/python integrations/vllm/install_l20_shared_prefix_decode.py
+
+VLLM_ENABLE_L20_SHARED_PREFIX_DECODE=1 \
+PYTHONPATH=/home/hhai/vllm-l20-upstream:/home/hhai/l20-stack:/home/hhai/l20-stack/src \
+  /home/hhai/venvs/vllm-l20/bin/python scripts/smoke_vllm_l20_shared_prefix_decode.py \
+  --batch 8 \
+  --prefix-length 4096 \
+  --suffix-length 64 \
+  --output benchmarks/results/l20-shared-prefix-vllm-dispatch/smoke-b8-p4k-s64.json
+```
+
+```text
+benchmarks/results/l20-shared-prefix-vllm-dispatch/smoke-b8-p4k-s64.json
+import_path: vllm.v1.attention.ops.l20_shared_prefix_decode_dispatch
+should_dispatch: true
+groups: [[0, 1, 2, 3, 4, 5, 6, 7]]
+correct: true
+max_abs_error: 0.00048828125
+```
+
+This validates the vLLM-facing boundary without patching the backend yet:
+`install_l20_shared_prefix_decode.py` copies the decode op and dispatch helper
+into `vllm.v1.attention.ops`, the dispatch gate groups an all-shared-prefix
+batch by identical prefix block chain, and the vLLM import path calls the L20
+paged prefix+suffix kernel correctly. The remaining work is the real backend
+hook: feed prefix-cache block tables and suffix KV from vLLM's decode metadata,
+then compare TPOT/ITL with tracing enabled.
