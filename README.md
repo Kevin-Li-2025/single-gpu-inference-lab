@@ -127,6 +127,9 @@ production paths unless their policy function enables them.
   training results.
 - `docs/l20-next-improvements.md` turns the next five optimization directions
   into executable scripts, gates, and benchmark outputs.
+- `docs/l20-top-tier-kernel-gaps.md` lists the remaining gaps before this can
+  be called a top-tier kernel project: profiling figures, deeper CUDA operator
+  coverage, and upstream PRs.
 - `docs/roadmap.md` contains the broader v0.1 to v1.0 roadmap.
 
 ## Repository Policy
@@ -140,9 +143,9 @@ production paths unless their policy function enables them.
 
 ## Current Next Step
 
-The strongest next technical target is not another split-decode FP8 tweak. The
-measured FP8 path already shows the boundary: avoiding materialized dequant is
-necessary, but not sufficient. The next useful implementation should fuse FP8
-dequantization into a production-quality paged attention kernel boundary, where
-K/V tile load, dequant, QK, online softmax, PV, and rescale are scheduled
-together.
+The strongest next technical target is to turn the current kernel evidence into
+a professional systems artifact: complete Nsight/roofline/occupancy figures,
+one deeper CUDA serving boundary such as FlashAttention/PagedAttention/MoE
+routing/grouped GEMM, and one small upstream PR to vLLM, FlashInfer, or
+TensorRT-LLM. The FP8 paged-attention line remains important, but it should now
+be judged by those gates rather than another isolated microbenchmark.

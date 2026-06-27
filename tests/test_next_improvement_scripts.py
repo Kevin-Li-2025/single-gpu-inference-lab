@@ -61,6 +61,24 @@ def test_next_improvement_doc_tracks_all_five_workstreams():
     assert "Multi-Turn KV Pressure Benchmark" in doc
 
 
+def test_top_tier_gap_doc_tracks_profiling_cuda_and_upstream():
+    doc = Path("docs/l20-top-tier-kernel-gaps.md").read_text()
+    readme = Path("README.md").read_text()
+    assert "Complete Profiling Package" in doc
+    assert "Nsight Systems timeline" in doc
+    assert "Nsight Compute roofline" in doc
+    assert "Occupancy report" in doc
+    assert "Warp-stall breakdown" in doc
+    assert "Shared-memory table" in doc
+    assert "FlashAttention-style decode/prefill" in doc
+    assert "PagedAttention" in doc
+    assert "MoE routing" in doc
+    assert "Grouped GEMM" in doc
+    assert "Upstream Track" in doc
+    assert "vLLM" in doc and "FlashInfer" in doc and "TensorRT-LLM" in doc
+    assert "docs/l20-top-tier-kernel-gaps.md" in readme
+
+
 def test_qk_norm_benchmark_can_import_repo_local_kernel():
     source = Path("scripts/benchmark_qk_norm_rope_kv.py").read_text()
     assert "import_source" in source
