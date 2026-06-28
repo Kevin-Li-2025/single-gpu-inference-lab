@@ -168,6 +168,14 @@ For the full evidence run, use
 hook into a vLLM source checkout, runs the serving matrix, and emits
 `campaign-summary.json` plus a per-campaign `README.md`.
 
+The first kernel implementation is intentionally still outside vLLM:
+`scripts/benchmark_l20_topk_topp_sampling.py` compares a self-written L20
+two-stage top-k/top-p sampler against PyTorch, CPU round-trip, and FlashInfer.
+It uses caller-provided GPU uniforms so correctness can be exact before wiring
+the path to vLLM's RNG/Philox state. The gate for a serving patch is simple:
+beat or explain the FlashInfer fused sampler baseline on L20, then connect the
+same algorithm at the traced logits boundary.
+
 ## 4. Spec Decode Acceptance-Rate Study
 
 New entries:

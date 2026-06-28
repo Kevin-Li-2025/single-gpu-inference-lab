@@ -35,7 +35,7 @@ those negative results because they are the useful part of the L20 study.
 | RoPE + KV-cache append | Strong kernel win, small serving win | Paged append is 2.37x-7.82x faster than FlashInfer/vLLM write-path baselines on measured cases, but full vLLM ITL improves only about 0.46%-0.72% under the safe gate. |
 | Q/K norm + RoPE + KV write | Proven O2 hook, small serving win | The L20 fused microkernel is correct and 1.26x-1.47x faster than vLLM's fused QK-norm/RoPE plus cache-write boundary for 1-64 tokens. With vLLM compile cache disabled, Nsight Systems now captures 1,260 custom kernel instances in a Qwen3-0.6B O2 i512/o16 serving run. Median ITL improves 4.52% in the paired 3-run matrix, but the custom kernel is only 1.6% of GPU kernel time, so the end-to-end win is Amdahl-limited. |
 | Residual RMSNorm | Shape-gated | Custom fused path is useful only above the measured hidden-size crossover; smaller shapes stay on the baseline path. |
-| GPU sampling | Real serving signal | FlashInfer top-k/top-p sampling improves Qwen2.5-Coder-1.5B ITL by about 2%-6% in the measured c1/c4/c16 regimes. A serving-level Nsight Systems profile confirms 270 matched sampler kernel instances and shows the next high-value boundary is logits/sampler fusion, not a standalone FlashInfer replacement. |
+| GPU sampling | Custom L20 win for small decode batch | The self-written two-stage top-k/top-p sampler beats FlashInfer 0.6.12 by 1.51x at batch 1 and 1.17x at batch 4 on Qwen-sized vocab. It loses from batch 8 upward, so the measured dispatch gate is custom for batch <=4 and FlashInfer otherwise. |
 | LM-head top-k boundary | Negative but useful | A Qwen2.5-Coder-1.5B-shaped probe shows chunked no-full-logits top-k is still 1.10x-2.28x slower than full logits + `torch.topk`, and the best experimental Triton direct top-1 path is 1.02x slower than full logits top-1. A real win likely needs GEMM epilogue integration, not a standalone replacement kernel. |
 | Serving optimization ceiling | Active gate | NSYS family summaries show GEMM/GEMV reaches 62.10% of GPU kernel time, while standalone sampling reaches only 3.42% and the current custom Q/K/RoPE/KV kernel 1.58%. The next P0 target is a production GEMM/GEMV epilogue or upstream logits boundary, not another isolated sampler or QK microkernel. |
 | FP8 KV-cache decode | Correct, not production-ready | Fused FP8 dequant beats materializing K/V, but current CUDA/Triton split-decode kernels are still slower than BF16 predequantized attention, so vLLM dispatch is disabled. |
@@ -182,8 +182,13 @@ production paths unless their policy function enables them.
   target onto concrete vLLM source patch points and a conservative first gate.
 - `integrations/vllm/install_l20_logits_boundary_trace.py` installs the
   behavior-preserving trace hook for the first safe logits-boundary gate.
+- `scripts/summarize_l20_logits_boundary_trace.py` summarizes trace JSONL into
+  eligible/fallback counts.
 - `scripts/run_vllm_l20_logits_boundary_trace_campaign.sh` runs the real vLLM
   serving trace campaign and emits per-shape serving reports plus gate summaries.
+- `scripts/benchmark_l20_topk_topp_sampling.py` benchmarks the first self-written
+  L20 top-k/top-p sampling prototype against PyTorch, CPU round-trip, and
+  FlashInfer.
 - `docs/l20-operator-research.md` tracks operator-level experiments and raw
   benchmark interpretation.
 - `docs/l20-hybrid-tree-attention.md` covers speculative decoding and
@@ -211,10 +216,9 @@ production paths unless their policy function enables them.
 The strongest next technical target is a production GEMM/GEMV epilogue or
 upstream logits boundary for sampling/top-k state. The measured ceiling is much
 larger there than for standalone sampler kernels or another isolated Q/K/RoPE/KV
-microkernel. The current implementation step is the trace-only vLLM patch around
-`GPUModelRunner.sample()`: set `VLLM_L20_LOGITS_BOUNDARY_TRACE=/tmp/trace.jsonl`
-to record when a safe logits-boundary fast path would fire, then summarize it
-with `scripts/summarize_l20_logits_boundary_trace.py`, or run the full serving
-campaign via `scripts/run_vllm_l20_logits_boundary_trace_campaign.sh`. P1 work
-is CUDA graph/launch/memcpy reduction and isolating the
-large fill/bookkeeping kernels in vLLM serving timelines.
+microkernel. The trace matrix shows about 94.7% decode eligibility across
+Qwen3-0.6B, Qwen3-1.7B, and Qwen2.5-Coder-1.5B. The current kernel step is
+`scripts/benchmark_l20_topk_topp_sampling.py`, a narrow L20 two-stage
+top-k/top-p sampler prototype. It must beat or explain the FlashInfer baseline
+before any serving integration claim. P1 work is then the vLLM logits-boundary
+integration and CUDA graph/launch/memcpy reduction around the sampler boundary.

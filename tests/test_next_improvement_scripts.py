@@ -183,8 +183,10 @@ def test_serving_optimization_ceiling_tracks_next_target():
     campaign_summary = Path(
         "scripts/summarize_l20_logits_boundary_campaign.py"
     ).read_text()
+    topk_topp_bench = Path("scripts/benchmark_l20_topk_topp_sampling.py").read_text()
     readme = Path("README.md").read_text()
     doc = Path("docs/l20-next-improvements.md").read_text()
+    research = Path("docs/l20-operator-research.md").read_text()
     report = Path("benchmarks/results/l20-serving-optimization-ceiling/README.md").read_text()
     scout_report = Path(
         "benchmarks/results/l20-vllm-logits-boundary-scout/README.md"
@@ -201,6 +203,8 @@ def test_serving_optimization_ceiling_tracks_next_target():
     assert "logits-boundary-trace.jsonl" in trace_campaign
     assert "campaign-summary.json" in trace_campaign
     assert "serving_report_count" in campaign_summary
+    assert "topk_topp_sample_from_uniform_out" in topk_topp_bench
+    assert "flashinfer_topk_topp_from_logits" in topk_topp_bench
     assert "production GEMM/GEMV epilogue" in report
     assert "standalone sampling kernels" in report
     assert "GPUModelRunner.sample" in scout_report
@@ -210,9 +214,12 @@ def test_serving_optimization_ceiling_tracks_next_target():
     assert "install_l20_logits_boundary_trace.py" in readme
     assert "summarize_l20_logits_boundary_trace.py" in readme
     assert "run_vllm_l20_logits_boundary_trace_campaign.sh" in readme
+    assert "benchmark_l20_topk_topp_sampling.py" in readme
     assert "upstream GEMM/GEMV epilogue" in doc
     assert "install_l20_logits_boundary_trace.py" in doc
     assert "run_vllm_l20_logits_boundary_trace_campaign.sh" in doc
+    assert "benchmark_l20_topk_topp_sampling.py" in doc
+    assert "GPU-Side Sampling V2" in research
 
 
 def test_paged_decode_rfc_campaign_tracks_o2_and_flashinfer():

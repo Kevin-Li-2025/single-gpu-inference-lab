@@ -96,6 +96,8 @@ def configure_flashinfer_cuda13_env(required: bool = True) -> Optional[FlashInfe
     version = _nvcc_version(nvcc)
     old_path = os.environ.get("PATH", "")
     bin_path = str(root / "bin")
+    python_bin_path = str(Path(sys.executable).parent)
+    path_entries = [entry for entry in old_path.split(os.pathsep) if entry]
     changed = False
     if os.environ.get("CUDA_HOME") != str(root):
         os.environ["CUDA_HOME"] = str(root)
@@ -103,8 +105,13 @@ def configure_flashinfer_cuda13_env(required: bool = True) -> Optional[FlashInfe
     if os.environ.get("CUDACXX") != str(nvcc):
         os.environ["CUDACXX"] = str(nvcc)
         changed = True
-    if not old_path.split(os.pathsep) or old_path.split(os.pathsep)[0] != bin_path:
-        os.environ["PATH"] = bin_path + os.pathsep + old_path
+    desired_path = []
+    for entry in (bin_path, python_bin_path, *path_entries):
+        if entry not in desired_path:
+            desired_path.append(entry)
+    new_path = os.pathsep.join(desired_path)
+    if os.environ.get("PATH", "") != new_path:
+        os.environ["PATH"] = new_path
         changed = True
     return FlashInferCudaEnv(
         cuda_home=str(root),

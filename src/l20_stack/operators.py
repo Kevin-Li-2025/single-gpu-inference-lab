@@ -11,7 +11,10 @@ from l20_stack.ops.triton_rmsnorm import (
     rmsnorm_launch_config,
 )
 from l20_stack.ops.triton_rope_kv import rope_kv_launch_config
-from l20_stack.ops.triton_sampling import greedy_sampling_launch_config
+from l20_stack.ops.triton_sampling import (
+    greedy_sampling_launch_config,
+    topk_topp_sampling_launch_config,
+)
 
 
 @dataclass(frozen=True)
@@ -140,6 +143,17 @@ def gpu_sampling_arithmetic_intensity(shape: OperatorShape) -> float:
     return (shape.rows * shape.hidden_size) / gpu_sampling_minimum_bytes(shape)
 
 
+def gpu_topk_topp_sampling_arithmetic_intensity(
+    shape: OperatorShape,
+    top_k: int,
+) -> float:
+    # The first L20 stochastic sampler scans logits once, then repeatedly
+    # reduces top-k candidates. This is a policy-level estimate, not a claim
+    # about tensor-core utilization.
+    flops = shape.rows * shape.hidden_size * max(top_k, 1)
+    return flops / gpu_sampling_minimum_bytes(shape)
+
+
 def plan_operator(target: OperatorTarget) -> OperatorPlan:
     name = target.name.lower()
     shape = target.shape
@@ -261,6 +275,37 @@ def plan_operator(target: OperatorTarget) -> OperatorPlan:
                 "Use a GPU-side greedy sampler for top_k=1 decode paths before "
                 "moving logits to CPU. Extend this path to top-k multinomial only "
                 "after measuring the deterministic fast path under vLLM."
+            ),
+            launch=launch,
+        )
+
+    if name == "gpu_topk_topp_sampling":
+        top_k = 50
+        intensity = gpu_topk_topp_sampling_arithmetic_intensity(shape, top_k)
+        launch = topk_topp_sampling_launch_config(
+            shape.hidden_size,
+            top_k,
+            batch=shape.rows,
+        ).to_dict()
+        launch.update(
+            {
+                "minimum_device_bytes": gpu_sampling_minimum_bytes(shape),
+                "target": "fuse_topk_topp_multinomial_without_cpu_roundtrip",
+                "supported_top_k_max": 64,
+                "default_top_k": top_k,
+                "default_top_p": 0.9,
+            }
+        )
+        return OperatorPlan(
+            name=name,
+            shape=shape,
+            arithmetic_intensity_flops_per_byte=intensity,
+            roofline_class=classify_roofline(intensity, "fp16"),
+            priority=1,
+            recommendation=(
+                "Use the L20 two-stage top-k/top-p sampler for stochastic decode "
+                "paths after the logits-boundary gate confirms single-token decode "
+                "coverage. Compare against FlashInfer sampling before any serving claim."
             ),
             launch=launch,
         )

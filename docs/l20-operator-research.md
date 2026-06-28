@@ -468,6 +468,62 @@ With `top_k=50`, `top_p=0.9`, temperature 0.8, and vocab 151936:
 | 64 | 0.3461 ms | 0.2048 ms | 18.2607 ms | 1.69x | 89.16x |
 
 This establishes the baseline for any custom L20 stochastic sampler. A local
+custom sampler must beat or explain these FlashInfer numbers before it can be
+treated as a serving optimization rather than a correctness/control kernel.
+
+### GPU-Side Sampling V2: L20 Top-k/Top-p Prototype
+
+The first self-written stochastic sampler is implemented in
+`src/l20_stack/ops/triton_sampling.py` and benchmarked by
+`scripts/benchmark_l20_topk_topp_sampling.py`. The gate is deliberately narrow:
+batch <= 64, vocab <= 262144, `2 <= top_k <= 64`, positive temperature, and
+`0 < top_p <= 1`.
+
+The algorithm is two-stage:
+
+1. one Triton program per `(batch row, vocab tile)` selects the local top-k
+   candidates and writes `(value, token)` partials;
+2. one reduce/sample program per row merges all tile candidates, applies
+   top-p over the sorted top-k probabilities, and samples from a caller-provided
+   GPU uniform.
+
+The caller-provided uniform is intentional. It gives an exact deterministic
+PyTorch reference before connecting the kernel to vLLM's RNG/Philox state. This
+is still a standalone prototype; serving claims require wiring it to the traced
+logits boundary and comparing real ITL against FlashInfer sampling.
+
+The first L20 policy is batch-aware: batch sizes 1 through 4 use 2048-token
+vocab tiles to reduce candidate metadata and launches, while larger batches keep
+1024-token tiles to preserve parallelism across rows. The measured profitability
+gate is narrower than correctness: prefer the custom kernel for batch <= 4 and
+fall back to FlashInfer for batch >= 8 until the batched reduce/sample path is
+rewritten.
+
+Benchmark command:
+
+```bash
+PYTHONPATH=src python scripts/benchmark_l20_topk_topp_sampling.py \
+  --batch 1 --vocab 151936 --top-k 50 --top-p 0.9 \
+  --temperature 0.8 \
+  --output benchmarks/results/l20-gpu-sampling/topk-topp-v2-b1-v151936.json
+```
+
+The same script can run `--batch 16` and `--batch 64` and, when FlashInfer is
+available, includes the CUDA-13 JIT FlashInfer fused-sampler baseline.
+
+Measured results:
+
+| batch | block vocab | Triton preallocated | FlashInfer fused | PyTorch GPU | CPU round-trip | vs FlashInfer |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 2048 | 0.0778 ms | 0.1178 ms | 0.2872 ms | 0.8189 ms | 1.51x |
+| 4 | 2048 | 0.1055 ms | 0.1239 ms | 0.2632 ms | 1.6541 ms | 1.17x |
+| 8 | 2048 | 0.1434 ms | 0.1270 ms | 0.2683 ms | 2.2722 ms | 0.89x |
+| 16 | 1024 | 0.2048 ms | 0.1311 ms | 0.2729 ms | 3.9890 ms | 0.64x |
+| 64 | 1024 | 0.5622 ms | 0.2109 ms | 0.3092 ms | 14.4788 ms | 0.38x |
+
+This is the first custom L20 stochastic sampler result that beats FlashInfer in
+a useful regime, but the claim is narrow: batch 1 to 4 only. Batch 8 and above
+must route to FlashInfer until the batched reduce/sample path is redesigned.
 Triton/CUDA sampler is only worth writing if it beats FlashInfer on the exact
 serving shapes or fuses with the logits producer to remove logits materialization
 entirely. Otherwise the right engineering work is vLLM integration: route L20

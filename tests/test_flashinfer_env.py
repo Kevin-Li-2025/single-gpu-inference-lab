@@ -37,4 +37,6 @@ def test_configure_flashinfer_cuda13_env_updates_build_vars(monkeypatch, tmp_pat
     assert env.changed
     assert flashinfer_env.os.environ["CUDA_HOME"] == str(root.resolve())
     assert flashinfer_env.os.environ["CUDACXX"] == str(nvcc.resolve())
-    assert flashinfer_env.os.environ["PATH"].split(":")[0] == str(root.resolve() / "bin")
+    path_entries = flashinfer_env.os.environ["PATH"].split(":")
+    assert path_entries[0] == str(root.resolve() / "bin")
+    assert path_entries[1] == str(Path(flashinfer_env.sys.executable).parent)

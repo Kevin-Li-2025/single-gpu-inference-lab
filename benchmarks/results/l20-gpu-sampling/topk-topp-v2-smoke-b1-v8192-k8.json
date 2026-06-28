@@ -1,0 +1,73 @@
+{
+  "cpu_roundtrip_topk_topp_from_uniform": {
+    "median_ms": 0.14034193009138107,
+    "p10_ms": 0.13037817552685738,
+    "p90_ms": 0.1535378396511078,
+    "samples_ms": [
+      0.14722207561135292,
+      0.13466808013617992,
+      0.1535378396511078,
+      0.14034193009138107,
+      0.13037817552685738
+    ]
+  },
+  "hardware": "NVIDIA L20",
+  "launch": {
+    "block_vocab": 1024,
+    "blocks_per_row": 8,
+    "num_stages": 1,
+    "num_warps": 4,
+    "strategy": "two_stage_topk_topp_from_uniform"
+  },
+  "ratios": {
+    "triton_preallocated_vs_cpu_roundtrip": 2.635628224027577,
+    "triton_preallocated_vs_torch_gpu": 4.461538622987227
+  },
+  "rounds": 5,
+  "schema_version": 1,
+  "shape": {
+    "batch": 1,
+    "dtype": "float16",
+    "temperature": 0.8,
+    "top_k": 8,
+    "top_p": 0.9,
+    "vocab": 8192
+  },
+  "torch_gpu_topk_topp_from_uniform": {
+    "median_ms": 0.23756800591945648,
+    "p10_ms": 0.21606400609016418,
+    "p90_ms": 0.2764799892902374,
+    "samples_ms": [
+      0.2764799892902374,
+      0.23756800591945648,
+      0.22118400037288666,
+      0.21606400609016418,
+      0.24883200228214264
+    ]
+  },
+  "triton_topk_topp_from_uniform": {
+    "median_ms": 0.0798719972372055,
+    "p10_ms": 0.07372800260782242,
+    "p90_ms": 0.12083200365304947,
+    "samples_ms": [
+      0.12083200365304947,
+      0.0798719972372055,
+      0.10035199671983719,
+      0.0798719972372055,
+      0.07372800260782242
+    ]
+  },
+  "triton_topk_topp_from_uniform_preallocated": {
+    "median_ms": 0.053247999399900436,
+    "p10_ms": 0.05222399905323982,
+    "p90_ms": 0.05632000043988228,
+    "samples_ms": [
+      0.05632000043988228,
+      0.05427199974656105,
+      0.05222399905323982,
+      0.053247999399900436,
+      0.05222399905323982
+    ]
+  },
+  "warmup": 3
+}
