@@ -1,0 +1,269 @@
+{
+  "ceiling": {
+    "p0_targets": [
+      {
+        "priority": "P0",
+        "reason": "GEMM/GEMV reaches 62.10% of GPU kernel time; this is the only measured boundary with a large compute-side ceiling.",
+        "target": "production GEMM/GEMV epilogue or upstream logits boundary"
+      },
+      {
+        "priority": "P0",
+        "reason": "The best standalone LM-head/top-k candidate is 1.022x of full logits, so it does not beat the optimized GEMM path.",
+        "target": "avoid standalone LM-head replacement"
+      }
+    ],
+    "recommendation_count": 6,
+    "stop_targets": [
+      {
+        "priority": "Stop",
+        "reason": "Sampling/logits-processor kernels peak at 3.42% of GPU time, so sampler-only work has a low Amdahl ceiling.",
+        "target": "standalone sampling kernels"
+      },
+      {
+        "priority": "Stop",
+        "reason": "The current custom L20 kernel peaks at 1.58% of GPU time; further work must remove adjacent kernels or launches.",
+        "target": "micro-optimizing the existing Q/K/RoPE/KV kernel alone"
+      }
+    ]
+  },
+  "complete": true,
+  "first_gate": [
+    "SM89/L20 opt-in flag only",
+    "tensor parallel size 1 before adding distributed reduction",
+    "decode path only; no prompt logprobs",
+    "no requested token logprobs and no raw/processed logits return",
+    "no structured-output grammar bitmask",
+    "no speculative rejection sampling",
+    "no per-request generators",
+    "simple top-k/top-p/temperature sampling before penalties/logit-bias support",
+    "fallback to existing compute_logits plus sampler for every unsupported request"
+  ],
+  "implementation_plan": [
+    {
+      "details": "Use the included Amdahl report as the numeric justification.",
+      "priority": "Evidence",
+      "ready": true,
+      "requires": [],
+      "step": "ceiling report is attached"
+    },
+    {
+      "details": "Introduce an opt-in path around GPUModelRunner.sample that can ask the model/logits processor for sampled-token state directly and fall back to compute_logits plus sampler.",
+      "priority": "P0",
+      "ready": true,
+      "requires": [
+        "gpu_model_runner_logits_to_sampler",
+        "logits_processor_lm_head"
+      ],
+      "step": "add a guarded logits-boundary API before writing a kernel"
+    },
+    {
+      "details": "Start with decode-only, TP=1, no logprobs, no grammar, no spec decode, no per-request generators, and simple top-k/top-p.",
+      "priority": "P0",
+      "ready": true,
+      "requires": [],
+      "step": "keep the first gate narrow"
+    },
+    {
+      "details": "Before CUTLASS work, land a patch that records when the safe gate would have fired and emits shapes/sampling params into a JSONL trace. This gives an upstreamable review surface.",
+      "priority": "P1",
+      "ready": true,
+      "requires": [
+        "gpu_model_runner_logits_to_sampler"
+      ],
+      "step": "prototype a trace-only vLLM patch"
+    },
+    {
+      "details": "Existing L20 boundary measurements show standalone chunked/top1 paths lose to full logits; the epilogue must preserve production GEMM/GEMV.",
+      "priority": "Stop",
+      "ready": true,
+      "requires": [],
+      "step": "do not replace the full LM-head GEMM with standalone Triton"
+    }
+  ],
+  "patch_points": [
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 3,
+      "id": "gpu_model_runner_logits_to_sampler",
+      "matched_needles": 3,
+      "matches": [
+        {
+          "line": 564,
+          "needle": "sample_hidden_states = hidden_states[input_batch.logits_indices]",
+          "text": "sample_hidden_states = hidden_states[input_batch.logits_indices]"
+        },
+        {
+          "line": 942,
+          "needle": "logits = self.model.compute_logits(sample_hidden_states)",
+          "text": "logits = self.model.compute_logits(sample_hidden_states)"
+        },
+        {
+          "line": 956,
+          "needle": "sampler_output = self.sampler(logits, input_batch)",
+          "text": "sampler_output = self.sampler(logits, input_batch)"
+        }
+      ],
+      "path": "vllm/v1/worker/gpu/model_runner.py",
+      "role": "common decode boundary: hidden states become full logits, then sampler consumes logits"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 4,
+      "id": "logits_processor_lm_head",
+      "matched_needles": 4,
+      "matches": [
+        {
+          "line": 19,
+          "needle": "class LogitsProcessor",
+          "text": "class LogitsProcessor(PluggableLayer):"
+        },
+        {
+          "line": 96,
+          "needle": "logits = lm_head.quant_method.apply(lm_head, hidden_states",
+          "text": "logits = lm_head.quant_method.apply(lm_head, hidden_states, bias=embedding_bias)"
+        },
+        {
+          "line": 99,
+          "needle": "logits = self._gather_logits(logits)",
+          "text": "logits = self._gather_logits(logits)"
+        },
+        {
+          "line": 106,
+          "needle": "def get_top_tokens(",
+          "text": "def get_top_tokens("
+        }
+      ],
+      "path": "vllm/model_executor/layers/logits_processor.py",
+      "role": "LM-head logits production and existing greedy-only local top-token shortcut"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 4,
+      "id": "v1_gpu_sampler_full_logits",
+      "matched_needles": 4,
+      "matches": [
+        {
+          "line": 133,
+          "needle": "logits = torch.empty_like(logits, dtype=torch.float32).copy_(logits)",
+          "text": "logits = torch.empty_like(logits, dtype=torch.float32).copy_(logits)"
+        },
+        {
+          "line": 159,
+          "needle": "self.sampling_states.apply_temperature(",
+          "text": "self.sampling_states.apply_temperature("
+        },
+        {
+          "line": 167,
+          "needle": "self.sampling_states.apply_top_k_top_p(",
+          "text": "return self.sampling_states.apply_top_k_top_p("
+        },
+        {
+          "line": 190,
+          "needle": "sampled = gumbel_sample(",
+          "text": "sampled = gumbel_sample("
+        }
+      ],
+      "path": "vllm/v1/worker/gpu/sample/sampler.py",
+      "role": "newer GPU sampler path copies and mutates full logits before sampling"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 4,
+      "id": "legacy_v1_sampler_full_logits",
+      "matched_needles": 4,
+      "matches": [
+        {
+          "line": 91,
+          "needle": "logits = logits.to(torch.float32)",
+          "text": "logits = logits.to(torch.float32)"
+        },
+        {
+          "line": 255,
+          "needle": "greedy_sampled = self.greedy_sample(logits)",
+          "text": "greedy_sampled = self.greedy_sample(logits)"
+        },
+        {
+          "line": 271,
+          "needle": "logits = self.apply_temperature(",
+          "text": "logits = self.apply_temperature("
+        },
+        {
+          "line": 97,
+          "needle": "sampled, processed_logprobs = self.sample(logits, sampling_metadata)",
+          "text": "sampled, processed_logprobs = self.sample(logits, sampling_metadata)"
+        }
+      ],
+      "path": "vllm/v1/sample/sampler.py",
+      "role": "legacy/common sampler path treats full logits as the required interface"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 3,
+      "id": "topk_topp_backend_contract",
+      "matched_needles": 3,
+      "matches": [
+        {
+          "line": 22,
+          "needle": "class TopKTopPSampler",
+          "text": "class TopKTopPSampler(nn.Module):"
+        },
+        {
+          "line": 46,
+          "needle": "Using FlashInfer for top-p & top-k sampling.",
+          "text": "\"Using FlashInfer for top-p & top-k sampling.\","
+        },
+        {
+          "line": 157,
+          "needle": "return flashinfer_sample(logits.contiguous(), k, p, generators), None",
+          "text": "return flashinfer_sample(logits.contiguous(), k, p, generators), None"
+        }
+      ],
+      "path": "vllm/v1/sample/ops/topk_topp_sampler.py",
+      "role": "FlashInfer sampler consumes contiguous full logits after LM-head materialization"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 4,
+      "id": "parallel_lm_head_weight",
+      "matched_needles": 4,
+      "matches": [
+        {
+          "line": 192,
+          "needle": "class VocabParallelEmbedding(PluggableLayer):",
+          "text": "class VocabParallelEmbedding(PluggableLayer):"
+        },
+        {
+          "line": 289,
+          "needle": "self.quant_method: QuantizeMethodBase = quant_method",
+          "text": "self.quant_method: QuantizeMethodBase = quant_method"
+        },
+        {
+          "line": 510,
+          "needle": "class ParallelLMHead(VocabParallelEmbedding)",
+          "text": "class ParallelLMHead(VocabParallelEmbedding):"
+        },
+        {
+          "line": 574,
+          "needle": "LMHead's weights should be used in the sampler.",
+          "text": "raise RuntimeError(\"LMHead's weights should be used in the sampler.\")"
+        }
+      ],
+      "path": "vllm/model_executor/layers/vocab_parallel_embedding.py",
+      "role": "LM-head weight and quantization abstraction that an epilogue hook must preserve"
+    }
+  ],
+  "schema_version": 1,
+  "source": {
+    "branch": "fix/cpu-sim-multi-numa-env",
+    "commit": "bac6fe9c3",
+    "dirty": true,
+    "path": "/Users/yinxiaogou/Documents/github/vllm",
+    "status_line_count": 5390
+  }
+}

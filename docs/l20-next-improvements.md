@@ -145,6 +145,16 @@ sampling-related implementation should be an upstream GEMM/GEMV epilogue or
 logits boundary that preserves the optimized LM-head path. See
 `benchmarks/results/l20-serving-optimization-ceiling/`.
 
+The upstream scout maps that target onto concrete vLLM files. The current local
+checkout shows `GPUModelRunner.sample()` computing full logits before calling
+the sampler, `LogitsProcessor._get_logits()` producing logits through
+`lm_head.quant_method.apply`, and the GPU sampler copying/mutating full logits
+before temperature/top-k/top-p/gumbel sampling. The first patch should be
+trace-only and narrow-gated: L20 opt-in, decode-only, TP=1, no logprobs, no
+grammar, no speculative rejection, no per-request generators, and simple
+top-k/top-p/temperature. See
+`benchmarks/results/l20-vllm-logits-boundary-scout/`.
+
 ## 4. Spec Decode Acceptance-Rate Study
 
 New entries:

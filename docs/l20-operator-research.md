@@ -618,6 +618,18 @@ with the LM-head boundary probe. It gives the current priority order:
 Artifact:
 `benchmarks/results/l20-serving-optimization-ceiling/`.
 
+The vLLM logits-boundary scout turns that priority into a concrete patch map.
+On the scanned local vLLM checkout, all six expected patch points are present:
+`GPUModelRunner.sample()` computes full logits and calls the sampler,
+`LogitsProcessor._get_logits()` calls `lm_head.quant_method.apply` and gathers
+logits, the newer GPU sampler copies logits to FP32 before applying
+temperature/top-k/top-p/gumbel sampling, the legacy sampler and FlashInfer
+top-k/top-p wrapper also consume full logits, and `ParallelLMHead` preserves the
+LM-head weight/quantization abstraction that an epilogue hook must not bypass.
+The checkout is dirty, so this is local static evidence, not a claim that a
+clean upstream PR applies unchanged. Artifact:
+`benchmarks/results/l20-vllm-logits-boundary-scout/`.
+
 ### V23 Tensor-Core Hypothesis Check
 
 FlashInfer exposes both CUDA-core decode and a tensor-core path. The wrapper

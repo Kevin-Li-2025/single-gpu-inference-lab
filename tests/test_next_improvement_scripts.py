@@ -171,16 +171,25 @@ def test_sampling_has_serving_nsys_timeline_entrypoint():
 
 def test_serving_optimization_ceiling_tracks_next_target():
     source = Path("scripts/analyze_serving_optimization_ceiling.py").read_text()
+    scout = Path("scripts/scout_vllm_logits_boundary.py").read_text()
     readme = Path("README.md").read_text()
     doc = Path("docs/l20-next-improvements.md").read_text()
     report = Path("benchmarks/results/l20-serving-optimization-ceiling/README.md").read_text()
+    scout_report = Path(
+        "benchmarks/results/l20-vllm-logits-boundary-scout/README.md"
+    ).read_text()
     assert "GPU_BOUNDARIES" in source
     assert "gemm_or_gemv" in source
     assert "standalone_sampling" in source
     assert "amdahl_speedup" in source
+    assert "PATCH_POINTS" in scout
+    assert "gpu_model_runner_logits_to_sampler" in scout
     assert "production GEMM/GEMV epilogue" in report
     assert "standalone sampling kernels" in report
+    assert "GPUModelRunner.sample" in scout_report
+    assert "First Safe Gate" in scout_report
     assert "benchmarks/results/l20-serving-optimization-ceiling/README.md" in readme
+    assert "benchmarks/results/l20-vllm-logits-boundary-scout/README.md" in readme
     assert "upstream GEMM/GEMV epilogue" in doc
 
 
