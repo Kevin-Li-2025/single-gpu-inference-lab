@@ -14,6 +14,20 @@ def parse_args():
     parser.add_argument("--input-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--top-kernels", type=int, default=20)
+    parser.add_argument(
+        "--match-kernel",
+        action="append",
+        default=[],
+        help=(
+            "Kernel-name substring to count as the selected path. May be "
+            "passed more than once."
+        ),
+    )
+    parser.add_argument(
+        "--match-label",
+        default="matched",
+        help="Label used for the generic matched-kernel summary fields.",
+    )
     return parser.parse_args()
 
 
@@ -152,6 +166,7 @@ def main() -> int:
     gpu_trace = rows_with_times(raw["cuda_gpu_trace"])
 
     qk_needles = ("_l20_qk_norm_rope_kv_kernel", "l20_qk_norm_rope_kv")
+    match_needles = tuple(args.match_kernel)
     launch_needles = ("cudaLaunchKernel", "cuLaunchKernel", "cudaGraphLaunch")
     graph_needles = ("cudaGraphLaunch",)
 
@@ -173,6 +188,13 @@ def main() -> int:
         "top_nvtx_ranges_by_time": top_by_time(nvtx, args.top_kernels),
         "first_cuda_gpu_trace_rows": gpu_trace[: min(100, len(gpu_trace))],
     }
+    if match_needles:
+        summary["matched_kernel_label"] = args.match_label
+        summary["matched_kernel_needles"] = list(match_needles)
+        summary["matched_kernel_instance_count"] = count_matching(
+            kernels, match_needles
+        )
+        summary["matched_kernel_rows"] = rows_matching(kernels, match_needles)
     serialized = json.dumps(summary, indent=2, sort_keys=True)
     print(serialized)
     args.output.parent.mkdir(parents=True, exist_ok=True)

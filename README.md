@@ -33,9 +33,9 @@ those negative results because they are the useful part of the L20 study.
 | Area | Status | L20 result |
 | --- | --- | --- |
 | RoPE + KV-cache append | Strong kernel win, small serving win | Paged append is 2.37x-7.82x faster than FlashInfer/vLLM write-path baselines on measured cases, but full vLLM ITL improves only about 0.46%-0.72% under the safe gate. |
-| Q/K norm + RoPE + KV write | Promising larger boundary, serving hook not proven | The L20 fused microkernel is correct and 1.26x-1.47x faster than vLLM's fused QK-norm/RoPE plus cache-write boundary for 1-64 tokens. A full Qwen3-0.6B O2 serving matrix for vLLM's native QK fusion gate shows output throughput +1.62%, mean ITL -0.94%, and median ITL -1.22% overall, but the serving-level Nsight Systems timeline for the custom three-way hook shows 0 custom kernel instances under the current O2 path. |
+| Q/K norm + RoPE + KV write | Proven O2 hook, small serving win | The L20 fused microkernel is correct and 1.26x-1.47x faster than vLLM's fused QK-norm/RoPE plus cache-write boundary for 1-64 tokens. With vLLM compile cache disabled, Nsight Systems now captures 1,260 custom kernel instances in a Qwen3-0.6B O2 i512/o16 serving run. Median ITL improves 4.52% in the paired 3-run matrix, but the custom kernel is only 1.6% of GPU kernel time, so the end-to-end win is Amdahl-limited. |
 | Residual RMSNorm | Shape-gated | Custom fused path is useful only above the measured hidden-size crossover; smaller shapes stay on the baseline path. |
-| GPU sampling | Real serving signal | FlashInfer top-k/top-p sampling improves Qwen2.5-Coder-1.5B ITL by about 2%-6% in the measured c1/c4/c16 regimes. |
+| GPU sampling | Real serving signal | FlashInfer top-k/top-p sampling improves Qwen2.5-Coder-1.5B ITL by about 2%-6% in the measured c1/c4/c16 regimes. A serving-level Nsight Systems profile confirms 270 matched sampler kernel instances and shows the next high-value boundary is logits/sampler fusion, not a standalone FlashInfer replacement. |
 | FP8 KV-cache decode | Correct, not production-ready | Fused FP8 dequant beats materializing K/V, but current CUDA/Triton split-decode kernels are still slower than BF16 predequantized attention, so vLLM dispatch is disabled. |
 | Speculative verifier attention | Experimental | Custom causal verifier kernels improved direct latency, but real vLLM serving remains tied or slower than native FlashInfer. |
 | Kernel-coding QLoRA | Negative so far | Training runs are healthy, but held-out KernelBench `fast_0` is still 0/3. A handwritten ReLU control proves the evaluator path. |
@@ -119,6 +119,19 @@ scripts/run_vllm_l20_qk_norm_rope_kv_nsys_timeline.sh \
   /home/hhai/vllm-l20-rfc
 ```
 
+FlashInfer stochastic sampling timeline:
+
+```bash
+NSYS_BIN=/opt/nvidia/nsight-compute/2025.3.1/host/target-linux-x64/nsys \
+PYTHON=/home/hhai/venvs/vllm-l20/bin/python \
+INPUT_TOKENS=512 OUTPUT_TOKENS=32 MAX_CONCURRENCY=4 \
+scripts/run_vllm_l20_sampling_nsys_timeline.sh \
+  /home/hhai/models/Qwen2.5-Coder-1.5B-Instruct qwen25-coder-1p5b \
+  flashinfer \
+  benchmarks/results/nsys/sampling/qwen25-coder-1p5b-flashinfer-c4-i512-o32-v2 \
+  /home/hhai/vllm-l20-rfc
+```
+
 Speculative verifier and LongSpec-style tree attention:
 
 ```bash
@@ -150,6 +163,8 @@ production paths unless their policy function enables them.
   Nsight counters, and serving gates.
 - `benchmarks/results/nsys/qk-norm-rope-kv/README.md` contains the first
   serving-level Nsight Systems kernel-count and launch-sequence artifact.
+- `benchmarks/results/nsys/sampling/README.md` contains the serving-level
+  FlashInfer sampling timeline and CPU-sync evidence.
 - `docs/l20-operator-research.md` tracks operator-level experiments and raw
   benchmark interpretation.
 - `docs/l20-hybrid-tree-attention.md` covers speculative decoding and

@@ -545,6 +545,26 @@ top-k/top-p/multinomial. Artifacts:
 `benchmarks/results/l20-vllm-sampling-e2e-v2/qwen25-1p5b-torch/`, and
 `benchmarks/results/l20-vllm-sampling-e2e-v2/qwen25-1p5b-flashinfer/`.
 
+The serving-level Nsight Systems check makes the path proof concrete. With
+Qwen2.5-Coder-1.5B-Instruct, c4/i512/o32 stochastic requests, FlashInfer
+attention, `--generation-config vllm`, and FlashInfer sampler enabled, the
+timeline captures 270 matched sampler kernel instances:
+
+| kernel | instances | avg time | GPU time share |
+| --- | ---: | ---: | ---: |
+| `_topk_topp_kernel` | 2 | 4.242 ms | 0.7% |
+| `flashinfer::sampling::TopPSamplingFromProbKernel` | 134 | 38.420 us | 0.4% |
+| `flashinfer::sampling::RadixTopKMaskLogitsKernel_MultiCTA` | 134 | 27.755 us | 0.3% |
+
+The same timeline reports 348 `cudaEventSynchronize` calls, 153
+`cudaDeviceSynchronize` calls, and 3,134 `cudaMemcpyAsync` calls. These are not
+all sampler-specific, but they explain why the next sampler-oriented work
+should target a larger post-logits boundary. The current evidence supports
+hardening the FlashInfer route and then fusing logits production with
+top-k/top-p/multinomial; it does not support replacing FlashInfer's standalone
+sampler kernels. Artifact:
+`benchmarks/results/nsys/sampling/qwen25-coder-1p5b-flashinfer-c4-i512-o32-v2/`.
+
 ### V23 Tensor-Core Hypothesis Check
 
 FlashInfer exposes both CUDA-core decode and a tensor-core path. The wrapper

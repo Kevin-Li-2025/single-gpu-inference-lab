@@ -143,8 +143,30 @@ def test_qk_norm_rope_kv_has_serving_nsys_timeline_entrypoint():
     assert "cuda_gpu_trace" in source
     assert "summarize_nsys_timeline.py" in source
     assert "custom_qk_kernel_instance_count" in summary
+    assert "matched_kernel_instance_count" in summary
+    assert "--match-kernel" in summary
     assert "cuda_kernel_launch_api_count" in summary
     assert "top_cuda_kernels_by_time" in summary
+
+
+def test_sampling_has_serving_nsys_timeline_entrypoint():
+    source = Path("scripts/run_vllm_l20_sampling_nsys_timeline.sh").read_text()
+    assert "SAMPLER_MODE must be flashinfer or torch" in source
+    assert "VLLM_USE_FLASHINFER_SAMPLER" in source
+    assert "configure_flashinfer_cuda13_env" in source
+    assert "prewarm_flashinfer_sampling.py" in source
+    assert "--temperature" in source
+    assert "--top-p" in source
+    assert "--top-k" in source
+    assert "--trace=cuda,nvtx,osrt" in source
+    assert "--cuda-graph-trace=graph" in source
+    assert "cuda_gpu_kern_sum" in source
+    assert "cuda_gpu_trace" in source
+    assert "inspect_vllm_sampling_path.py" in source
+    assert "--match-label sampler" in source
+    assert "--match-kernel gumbel" in source
+    assert "matched_kernel_instance_count" in source
+    assert "REQUIRE_SAMPLER_KERNEL" in source
 
 
 def test_paged_decode_rfc_campaign_tracks_o2_and_flashinfer():
