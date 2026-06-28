@@ -1,0 +1,22 @@
+{
+  "attention_backend": "FLASHINFER",
+  "cuda_home": "/home/hhai/venvs/vllm-l20/bin/../lib/python3.12/site-packages/nvidia/cu13",
+  "cudacxx": "/home/hhai/venvs/vllm-l20/bin/../lib/python3.12/site-packages/nvidia/cu13/bin/nvcc",
+  "custom_qk_rope_kv_enabled": true,
+  "execution_mode": "o2",
+  "gpu_memory_utilization": 0.7,
+  "input_tokens": 512,
+  "max_concurrency": 1,
+  "max_model_len": 1024,
+  "model": "/home/hhai/models/Qwen3-0.6B",
+  "native_qk_norm_rope_fusion": false,
+  "native_rope_kvcache_fusion": false,
+  "nsys_bin": "/opt/nvidia/nsight-compute/2025.3.1/host/target-linux-x64/nsys",
+  "nsys_duration_seconds": 240,
+  "num_prompts": 8,
+  "output_tokens": 16,
+  "request_rate": "inf",
+  "schema_version": 1,
+  "served_name": "qwen3-l20-nsys",
+  "tmpdir": "/home/hhai/tmp/l20-nsys"
+}

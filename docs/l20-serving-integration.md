@@ -313,10 +313,13 @@ Per-shape interpretation:
 - Qwen3-1.7B is more stable: throughput improves +2.240% to +2.475% at c1/c4,
   while ITL is essentially flat.
 
-This is a real O2 serving integration of the custom L20 three-way path, but the
-system-level result is still low-single-digit.  The honest claim is "functional
-and modestly positive on Qwen3-1.7B, mixed on Qwen3-0.6B", not "industry-leading
-serving speedup".
+These metric deltas are useful as an env-gated serving comparison, but they are
+not enough to claim a proven O2 custom-kernel serving path.  The follow-up
+Nsight Systems timeline below found zero `_l20_qk_norm_rope_kv_kernel`
+instances in a real O2 run.  The honest claim is now narrower: the microkernel
+is correct and faster in isolation, while the current vLLM O2 hook still needs a
+compiler/custom-op boundary that survives graph capture and shows up in a
+serving timeline.
 
 Raw artifacts:
 
@@ -360,5 +363,46 @@ launch/occupancy dominated; the 512-token shape is the first credible
 medium-shape counter point and shows a real memory/LSU pipeline workload. All
 three profiles use 28 registers/thread and zero Tensor pipe, so register
 pressure and Tensor Core utilization are not the next Q/K+RoPE+KV target. The
-remaining profiling gap is a serving-level Nsight Systems timeline with kernel
+remaining profiling gap was a serving-level Nsight Systems timeline with kernel
 counts and NVTX names.
+
+### Serving-Level Nsight Systems Timeline
+
+The first real O2 serving timeline is now checked in under
+`benchmarks/results/nsys/qk-norm-rope-kv/qwen3-0p6b-o2-c1-i512-v1/`. It used
+Qwen3-0.6B, FlashInfer attention and sampling, input length 512, output length
+16, 8 prompts, max concurrency 1, `REQUEST_RATE=inf`, and vLLM O2/CUDA graph.
+The server completed 8/8 requests with mean TTFT 26.714 ms, median ITL 2.839
+ms, and output throughput 236.185 tok/s.
+
+Nsight Systems stats:
+
+| Metric | Value |
+| --- | ---: |
+| CUDA GPU kernel instances | 23,379 |
+| Unique CUDA GPU kernel names | 103 |
+| CUDA API calls | 85,948 |
+| Kernel launch API calls | 36,331 |
+| CUDA graph launches | 121 |
+| Custom `_l20_qk_norm_rope_kv_kernel` instances | 0 |
+| CUDA GPU trace rows | 26,962 |
+| NVTX summary rows | 2 |
+
+Top GPU time was PyTorch fill kernels, CUTLASS GEMMs, cuBLAS GEMV, Triton
+reductions, and FlashInfer paged prefill kernels.  The custom L20 Q/K norm +
+RoPE + KV write kernel did not appear in the serving timeline, even though the
+server log shows the `VLLM_L20_QK_ROPE_KV` env gate and native QK/RoPE fusion
+passes were disabled.  This reclassifies the current O2 hook as not yet proven
+at the kernel timeline level.
+
+The NVTX result is also limited. The first run captured `--trace=cuda,nvtx,osrt`
+but `nvtx_sum` only included CUB DeviceScan ranges. A second remote run passed
+`--enable-layerwise-nvtx-tracing`; the server log showed
+`enable_layerwise_nvtx_tracing=True`, but `nvtx_sum` still only reported the
+same CUB ranges.  A useful layerwise timeline will require direct sqlite
+inspection or a different export path.
+
+The next production gate is therefore strict: a future vLLM integration should
+only claim serving-level custom-kernel execution after this same Nsight Systems
+runner reports nonzero `_l20_qk_norm_rope_kv_kernel` instances and the raw
+serving report still passes.

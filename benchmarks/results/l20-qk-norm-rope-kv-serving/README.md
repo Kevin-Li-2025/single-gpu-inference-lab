@@ -48,9 +48,12 @@ Per-shape notes:
 - Qwen3-1.7B was more stable: throughput improved +2.240% to +2.475% across
   c1/c4, while mean/median ITL stayed essentially flat.
 
-The result is a real serving integration of the custom L20 three-way path, but
-it is still a low-single-digit system win.  It should not be described as an
-industry-leading serving kernel yet.
+The result is an env-gated O2 serving comparison, but it is not sufficient proof
+that the custom L20 three-way kernel executed in the production graph.  A later
+serving-level Nsight Systems timeline found zero
+`_l20_qk_norm_rope_kv_kernel` instances for the Qwen3-0.6B O2 path.  Until the
+timeline shows nonzero custom kernel instances, this should be described as a
+promising hook experiment, not an industry-leading serving kernel.
 
 ## Artifacts
 
@@ -59,10 +62,16 @@ industry-leading serving kernel yet.
 - Raw per-run serving reports live under each `qk-kv-off/` and `qk-kv-on/`
   directory.
 
-## Profiling Gap
+## Profiling Status
 
-Nsight Compute/Systems profiling is still open.  The tested L20 host does not
-currently expose `ncu` or `nsys` in `PATH`, so there is no honest kernel-count,
-occupancy, warp-stall, L2, DRAM, or timeline artifact for this serving path yet.
-Use `scripts/profile_kernel.sh` once Nsight Compute is installed on the L20
-host.
+Nsight Compute is available on the L20 host outside the default `PATH`, and
+deterministic kernel-counter profiles are checked in under
+`benchmarks/results/ncu/qk-norm-rope-kv/`.
+
+Nsight Systems is also available at
+`/opt/nvidia/nsight-compute/2025.3.1/host/target-linux-x64/nsys`.  The first
+serving-level timeline is checked in under
+`benchmarks/results/nsys/qk-norm-rope-kv/qwen3-0p6b-o2-c1-i512-v1/`.  It
+captured 23,379 CUDA GPU kernel instances, 36,331 kernel launch API calls, 121
+CUDA graph launches, and 0 custom QK/RoPE/KV kernel instances.  That 0-count is
+the current integration blocker.

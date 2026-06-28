@@ -33,7 +33,7 @@ those negative results because they are the useful part of the L20 study.
 | Area | Status | L20 result |
 | --- | --- | --- |
 | RoPE + KV-cache append | Strong kernel win, small serving win | Paged append is 2.37x-7.82x faster than FlashInfer/vLLM write-path baselines on measured cases, but full vLLM ITL improves only about 0.46%-0.72% under the safe gate. |
-| Q/K norm + RoPE + KV write | Promising larger boundary | The L20 fused microkernel is correct and 1.26x-1.47x faster than vLLM's fused QK-norm/RoPE plus cache-write boundary for 1-64 tokens. A full Qwen3-0.6B O2 serving matrix for vLLM's native QK fusion gate shows output throughput +1.62%, mean ITL -0.94%, and median ITL -1.22% overall, with a slight c16/1024 ITL regression. |
+| Q/K norm + RoPE + KV write | Promising larger boundary, serving hook not proven | The L20 fused microkernel is correct and 1.26x-1.47x faster than vLLM's fused QK-norm/RoPE plus cache-write boundary for 1-64 tokens. A full Qwen3-0.6B O2 serving matrix for vLLM's native QK fusion gate shows output throughput +1.62%, mean ITL -0.94%, and median ITL -1.22% overall, but the serving-level Nsight Systems timeline for the custom three-way hook shows 0 custom kernel instances under the current O2 path. |
 | Residual RMSNorm | Shape-gated | Custom fused path is useful only above the measured hidden-size crossover; smaller shapes stay on the baseline path. |
 | GPU sampling | Real serving signal | FlashInfer top-k/top-p sampling improves Qwen2.5-Coder-1.5B ITL by about 2%-6% in the measured c1/c4/c16 regimes. |
 | FP8 KV-cache decode | Correct, not production-ready | Fused FP8 dequant beats materializing K/V, but current CUDA/Triton split-decode kernels are still slower than BF16 predequantized attention, so vLLM dispatch is disabled. |
@@ -107,6 +107,18 @@ scripts/run_vllm_l20_qk_norm_rope_serving_matrix.sh \
   /home/hhai/vllm-l20-rfc
 ```
 
+Serving-level Nsight Systems timeline:
+
+```bash
+NSYS_BIN=/opt/nvidia/nsight-compute/2025.3.1/host/target-linux-x64/nsys \
+PYTHON=/home/hhai/venvs/vllm-l20/bin/python \
+EXECUTION_MODE=o2 ENABLE_LAYERWISE_NVTX=1 \
+scripts/run_vllm_l20_qk_norm_rope_kv_nsys_timeline.sh \
+  /home/hhai/models/Qwen3-0.6B qwen3-l20-nsys \
+  benchmarks/results/nsys/qk-norm-rope-kv/qwen3-0p6b-o2-c1-i512-v1 \
+  /home/hhai/vllm-l20-rfc
+```
+
 Speculative verifier and LongSpec-style tree attention:
 
 ```bash
@@ -136,6 +148,8 @@ production paths unless their policy function enables them.
   `7.82x` write-path kernel win becomes a marginal service gain.
 - `docs/l20-serving-integration.md` covers vLLM integration, CUDA Graphs,
   Nsight counters, and serving gates.
+- `benchmarks/results/nsys/qk-norm-rope-kv/README.md` contains the first
+  serving-level Nsight Systems kernel-count and launch-sequence artifact.
 - `docs/l20-operator-research.md` tracks operator-level experiments and raw
   benchmark interpretation.
 - `docs/l20-hybrid-tree-attention.md` covers speculative decoding and

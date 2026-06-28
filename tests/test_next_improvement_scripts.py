@@ -116,6 +116,32 @@ def test_qk_norm_rope_kv_has_deterministic_ncu_entrypoint():
     assert 'PYTHONPATH="$repo_pythonpath"' in source
 
 
+def test_qk_norm_rope_kv_has_serving_nsys_timeline_entrypoint():
+    source = Path("scripts/run_vllm_l20_qk_norm_rope_kv_nsys_timeline.sh").read_text()
+    summary = Path("scripts/summarize_nsys_timeline.py").read_text()
+    assert "find_nsys()" in source
+    assert "/opt/nvidia/nsight-compute/*/host/target-linux-x64/nsys" in source
+    assert "--trace=cuda,nvtx,osrt" in source
+    assert "--cuda-graph-trace=graph" in source
+    assert "VLLM_L20_QK_ROPE_KV=1" in source
+    assert "VLLM_L20_QK_ROPE_KV_TRACE" in source
+    assert "ENABLE_LAYERWISE_NVTX" in source
+    assert "--enable-layerwise-nvtx-tracing" in source
+    assert "L20_NSYS_TMPDIR" in source
+    assert "$HOME/tmp/l20-nsys" in source
+    assert "enable_qk_norm_rope_fusion\":false" in source
+    assert "fuse_rope_kvcache\":false" in source
+    assert "cuda_gpu_kern_sum" in source
+    assert "cuda_kern_exec_sum" in source
+    assert "cuda_api_sum" in source
+    assert "nvtx_sum" in source
+    assert "cuda_gpu_trace" in source
+    assert "summarize_nsys_timeline.py" in source
+    assert "custom_qk_kernel_instance_count" in summary
+    assert "cuda_kernel_launch_api_count" in summary
+    assert "top_cuda_kernels_by_time" in summary
+
+
 def test_paged_decode_rfc_campaign_tracks_o2_and_flashinfer():
     campaign = Path("scripts/run_vllm_l20_paged_decode_rfc_campaign.sh").read_text()
     matrix = Path("scripts/run_vllm_l20_paged_decode_rfc_matrix.sh").read_text()

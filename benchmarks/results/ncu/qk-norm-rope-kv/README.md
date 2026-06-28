@@ -103,5 +103,7 @@ The regimes are now separated:
   memory/LSU pipeline workload.
 
 Serving-level ITL claims must continue to use the checked-in vLLM benchmark
-matrix, not these isolated kernel counters. The next profiling step should be an
-Nsight Systems serving timeline with kernel counts and NVTX names.
+matrix, not these isolated kernel counters. The first Nsight Systems serving
+timeline is now checked in under `benchmarks/results/nsys/qk-norm-rope-kv/`;
+it found zero custom QK/RoPE/KV kernel instances in the current O2 path, so the
+next profiling step is an integration fix followed by the same timeline gate.
