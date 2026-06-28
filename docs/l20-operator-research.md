@@ -565,6 +565,29 @@ top-k/top-p/multinomial; it does not support replacing FlashInfer's standalone
 sampler kernels. Artifact:
 `benchmarks/results/nsys/sampling/qwen25-coder-1p5b-flashinfer-c4-i512-o32-v2/`.
 
+The first LM-head/top-k boundary probe is intentionally conservative and mostly
+negative. `scripts/benchmark_lm_head_topk_boundary.py` compares full logits
+materialization, chunked no-full-logits top-k, and an experimental Triton direct
+LM-head top-1 kernel. On the Qwen2.5-Coder-1.5B shape (`hidden=1536`,
+`vocab=151936`), the full logits tensor is only 0.29 MiB at batch 1 and 1.16
+MiB at batch 4, while the LM-head weight read is 445 MiB. Preserving the
+optimized GEMM path dominates.
+
+Measured results:
+
+| path | shape | median latency | comparison |
+| --- | --- | ---: | ---: |
+| Full logits + top-k | b4/h1536/v151936/k50 | 0.716 ms | baseline |
+| Best chunked top-k | b4/h1536/v151936/k50, chunk 131072 | 0.785 ms | 1.096x slower |
+| Full logits top-1 | b1/h1536/v151936/k1 | 0.660 ms | baseline |
+| Best Triton direct top-1 | b1/h1536/v151936/k1 | 0.675 ms | 1.022x slower |
+
+Conclusion: do not invest in a standalone Triton LM-head replacement or chunked
+top-k path. The only sampler/logits fusion that is likely to matter is a real
+GEMM epilogue or upstream integration that keeps the optimized LM-head kernel
+and emits top-k/top-p state from inside that path. Artifact:
+`benchmarks/results/l20-lm-head-topk-boundary/`.
+
 ### V23 Tensor-Core Hypothesis Check
 
 FlashInfer exposes both CUDA-core decode and a tensor-core path. The wrapper

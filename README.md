@@ -36,6 +36,7 @@ those negative results because they are the useful part of the L20 study.
 | Q/K norm + RoPE + KV write | Proven O2 hook, small serving win | The L20 fused microkernel is correct and 1.26x-1.47x faster than vLLM's fused QK-norm/RoPE plus cache-write boundary for 1-64 tokens. With vLLM compile cache disabled, Nsight Systems now captures 1,260 custom kernel instances in a Qwen3-0.6B O2 i512/o16 serving run. Median ITL improves 4.52% in the paired 3-run matrix, but the custom kernel is only 1.6% of GPU kernel time, so the end-to-end win is Amdahl-limited. |
 | Residual RMSNorm | Shape-gated | Custom fused path is useful only above the measured hidden-size crossover; smaller shapes stay on the baseline path. |
 | GPU sampling | Real serving signal | FlashInfer top-k/top-p sampling improves Qwen2.5-Coder-1.5B ITL by about 2%-6% in the measured c1/c4/c16 regimes. A serving-level Nsight Systems profile confirms 270 matched sampler kernel instances and shows the next high-value boundary is logits/sampler fusion, not a standalone FlashInfer replacement. |
+| LM-head top-k boundary | Negative but useful | A Qwen2.5-Coder-1.5B-shaped probe shows chunked no-full-logits top-k is still 1.10x-2.28x slower than full logits + `torch.topk`, and the best experimental Triton direct top-1 path is 1.02x slower than full logits top-1. A real win likely needs GEMM epilogue integration, not a standalone replacement kernel. |
 | FP8 KV-cache decode | Correct, not production-ready | Fused FP8 dequant beats materializing K/V, but current CUDA/Triton split-decode kernels are still slower than BF16 predequantized attention, so vLLM dispatch is disabled. |
 | Speculative verifier attention | Experimental | Custom causal verifier kernels improved direct latency, but real vLLM serving remains tied or slower than native FlashInfer. |
 | Kernel-coding QLoRA | Negative so far | Training runs are healthy, but held-out KernelBench `fast_0` is still 0/3. A handwritten ReLU control proves the evaluator path. |
@@ -130,6 +131,15 @@ scripts/run_vllm_l20_sampling_nsys_timeline.sh \
   flashinfer \
   benchmarks/results/nsys/sampling/qwen25-coder-1p5b-flashinfer-c4-i512-o32-v2 \
   /home/hhai/vllm-l20-rfc
+```
+
+LM-head/top-k boundary probe:
+
+```bash
+PYTHONPATH=src python scripts/benchmark_lm_head_topk_boundary.py \
+  --batch 4 --hidden 1536 --vocab 151936 --top-k 50 \
+  --chunk-vocab 131072 \
+  --output benchmarks/results/l20-lm-head-topk-boundary/qwen25-b4-h1536-v151936-k50-cv131072.json
 ```
 
 Speculative verifier and LongSpec-style tree attention:
