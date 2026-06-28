@@ -112,6 +112,14 @@ class L20SamplingTest(unittest.TestCase):
         spec = importlib.util.find_spec("l20_stack.ops.triton_sampling")
         self.assertIsNotNone(spec)
 
+    def test_vllm_rng_sampler_entrypoint_is_available(self):
+        spec = importlib.util.find_spec("l20_stack.ops.triton_sampling")
+        self.assertIsNotNone(spec)
+        source = open(spec.origin, encoding="utf-8").read()
+        self.assertIn("topk_topp_sample_with_vllm_rng_out", source)
+        self.assertIn("_topk_topp_reduce_sample_seed_kernel", source)
+        self.assertIn("tl.randint(seed, position)", source)
+
 
 if __name__ == "__main__":
     unittest.main()

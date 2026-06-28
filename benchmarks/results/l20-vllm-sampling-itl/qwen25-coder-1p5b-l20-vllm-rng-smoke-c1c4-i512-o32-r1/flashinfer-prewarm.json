@@ -1,0 +1,16 @@
+{
+  "flashinfer_cuda_env": {
+    "changed": false,
+    "cuda_home": "/home/hhai/venvs/vllm-l20/lib/python3.12/site-packages/nvidia/cu13",
+    "nvcc": "/home/hhai/venvs/vllm-l20/lib/python3.12/site-packages/nvidia/cu13/bin/nvcc",
+    "nvcc_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Wed_Aug_20_01:58:59_PM_PDT_2025\nCuda compilation tools, release 13.0, V13.0.88\nBuild cuda_13.0.r13.0/compiler.36424714_0"
+  },
+  "flashinfer_version": "0.6.12",
+  "hardware": "NVIDIA L20",
+  "output_dtype": "torch.int32",
+  "output_shape": [
+    1
+  ],
+  "schema_version": 1,
+  "status": "ok"
+}

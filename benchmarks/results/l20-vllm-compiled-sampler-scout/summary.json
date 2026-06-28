@@ -1,0 +1,420 @@
+{
+  "blockers": [
+    {
+      "evidence": "The L20 hook uses two Triton kernels after logits are already produced.",
+      "id": "standalone_triton_launches",
+      "requirement": "Move work into vLLM's compiled sampler path or fuse with the logits producer."
+    },
+    {
+      "evidence": "The prototype uses torch.rand uniforms instead of vLLM seed/position state.",
+      "id": "rng_not_vllm_stateful",
+      "requirement": "Reuse vLLM's Philox/seed/offset path before any serving claim."
+    },
+    {
+      "evidence": "The prototype checks shape and top-k/top-p values in Python for every call.",
+      "id": "python_gate_hot_path",
+      "requirement": "Keep policy decisions in request metadata or a compiled dispatch path."
+    },
+    {
+      "evidence": "vLLM materializes full logits before sampler dispatch.",
+      "id": "full_logits_materialization",
+      "requirement": "A high-ceiling win must attach to LM-head/GEMM epilogue or avoid an extra logits copy."
+    }
+  ],
+  "complete": true,
+  "implementation_plan": [
+    {
+      "details": "Real ITL regressed, so the hook is useful only as a negative artifact and path-proof harness.",
+      "priority": "P0",
+      "ready": true,
+      "step": "do not enable the standalone L20 sampler hook"
+    },
+    {
+      "details": "First extend active SamplingMetadata with request seed/position state; then patch TopKTopPSampler so a custom path can reuse vLLM RNG semantics without torch.rand or a stale worker hook.",
+      "priority": "P0",
+      "ready": false,
+      "step": "build a state-preserving compiled sampler prototype"
+    },
+    {
+      "details": "Run Nsight Systems with kernel-name matching and CUDA graph reports; a new sampler kernel outside graph capture is not a serving optimization.",
+      "priority": "P0",
+      "ready": false,
+      "step": "measure CUDA graph membership before claiming speed"
+    },
+    {
+      "details": "Attach to the optimized logits producer instead of replacing full LM-head GEMM/GEMV with standalone Triton.",
+      "priority": "P1",
+      "ready": true,
+      "step": "prototype a logits/LM-head epilogue boundary"
+    }
+  ],
+  "patch_points": [
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 3,
+      "id": "gpu_runner_logits_sampler_boundary",
+      "matched_needles": 3,
+      "matches": [
+        {
+          "line": 414,
+          "needle": "sample_hidden_states",
+          "text": "sample_hidden_states: torch.Tensor"
+        },
+        {
+          "line": 4367,
+          "needle": "self.model.compute_logits",
+          "text": "logits = self.model.compute_logits(sample_hidden_states)"
+        },
+        {
+          "line": 3593,
+          "needle": "self.sampler(",
+          "text": "return self.sampler("
+        }
+      ],
+      "optional": false,
+      "path": "vllm/v1/worker/gpu_model_runner.py",
+      "required_complete": true,
+      "role": "primary v1 boundary where logits are materialized before sampling"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 3,
+      "id": "legacy_gpu_runner_logits_sampler_boundary",
+      "matched_needles": 3,
+      "matches": [
+        {
+          "line": 631,
+          "needle": "sample_hidden_states = hidden_states[input_batch.logits_indices]",
+          "text": "sample_hidden_states = hidden_states[input_batch.logits_indices]"
+        },
+        {
+          "line": 1054,
+          "needle": "logits = self.model.compute_logits(sample_hidden_states)",
+          "text": "logits = self.model.compute_logits(sample_hidden_states)"
+        },
+        {
+          "line": 1067,
+          "needle": "sampler_output = self.sampler(logits, input_batch)",
+          "text": "sampler_output = self.sampler(logits, input_batch)"
+        }
+      ],
+      "optional": true,
+      "path": "vllm/v1/worker/gpu/model_runner.py",
+      "required_complete": true,
+      "role": "older GPU runner boundary kept for compatibility across vLLM checkouts"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 4,
+      "id": "worker_gpu_sampler_flashinfer_branch",
+      "matched_needles": 4,
+      "matches": [
+        {
+          "line": 209,
+          "needle": "processed_logits = self.apply_sampling_params(",
+          "text": "processed_logits = self.apply_sampling_params("
+        },
+        {
+          "line": 218,
+          "needle": "top_k, top_p = self.sampling_states.get_top_k_top_p(",
+          "text": "top_k, top_p = self.sampling_states.get_top_k_top_p("
+        },
+        {
+          "line": 252,
+          "needle": "sampled = flashinfer_sample(processed_logits, top_k, top_p).to(torch.int64)",
+          "text": "sampled = flashinfer_sample(processed_logits, top_k, top_p).to(torch.int64)"
+        },
+        {
+          "line": 255,
+          "needle": "sampled = gumbel_sample(",
+          "text": "sampled = gumbel_sample("
+        }
+      ],
+      "optional": false,
+      "path": "vllm/v1/worker/gpu/sample/sampler.py",
+      "required_complete": true,
+      "role": "active GPU sampler path with FlashInfer and native fallback branches"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 4,
+      "id": "active_v1_sampler_topk_topp_call",
+      "matched_needles": 4,
+      "matches": [
+        {
+          "line": 286,
+          "needle": "self.topk_topp_sampler(",
+          "text": "random_sampled, processed_logprobs = self.topk_topp_sampler("
+        },
+        {
+          "line": 288,
+          "needle": "sampling_metadata.generators",
+          "text": "sampling_metadata.generators,"
+        },
+        {
+          "line": 289,
+          "needle": "sampling_metadata.top_k",
+          "text": "sampling_metadata.top_k,"
+        },
+        {
+          "line": 290,
+          "needle": "sampling_metadata.top_p",
+          "text": "sampling_metadata.top_p,"
+        }
+      ],
+      "optional": false,
+      "path": "vllm/v1/sample/sampler.py",
+      "required_complete": true,
+      "role": "current v1 sampler call path used by serving before TopKTopPSampler"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 3,
+      "id": "active_v1_topk_topp_forward_cuda",
+      "matched_needles": 3,
+      "matches": [
+        {
+          "line": 148,
+          "needle": "def forward_cuda(",
+          "text": "def forward_cuda("
+        },
+        {
+          "line": 175,
+          "needle": "return flashinfer_sample(logits.contiguous(), k, p, generators), None",
+          "text": "return flashinfer_sample(logits.contiguous(), k, p, generators), None"
+        },
+        {
+          "line": 472,
+          "needle": "def flashinfer_sample(",
+          "text": "def flashinfer_sample("
+        }
+      ],
+      "optional": false,
+      "path": "vllm/v1/sample/ops/topk_topp_sampler.py",
+      "required_complete": true,
+      "role": "current CUDA sampler path; it does not receive request position or seed tensors"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 4,
+      "id": "active_v1_sampling_metadata_contract",
+      "matched_needles": 4,
+      "matches": [
+        {
+          "line": 15,
+          "needle": "class SamplingMetadata",
+          "text": "class SamplingMetadata:"
+        },
+        {
+          "line": 20,
+          "needle": "top_p: torch.Tensor | None",
+          "text": "top_p: torch.Tensor | None"
+        },
+        {
+          "line": 21,
+          "needle": "top_k: torch.Tensor | None",
+          "text": "top_k: torch.Tensor | None"
+        },
+        {
+          "line": 23,
+          "needle": "generators: dict[int, torch.Generator]",
+          "text": "generators: dict[int, torch.Generator]"
+        }
+      ],
+      "optional": false,
+      "path": "vllm/v1/sample/metadata.py",
+      "required_complete": true,
+      "role": "active sampler metadata contract; seed and position tensors are the missing extension"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 3,
+      "id": "worker_gpu_sampler_full_logits_copy",
+      "matched_needles": 3,
+      "matches": [
+        {
+          "line": 158,
+          "needle": "logits = torch.empty_like(logits, dtype=torch.float32).copy_(logits)",
+          "text": "logits = torch.empty_like(logits, dtype=torch.float32).copy_(logits)"
+        },
+        {
+          "line": 184,
+          "needle": "self.sampling_states.apply_temperature(",
+          "text": "self.sampling_states.apply_temperature("
+        },
+        {
+          "line": 189,
+          "needle": "self.sampling_states.apply_min_p(",
+          "text": "self.sampling_states.apply_min_p(logits, expanded_idx_mapping, idx_mapping_np)"
+        }
+      ],
+      "optional": false,
+      "path": "vllm/v1/worker/gpu/sample/sampler.py",
+      "required_complete": true,
+      "role": "full-logits FP32 copy and mutation before top-k/top-p sampling"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 3,
+      "id": "sampling_state_cpu_gpu_split",
+      "matched_needles": 3,
+      "matches": [
+        {
+          "line": 97,
+          "needle": "np.any(self.top_k.np[idx_mapping_np]",
+          "text": "do_top_k = np.any(self.top_k.np[idx_mapping_np] != self.vocab_size)"
+        },
+        {
+          "line": 99,
+          "needle": "top_k = self.top_k.gpu[expanded_idx_mapping] if do_top_k else None",
+          "text": "top_k = self.top_k.gpu[expanded_idx_mapping] if do_top_k else None"
+        },
+        {
+          "line": 117,
+          "needle": "def any_explicit_seed(",
+          "text": "def any_explicit_seed(self, idx_mapping_np: np.ndarray) -> bool:"
+        }
+      ],
+      "optional": false,
+      "path": "vllm/v1/worker/gpu/sample/states.py",
+      "required_complete": true,
+      "role": "CPU-side gate plus GPU tensors for top-k/top-p/seed state"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 4,
+      "id": "gumbel_rng_state_kernel",
+      "matched_needles": 4,
+      "matches": [
+        {
+          "line": 205,
+          "needle": "def gumbel_sample(",
+          "text": "def gumbel_sample("
+        },
+        {
+          "line": 209,
+          "needle": "seed: torch.Tensor",
+          "text": "seed: torch.Tensor,  # [max_num_reqs]"
+        },
+        {
+          "line": 226,
+          "needle": "_gumbel_sample_kernel[",
+          "text": "_gumbel_sample_kernel[(num_tokens, num_blocks)]("
+        },
+        {
+          "line": 128,
+          "needle": "tl.randint(seed, pos)",
+          "text": "gumbel_seed = tl.randint(seed, pos)"
+        }
+      ],
+      "optional": false,
+      "path": "vllm/v1/worker/gpu/sample/gumbel.py",
+      "required_complete": true,
+      "role": "existing graph-safe RNG/seed path that a custom sampler must reuse"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 3,
+      "id": "flashinfer_sampler_contract",
+      "matched_needles": 3,
+      "matches": [
+        {
+          "line": 472,
+          "needle": "def flashinfer_sample(",
+          "text": "def flashinfer_sample("
+        },
+        {
+          "line": 508,
+          "needle": "top_k_top_p_sampling_from_logits",
+          "text": "next_token_ids = flashinfer.sampling.top_k_top_p_sampling_from_logits("
+        },
+        {
+          "line": 267,
+          "needle": "deterministic=True",
+          "text": "deterministic=True,"
+        }
+      ],
+      "optional": false,
+      "path": "vllm/v1/sample/ops/topk_topp_sampler.py",
+      "required_complete": true,
+      "role": "current fused sampler contract and seed/offset-compatible baseline"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_needles": 3,
+      "id": "logits_processor_lm_head",
+      "matched_needles": 3,
+      "matches": [
+        {
+          "line": 19,
+          "needle": "class LogitsProcessor",
+          "text": "class LogitsProcessor(PluggableLayer):"
+        },
+        {
+          "line": 96,
+          "needle": "logits = lm_head.quant_method.apply(lm_head, hidden_states",
+          "text": "logits = lm_head.quant_method.apply(lm_head, hidden_states, bias=embedding_bias)"
+        },
+        {
+          "line": 99,
+          "needle": "logits = self._gather_logits(logits)",
+          "text": "logits = self._gather_logits(logits)"
+        }
+      ],
+      "optional": false,
+      "path": "vllm/model_executor/layers/logits_processor.py",
+      "required_complete": true,
+      "role": "LM-head/logits producer boundary; epilogue must preserve this optimized path"
+    }
+  ],
+  "rng_metadata_gap": {
+    "metadata_has_position_tensor": false,
+    "metadata_has_seed_tensor": false,
+    "notes": [
+      "The active v1 TopKTopPSampler path currently receives top_k, top_p, and generators only.",
+      "A state-preserving custom sampler needs seed/position metadata plumbed before performance benchmarking."
+    ],
+    "sampler_passes_rng_state": false,
+    "stateful_sampler_ready": false,
+    "topk_topp_ops_accepts_rng_state": true
+  },
+  "schema_version": 1,
+  "serving_evidence": {
+    "l20_notrace_deltas": {
+      "c1": {
+        "mean_itl_pct": 33.16605149706977,
+        "median_itl_pct": 32.36045369402194,
+        "median_ttft_pct": 23.923460323347847,
+        "output_throughput_pct": -21.700654763059678
+      },
+      "c4": {
+        "mean_itl_pct": 25.683753102528904,
+        "median_itl_pct": 32.058883717540155,
+        "median_ttft_pct": 27.713380891949726,
+        "output_throughput_pct": -21.936168374949048
+      }
+    },
+    "model": "Qwen2.5-Coder-1.5B-Instruct",
+    "path": "benchmarks/results/l20-vllm-sampling-itl/qwen25-coder-1p5b-summary.json",
+    "rejects_standalone_hook": true,
+    "shape": {}
+  },
+  "source": {
+    "branch": "l20-sm89-paged-decode-rfc",
+    "commit": "b81980aa5",
+    "dirty": true,
+    "path": "/home/hhai/vllm-l20-rfc",
+    "status_line_count": 12
+  }
+}

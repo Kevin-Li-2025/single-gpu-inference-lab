@@ -31,11 +31,27 @@ WORKER_PATCH_POINT = """        if use_flashinfer:
         else:
 """
 WORKER_PATCHED = """        if use_flashinfer:
-            sampled = flashinfer_sample(processed_logits, top_k, top_p).to(torch.int64)
-        else:
-            l20_sampled = maybe_l20_topk_topp_sample(processed_logits, top_k, top_p)
+            l20_top_k_values = self.sampling_states.top_k.np[idx_mapping_np]
+            l20_top_p_values = self.sampling_states.top_p.np[idx_mapping_np]
+            l20_top_k_uniform = bool((l20_top_k_values == l20_top_k_values[0]).all())
+            l20_top_p_uniform = bool((l20_top_p_values == l20_top_p_values[0]).all())
+            l20_sampled = None
+            if l20_top_k_uniform and l20_top_p_uniform:
+                l20_sampled = maybe_l20_topk_topp_sample(
+                    processed_logits,
+                    top_k,
+                    top_p,
+                    expanded_idx_mapping=expanded_idx_mapping,
+                    seeds=self.sampling_states.seeds.gpu,
+                    positions=pos,
+                    top_k_value=int(l20_top_k_values[0]),
+                    top_p_value=float(l20_top_p_values[0]),
+                )
             if l20_sampled is not None:
-                return l20_sampled, processed_logits
+                sampled = l20_sampled.to(torch.int64)
+            else:
+                sampled = flashinfer_sample(processed_logits, top_k, top_p).to(torch.int64)
+        else:
 """
 
 

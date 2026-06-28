@@ -51,3 +51,13 @@ def test_flashinfer_prewarm_reports_structured_errors():
     assert '"status": "error"' in source
     assert "traceback_tail" in source
     assert "return 1" in source
+
+
+def test_l20_prewarm_covers_vllm_rng_sampler_kernel():
+    source = Path("scripts/prewarm_l20_topk_topp_sampling.py").read_text()
+
+    assert "topk_topp_sample_with_vllm_rng_out" in source
+    assert "expanded_idx_mapping" in source
+    assert "seeds" in source
+    assert "positions" in source
+    assert "vllm_rng_output_shape" in source

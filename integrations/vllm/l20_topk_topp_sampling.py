@@ -17,7 +17,7 @@ import torch
 
 from l20_stack.ops.triton_sampling import (
     should_prefer_l20_topk_topp_sampling,
-    topk_topp_sample_from_uniform_out,
+    topk_topp_sample_with_vllm_rng_out,
     topk_topp_sampling_launch_config,
 )
 
@@ -115,6 +115,12 @@ def maybe_l20_topk_topp_sample(
     k: torch.Tensor | None,
     p: torch.Tensor | None,
     generators: dict[int, torch.Generator] | None = None,
+    *,
+    expanded_idx_mapping: torch.Tensor | None = None,
+    seeds: torch.Tensor | None = None,
+    positions: torch.Tensor | None = None,
+    top_k_value: int | None = None,
+    top_p_value: float | None = None,
 ) -> torch.Tensor | None:
     """Return sampled token ids or ``None`` when the guarded path is ineligible."""
 
@@ -134,17 +140,26 @@ def maybe_l20_topk_topp_sample(
         reasons.append("per_request_generators")
     if k is None or p is None:
         reasons.append("missing_topk_or_topp")
+    if expanded_idx_mapping is None or seeds is None or positions is None:
+        reasons.append("missing_vllm_rng_state")
 
     top_k: int | None = None
     top_p: float | None = None
     if not reasons:
-        try:
-            top_k = int(_scalar_from_tensor(k, name="top_k"))
-            top_p = float(_scalar_from_tensor(p, name="top_p"))
-        except ValueError as exc:
-            reasons.append(str(exc))
+        if top_k_value is not None and top_p_value is not None:
+            top_k = int(top_k_value)
+            top_p = float(top_p_value)
+        else:
+            try:
+                top_k = int(_scalar_from_tensor(k, name="top_k"))
+                top_p = float(_scalar_from_tensor(p, name="top_p"))
+            except ValueError as exc:
+                reasons.append(str(exc))
     metadata["top_k"] = top_k
     metadata["top_p"] = top_p
+    metadata["vllm_rng_state"] = not (
+        expanded_idx_mapping is None or seeds is None or positions is None
+    )
 
     if not reasons:
         batch, vocab = int(logits.shape[0]), int(logits.shape[1])
@@ -161,14 +176,18 @@ def maybe_l20_topk_topp_sample(
 
     assert top_k is not None and top_p is not None
     output = torch.empty((logits.shape[0],), device=logits.device, dtype=torch.int64)
-    uniforms = torch.rand((logits.shape[0],), device=logits.device, dtype=torch.float32)
     partial_values, partial_tokens = _workspace(logits, top_k=top_k)
-    topk_topp_sample_from_uniform_out(
+    assert expanded_idx_mapping is not None
+    assert seeds is not None
+    assert positions is not None
+    topk_topp_sample_with_vllm_rng_out(
         logits,
-        uniforms,
         output,
         partial_values=partial_values,
         partial_tokens=partial_tokens,
+        expanded_idx_mapping=expanded_idx_mapping,
+        seeds=seeds,
+        positions=positions,
         top_k=top_k,
         top_p=top_p,
         temperature=1.0,

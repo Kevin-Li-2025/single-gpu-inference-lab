@@ -39,6 +39,33 @@ Conclusion: the standalone two-stage Triton top-k/top-p sampler wins the
 microbenchmark but loses real vLLM serving. The current hook should stay
 experimental and disabled by default.
 
+## Stateful RNG Smoke
+
+Follow-up artifact:
+`qwen25-coder-1p5b-l20-vllm-rng-smoke-c1c4-i512-o32-r1/`.
+
+This run removes the extra `torch.rand` uniform generation from the custom
+kernel and adds a Triton path that can consume vLLM-style seed and position
+tensors. The kernel itself compiles and prewarms on L20 for batch 1 and batch 4.
+
+Serving result:
+
+| Mode | Concurrency | Median ITL ms | Output tok/s | Trace result |
+| --- | ---: | ---: | ---: | --- |
+| L20 vLLM-RNG smoke | 1 | 5.058 | 171.4 | 0 / 777 eligible |
+| L20 vLLM-RNG smoke | 4 | 5.712 | 501.4 | 0 / 777 eligible |
+
+Interpretation: these ITL numbers match the clean FlashInfer baseline because
+the active vLLM v1 serving path did not pass seed or position metadata to the
+sampler hook. The trace reported `missing_vllm_rng_state` for every event. This
+is path evidence, not a custom-sampler speedup.
+
+The updated boundary scout in
+`../l20-vllm-compiled-sampler-scout/` records the blocker: active
+`SamplingMetadata` currently carries `top_k`, `top_p`, and `generators`, but no
+seed or position tensors. A real state-preserving sampler requires extending
+that metadata path before another serving ITL claim is meaningful.
+
 ## Path Evidence
 
 The trace run records `4251 / 4253` eligible events, so the negative result is
@@ -59,6 +86,8 @@ The main gap is integration overhead:
 - `qwen25-coder-1p5b-flashinfer-clean-c1c4-i512-o32-r3/`: clean FlashInfer baseline
 - `qwen25-coder-1p5b-l20-notrace-c1c4-i512-o32-r3/`: L20 hook performance run
 - `qwen25-coder-1p5b-l20-c1c4-i512-o32-r3/`: trace-enabled proof run
+- `qwen25-coder-1p5b-l20-vllm-rng-smoke-c1c4-i512-o32-r1/`: stateful RNG
+  kernel compile/prewarm smoke and no-hit serving trace
 
 ## Reproduce
 

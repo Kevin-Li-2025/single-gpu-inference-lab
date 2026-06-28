@@ -1,0 +1,13 @@
+{
+  "hardware": "NVIDIA L20",
+  "schema_version": 1,
+  "status": "ok",
+  "uniform_output_dtype": "torch.int64",
+  "uniform_output_shape": [
+    4
+  ],
+  "vllm_rng_output_dtype": "torch.int64",
+  "vllm_rng_output_shape": [
+    4
+  ]
+}

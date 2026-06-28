@@ -1,0 +1,17 @@
+{
+  "eligible_events": 0,
+  "eligible_fraction": 0.0,
+  "fallback_events": 777,
+  "logits_shape_counts": {
+    "1x151936": 615,
+    "256x151936": 2,
+    "2x151936": 1,
+    "3x151936": 37,
+    "4x151936": 122
+  },
+  "reason_counts": {
+    "missing_vllm_rng_state": 777
+  },
+  "schema_version": 1,
+  "total_events": 777
+}

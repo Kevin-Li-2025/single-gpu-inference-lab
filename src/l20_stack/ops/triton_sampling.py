@@ -356,6 +356,119 @@ if triton is not None:  # pragma: no cover - requires CUDA
             values = tl.where(tokens == token, -float("inf"), values)
         tl.store(output + row, tl.where(chosen != 0, chosen_token, first_token))
 
+    @triton.jit
+    def _topk_topp_reduce_sample_seed_kernel(
+        partial_values,
+        partial_tokens,
+        expanded_idx_mapping,
+        seeds,
+        positions,
+        output,
+        VOCAB: tl.constexpr,
+        TOP_K: tl.constexpr,
+        BLOCKS_PER_ROW: tl.constexpr,
+        CANDIDATE_BLOCK: tl.constexpr,
+        TOP_P: tl.constexpr,
+    ):
+        row = tl.program_id(0)
+        candidate_offsets = tl.arange(0, CANDIDATE_BLOCK)
+        candidate_count = BLOCKS_PER_ROW * TOP_K
+        candidate_mask = candidate_offsets < candidate_count
+
+        values = tl.load(
+            partial_values + row * candidate_count + candidate_offsets,
+            mask=candidate_mask,
+            other=-float("inf"),
+        ).to(tl.float32)
+        tokens = tl.load(
+            partial_tokens + row * candidate_count + candidate_offsets,
+            mask=candidate_mask,
+            other=VOCAB,
+        )
+
+        max_for_softmax = tl.full((), -float("inf"), tl.float32)
+        total_exp = tl.full((), 0.0, tl.float32)
+        for rank in tl.static_range(0, TOP_K):
+            max_value = tl.max(values, axis=0)
+            is_max = (values == max_value) & candidate_mask & (tokens < VOCAB)
+            token_values = tl.where(is_max, tokens, VOCAB)
+            token = tl.min(token_values, axis=0)
+            if rank == 0:
+                max_for_softmax = max_value
+            total_exp += tl.exp(max_value - max_for_softmax)
+            values = tl.where(tokens == token, -float("inf"), values)
+
+        values = tl.load(
+            partial_values + row * candidate_count + candidate_offsets,
+            mask=candidate_mask,
+            other=-float("inf"),
+        ).to(tl.float32)
+        tokens = tl.load(
+            partial_tokens + row * candidate_count + candidate_offsets,
+            mask=candidate_mask,
+            other=VOCAB,
+        )
+        cumulative_exp = tl.full((), 0.0, tl.float32)
+        kept_exp = tl.full((), 0.0, tl.float32)
+        for rank in tl.static_range(0, TOP_K):
+            max_value = tl.max(values, axis=0)
+            is_max = (values == max_value) & candidate_mask & (tokens < VOCAB)
+            token_values = tl.where(is_max, tokens, VOCAB)
+            token = tl.min(token_values, axis=0)
+            weight = tl.exp(max_value - max_for_softmax)
+            cumulative_exp += weight
+            keep = cumulative_exp / total_exp <= TOP_P
+            if rank == 0:
+                keep = True
+            if TOP_P >= 1.0:
+                keep = True
+            kept_exp += tl.where(keep, weight, 0.0)
+            values = tl.where(tokens == token, -float("inf"), values)
+
+        req_state_idx = tl.load(expanded_idx_mapping + row).to(tl.int64)
+        seed = tl.load(seeds + req_state_idx)
+        position = tl.load(positions + row)
+        sample_seed = tl.randint(seed, position)
+        target = tl.rand(sample_seed, row).to(tl.float32) * kept_exp
+
+        values = tl.load(
+            partial_values + row * candidate_count + candidate_offsets,
+            mask=candidate_mask,
+            other=-float("inf"),
+        ).to(tl.float32)
+        tokens = tl.load(
+            partial_tokens + row * candidate_count + candidate_offsets,
+            mask=candidate_mask,
+            other=VOCAB,
+        )
+        cumulative_exp = tl.full((), 0.0, tl.float32)
+        kept_cumulative = tl.full((), 0.0, tl.float32)
+        chosen = tl.full((), 0, tl.int32)
+        chosen_token = tl.full((), 0, tl.int64)
+        first_token = tl.full((), 0, tl.int64)
+        for rank in tl.static_range(0, TOP_K):
+            max_value = tl.max(values, axis=0)
+            is_max = (values == max_value) & candidate_mask & (tokens < VOCAB)
+            token_values = tl.where(is_max, tokens, VOCAB)
+            token = tl.min(token_values, axis=0)
+            if rank == 0:
+                first_token = token
+            weight = tl.exp(max_value - max_for_softmax)
+            cumulative_exp += weight
+            keep = cumulative_exp / total_exp <= TOP_P
+            if rank == 0:
+                keep = True
+            if TOP_P >= 1.0:
+                keep = True
+            kept_weight = tl.where(keep, weight, 0.0)
+            next_kept = kept_cumulative + kept_weight
+            take = (chosen == 0) & keep & (target <= next_kept)
+            chosen_token = tl.where(take, token, chosen_token)
+            chosen = tl.where(take, 1, chosen)
+            kept_cumulative = next_kept
+            values = tl.where(tokens == token, -float("inf"), values)
+        tl.store(output + row, tl.where(chosen != 0, chosen_token, first_token))
+
 
 def greedy_sample(logits, temperature: float = 1.0):
     """Sample greedily on GPU without materializing logits on CPU.
@@ -588,6 +701,93 @@ def topk_topp_sample_from_uniform_out(
         partial_values,
         partial_tokens,
         uniforms,
+        output,
+        VOCAB=int(vocab),
+        TOP_K=int(top_k),
+        BLOCKS_PER_ROW=config.blocks_per_row,
+        CANDIDATE_BLOCK=next_power_of_2(candidate_count),
+        TOP_P=float(top_p),
+        num_warps=8,
+        num_stages=1,
+    )
+    return None
+
+
+def topk_topp_sample_with_vllm_rng_out(
+    logits,
+    output,
+    *,
+    partial_values,
+    partial_tokens,
+    expanded_idx_mapping,
+    seeds,
+    positions,
+    top_k: int,
+    top_p: float,
+    temperature: float = 1.0,
+    block_vocab_override: Optional[int] = None,
+):
+    """Write top-k/top-p samples using vLLM-style seed and position tensors."""
+
+    if torch is None or triton is None:
+        raise RuntimeError("topk_topp_sample_with_vllm_rng_out requires PyTorch and Triton")
+    if logits.ndim != 2:
+        raise ValueError("expected logits with shape [batch, vocab]")
+    if output.shape != (logits.shape[0],) or output.dtype != torch.int64:
+        raise ValueError("output must have shape [batch] and dtype int64")
+    for name, tensor in (
+        ("logits", logits),
+        ("output", output),
+        ("expanded_idx_mapping", expanded_idx_mapping),
+        ("seeds", seeds),
+        ("positions", positions),
+    ):
+        if not tensor.is_cuda:
+            raise ValueError(f"{name} must be a CUDA tensor")
+    if expanded_idx_mapping.shape != (logits.shape[0],):
+        raise ValueError("expanded_idx_mapping must have shape [batch]")
+    if positions.shape != (logits.shape[0],):
+        raise ValueError("positions must have shape [batch]")
+    if temperature <= 0:
+        raise ValueError("temperature must be positive")
+    batch, vocab = logits.shape
+    if not should_use_l20_topk_topp_sampling(int(batch), int(vocab), int(top_k), float(top_p)):
+        raise ValueError("shape or sampling policy is outside the L20 top-k/top-p gate")
+    config = topk_topp_sampling_launch_config(
+        int(vocab),
+        int(top_k),
+        batch=int(batch),
+        block_vocab_override=block_vocab_override,
+    )
+    expected_workspace = (batch, config.blocks_per_row, int(top_k))
+    if partial_values.shape != expected_workspace:
+        raise ValueError("partial_values workspace has the wrong shape")
+    if partial_tokens.shape != expected_workspace:
+        raise ValueError("partial_tokens workspace has the wrong shape")
+    if partial_values.dtype != torch.float32 or partial_tokens.dtype != torch.int64:
+        raise ValueError("partial workspaces must be float32 and int64")
+    if not partial_values.is_cuda or not partial_tokens.is_cuda:
+        raise ValueError("partial workspaces must be CUDA tensors")
+
+    _topk_topp_partial_kernel[(batch, config.blocks_per_row)](
+        logits,
+        partial_values,
+        partial_tokens,
+        VOCAB=int(vocab),
+        TOP_K=int(top_k),
+        BLOCK_VOCAB=config.block_vocab,
+        BLOCKS_PER_ROW=config.blocks_per_row,
+        TEMPERATURE=float(temperature),
+        num_warps=config.num_warps,
+        num_stages=config.num_stages,
+    )
+    candidate_count = config.blocks_per_row * int(top_k)
+    _topk_topp_reduce_sample_seed_kernel[(batch,)](
+        partial_values,
+        partial_tokens,
+        expanded_idx_mapping,
+        seeds,
+        positions,
         output,
         VOCAB=int(vocab),
         TOP_K=int(top_k),
