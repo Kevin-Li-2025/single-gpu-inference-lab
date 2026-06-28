@@ -37,6 +37,7 @@ those negative results because they are the useful part of the L20 study.
 | Residual RMSNorm | Shape-gated | Custom fused path is useful only above the measured hidden-size crossover; smaller shapes stay on the baseline path. |
 | GPU sampling | Real serving signal | FlashInfer top-k/top-p sampling improves Qwen2.5-Coder-1.5B ITL by about 2%-6% in the measured c1/c4/c16 regimes. A serving-level Nsight Systems profile confirms 270 matched sampler kernel instances and shows the next high-value boundary is logits/sampler fusion, not a standalone FlashInfer replacement. |
 | LM-head top-k boundary | Negative but useful | A Qwen2.5-Coder-1.5B-shaped probe shows chunked no-full-logits top-k is still 1.10x-2.28x slower than full logits + `torch.topk`, and the best experimental Triton direct top-1 path is 1.02x slower than full logits top-1. A real win likely needs GEMM epilogue integration, not a standalone replacement kernel. |
+| Serving optimization ceiling | Active gate | NSYS family summaries show GEMM/GEMV reaches 62.10% of GPU kernel time, while standalone sampling reaches only 3.42% and the current custom Q/K/RoPE/KV kernel 1.58%. The next P0 target is a production GEMM/GEMV epilogue or upstream logits boundary, not another isolated sampler or QK microkernel. |
 | FP8 KV-cache decode | Correct, not production-ready | Fused FP8 dequant beats materializing K/V, but current CUDA/Triton split-decode kernels are still slower than BF16 predequantized attention, so vLLM dispatch is disabled. |
 | Speculative verifier attention | Experimental | Custom causal verifier kernels improved direct latency, but real vLLM serving remains tied or slower than native FlashInfer. |
 | Kernel-coding QLoRA | Negative so far | Training runs are healthy, but held-out KernelBench `fast_0` is still 0/3. A handwritten ReLU control proves the evaluator path. |
@@ -175,6 +176,8 @@ production paths unless their policy function enables them.
   serving-level Nsight Systems kernel-count and launch-sequence artifact.
 - `benchmarks/results/nsys/sampling/README.md` contains the serving-level
   FlashInfer sampling timeline and CPU-sync evidence.
+- `benchmarks/results/l20-serving-optimization-ceiling/README.md` converts the
+  NSYS family summaries into Amdahl ceilings and the current P0/P1/Stop list.
 - `docs/l20-operator-research.md` tracks operator-level experiments and raw
   benchmark interpretation.
 - `docs/l20-hybrid-tree-attention.md` covers speculative decoding and
@@ -199,9 +202,8 @@ production paths unless their policy function enables them.
 
 ## Current Next Step
 
-The strongest next technical target is to turn the current kernel evidence into
-a professional systems artifact: complete Nsight/roofline/occupancy figures,
-one deeper CUDA serving boundary such as FlashAttention/PagedAttention/MoE
-routing/grouped GEMM, and one small upstream PR to vLLM, FlashInfer, or
-TensorRT-LLM. The FP8 paged-attention line remains important, but it should now
-be judged by those gates rather than another isolated microbenchmark.
+The strongest next technical target is a production GEMM/GEMV epilogue or
+upstream logits boundary for sampling/top-k state. The measured ceiling is much
+larger there than for standalone sampler kernels or another isolated Q/K/RoPE/KV
+microkernel. P1 work is CUDA graph/launch/memcpy reduction and isolating the
+large fill/bookkeeping kernels in vLLM serving timelines.

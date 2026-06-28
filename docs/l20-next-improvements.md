@@ -137,6 +137,14 @@ L20 is CUDA OOM during vLLM warmup/cudagraph capture while another GPU service i
 resident. The wrapper now writes `sampling-path.json` for this server-start
 failure too, so failed runs remain auditable.
 
+Current ceiling update: the serving NSYS family summaries and LM-head boundary
+probe now reject standalone sampler and standalone LM-head replacement work.
+Standalone sampling/logits-processor kernels peak at 3.42% of GPU time, and the
+best standalone LM-head candidate is still 1.022x of full logits. The next
+sampling-related implementation should be an upstream GEMM/GEMV epilogue or
+logits boundary that preserves the optimized LM-head path. See
+`benchmarks/results/l20-serving-optimization-ceiling/`.
+
 ## 4. Spec Decode Acceptance-Rate Study
 
 New entries:

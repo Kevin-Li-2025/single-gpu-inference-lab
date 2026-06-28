@@ -169,6 +169,21 @@ def test_sampling_has_serving_nsys_timeline_entrypoint():
     assert "REQUIRE_SAMPLER_KERNEL" in source
 
 
+def test_serving_optimization_ceiling_tracks_next_target():
+    source = Path("scripts/analyze_serving_optimization_ceiling.py").read_text()
+    readme = Path("README.md").read_text()
+    doc = Path("docs/l20-next-improvements.md").read_text()
+    report = Path("benchmarks/results/l20-serving-optimization-ceiling/README.md").read_text()
+    assert "GPU_BOUNDARIES" in source
+    assert "gemm_or_gemv" in source
+    assert "standalone_sampling" in source
+    assert "amdahl_speedup" in source
+    assert "production GEMM/GEMV epilogue" in report
+    assert "standalone sampling kernels" in report
+    assert "benchmarks/results/l20-serving-optimization-ceiling/README.md" in readme
+    assert "upstream GEMM/GEMV epilogue" in doc
+
+
 def test_paged_decode_rfc_campaign_tracks_o2_and_flashinfer():
     campaign = Path("scripts/run_vllm_l20_paged_decode_rfc_campaign.sh").read_text()
     matrix = Path("scripts/run_vllm_l20_paged_decode_rfc_matrix.sh").read_text()

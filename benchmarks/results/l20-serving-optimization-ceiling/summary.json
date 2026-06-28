@@ -1,0 +1,268 @@
+{
+  "lm_head_boundary": {
+    "all_candidates": [
+      {
+        "path": "benchmarks/results/l20-lm-head-topk-boundary/qwen25-b1-h1536-v151936-k1-bv16-bh128.json",
+        "ratio": 1.0217054104064105,
+        "ratio_name": "triton_top1_over_full_logits_top1",
+        "shape": {
+          "batch": 1,
+          "chunk_vocab": 8192,
+          "dtype": "float16",
+          "hidden": 1536,
+          "top_k": 1,
+          "vocab": 151936
+        }
+      },
+      {
+        "path": "benchmarks/results/l20-lm-head-topk-boundary/qwen25-b4-h1536-v151936-k50-cv131072.json",
+        "ratio": 1.0957143527124937,
+        "ratio_name": "chunked_over_full_logits_topk",
+        "shape": {
+          "batch": 4,
+          "chunk_vocab": 131072,
+          "dtype": "float16",
+          "hidden": 1536,
+          "top_k": 50,
+          "vocab": 151936
+        }
+      },
+      {
+        "path": "benchmarks/results/l20-lm-head-topk-boundary/qwen25-b1-h1536-v151936-k1-bv16-bh128.json",
+        "ratio": 1.6945736744717272,
+        "ratio_name": "chunked_over_full_logits_topk",
+        "shape": {
+          "batch": 1,
+          "chunk_vocab": 8192,
+          "dtype": "float16",
+          "hidden": 1536,
+          "top_k": 1,
+          "vocab": 151936
+        }
+      }
+    ],
+    "best_candidate": {
+      "path": "benchmarks/results/l20-lm-head-topk-boundary/qwen25-b1-h1536-v151936-k1-bv16-bh128.json",
+      "ratio": 1.0217054104064105,
+      "ratio_name": "triton_top1_over_full_logits_top1",
+      "shape": {
+        "batch": 1,
+        "chunk_vocab": 8192,
+        "dtype": "float16",
+        "hidden": 1536,
+        "top_k": 1,
+        "vocab": 151936
+      }
+    },
+    "candidate_count": 3
+  },
+  "recommendations": [
+    {
+      "priority": "P0",
+      "reason": "GEMM/GEMV reaches 62.10% of GPU kernel time; this is the only measured boundary with a large compute-side ceiling.",
+      "target": "production GEMM/GEMV epilogue or upstream logits boundary"
+    },
+    {
+      "priority": "P0",
+      "reason": "The best standalone LM-head/top-k candidate is 1.022x of full logits, so it does not beat the optimized GEMM path.",
+      "target": "avoid standalone LM-head replacement"
+    },
+    {
+      "priority": "P1",
+      "reason": "Launch/sync/transfer reaches 75.07% of CUDA API time. Treat this as a host-side ceiling, not additive with GPU kernel time.",
+      "target": "CUDA graph, launch, memcpy, and synchronization reduction"
+    },
+    {
+      "priority": "P1",
+      "reason": "Fill/bookkeeping reaches 41.72% of GPU kernel time; this is a real vLLM serving overhead to isolate.",
+      "target": "metadata and fill/bookkeeping kernels"
+    },
+    {
+      "priority": "Stop",
+      "reason": "Sampling/logits-processor kernels peak at 3.42% of GPU time, so sampler-only work has a low Amdahl ceiling.",
+      "target": "standalone sampling kernels"
+    },
+    {
+      "priority": "Stop",
+      "reason": "The current custom L20 kernel peaks at 1.58% of GPU time; further work must remove adjacent kernels or launches.",
+      "target": "micro-optimizing the existing Q/K/RoPE/KV kernel alone"
+    }
+  ],
+  "runs": [
+    {
+      "api_boundaries": {
+        "allocation_and_loading": {
+          "families": [
+            "alloc_free",
+            "library_load",
+            "memory_info"
+          ],
+          "speedup_if_2x": 1.1275560370452058,
+          "speedup_if_5x": 1.2210038872931488,
+          "speedup_if_eliminated": 1.2924108423266494,
+          "time_pct": 22.625223555091804,
+          "total_time_ms": 468.918964
+        },
+        "launch_sync_transfer": {
+          "families": [
+            "launch",
+            "sync",
+            "memcpy",
+            "graph"
+          ],
+          "speedup_if_2x": 1.6008606645376697,
+          "speedup_if_5x": 2.50336468572435,
+          "speedup_if_eliminated": 4.010781504868127,
+          "time_pct": 75.0672032673373,
+          "total_time_ms": 1555.804967
+        }
+      },
+      "gpu_boundaries": {
+        "attention": {
+          "families": [
+            "flashinfer_attention"
+          ],
+          "speedup_if_2x": 1.0098902780189685,
+          "speedup_if_5x": 1.0159189102995223,
+          "speedup_if_eliminated": 1.0199781454507484,
+          "time_pct": 1.958683677670324,
+          "total_time_ms": 25.065516
+        },
+        "custom_l20_current": {
+          "families": [
+            "custom_l20"
+          ],
+          "speedup_if_2x": 1.0,
+          "speedup_if_5x": 1.0,
+          "speedup_if_eliminated": 1.0,
+          "time_pct": 0.0,
+          "total_time_ms": 0.0
+        },
+        "gemm_or_gemv": {
+          "families": [
+            "cutlass_or_cublas_gemm",
+            "cublas_gemv"
+          ],
+          "speedup_if_2x": 1.2777803884972194,
+          "speedup_if_5x": 1.5333393484422335,
+          "speedup_if_eliminated": 1.7692407795994887,
+          "time_pct": 43.478580669705416,
+          "total_time_ms": 556.400746
+        },
+        "metadata_fill": {
+          "families": [
+            "pytorch_fill"
+          ],
+          "speedup_if_2x": 1.2636129802571467,
+          "speedup_if_5x": 1.5010271197471563,
+          "speedup_if_eliminated": 1.7159631367462198,
+          "time_pct": 41.723689828431695,
+          "total_time_ms": 533.943192
+        },
+        "standalone_sampling": {
+          "families": [
+            "flashinfer_sampling",
+            "sampler_other",
+            "pytorch_softmax"
+          ],
+          "speedup_if_2x": 1.010603259281134,
+          "speedup_if_5x": 1.0170738378475874,
+          "speedup_if_eliminated": 1.0214337865585243,
+          "time_pct": 2.098401956209059,
+          "total_time_ms": 26.853508
+        }
+      },
+      "label": "sampling/qwen25-coder-1p5b-flashinfer-c4-i512-o32-v2",
+      "path": "benchmarks/results/nsys/sampling/qwen25-coder-1p5b-flashinfer-c4-i512-o32-v2/kernel-family-summary.json",
+      "source_dir": "benchmarks/results/nsys/sampling/qwen25-coder-1p5b-flashinfer-c4-i512-o32-v2/stats"
+    },
+    {
+      "api_boundaries": {
+        "allocation_and_loading": {
+          "families": [
+            "alloc_free",
+            "library_load",
+            "memory_info"
+          ],
+          "speedup_if_2x": 1.290684613518566,
+          "speedup_if_5x": 1.5633496219004899,
+          "speedup_if_eliminated": 1.81962021142812,
+          "time_pct": 45.043477000337624,
+          "total_time_ms": 430.730978
+        },
+        "launch_sync_transfer": {
+          "families": [
+            "launch",
+            "sync",
+            "memcpy",
+            "graph"
+          ],
+          "speedup_if_2x": 1.350966891014142,
+          "speedup_if_5x": 1.7113413916232347,
+          "speedup_if_eliminated": 2.0815068943479402,
+          "time_pct": 51.957881921248045,
+          "total_time_ms": 496.850394
+        }
+      },
+      "gpu_boundaries": {
+        "attention": {
+          "families": [
+            "flashinfer_attention"
+          ],
+          "speedup_if_2x": 1.0708031288131994,
+          "speedup_if_5x": 1.118311083011411,
+          "speedup_if_eliminated": 1.1523963995332172,
+          "time_pct": 13.224303685341779,
+          "total_time_ms": 42.086073
+        },
+        "custom_l20_current": {
+          "families": [
+            "custom_l20"
+          ],
+          "speedup_if_2x": 1.0079783118271437,
+          "speedup_if_5x": 1.0128267001716393,
+          "speedup_if_eliminated": 1.0160849544365071,
+          "time_pct": 1.583032438997907,
+          "total_time_ms": 5.037968
+        },
+        "gemm_or_gemv": {
+          "families": [
+            "cutlass_or_cublas_gemm",
+            "cublas_gemv"
+          ],
+          "speedup_if_2x": 1.4503475871154374,
+          "speedup_if_5x": 1.9873452773737563,
+          "speedup_if_eliminated": 2.63866318625629,
+          "time_pct": 62.10202176584764,
+          "total_time_ms": 197.6384
+        },
+        "metadata_fill": {
+          "families": [
+            "pytorch_fill"
+          ],
+          "speedup_if_2x": 1.0791219362560651,
+          "speedup_if_5x": 1.1329044945786204,
+          "speedup_if_eliminated": 1.1718402020228078,
+          "time_pct": 14.664132680051477,
+          "total_time_ms": 46.668299
+        },
+        "standalone_sampling": {
+          "families": [
+            "flashinfer_sampling",
+            "sampler_other",
+            "pytorch_softmax"
+          ],
+          "speedup_if_2x": 1.017377065034916,
+          "speedup_if_5x": 1.0280962421925557,
+          "speedup_if_eliminated": 1.0353687348759746,
+          "time_pct": 3.4160520483759185,
+          "total_time_ms": 10.871515
+        }
+      },
+      "label": "qk-norm-rope-kv/qwen3-0p6b-o2-disable-cache-c1-i512-o16-v1",
+      "path": "benchmarks/results/nsys/qk-norm-rope-kv/qwen3-0p6b-o2-disable-cache-c1-i512-o16-v1/kernel-family-summary.json",
+      "source_dir": "benchmarks/results/nsys/qk-norm-rope-kv/qwen3-0p6b-o2-disable-cache-c1-i512-o16-v1/stats"
+    }
+  ],
+  "schema_version": 1
+}

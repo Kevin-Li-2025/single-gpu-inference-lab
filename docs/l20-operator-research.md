@@ -598,6 +598,26 @@ GEMM epilogue or upstream integration that keeps the optimized LM-head kernel
 and emits top-k/top-p state from inside that path. Artifact:
 `benchmarks/results/l20-lm-head-topk-boundary/`.
 
+The serving optimization ceiling report combines the two NSYS family summaries
+with the LM-head boundary probe. It gives the current priority order:
+
+- P0: production GEMM/GEMV epilogue or upstream logits boundary. GEMM/GEMV
+  reaches 62.10% of GPU kernel time in the QK O2 serving timeline, so a 2x win
+  on that boundary has a 1.45x Amdahl ceiling.
+- P0 stop condition: avoid standalone LM-head replacement. The best standalone
+  candidate is still 1.022x of the full-logits baseline.
+- P1: reduce launch/sync/memcpy structure. The sampling timeline has 75.07% of
+  CUDA API time in launch/sync/transfer families, tracked separately from GPU
+  kernel time.
+- P1: isolate metadata and fill/bookkeeping kernels. They reach 41.72% of GPU
+  time in the sampling timeline.
+- Stop: standalone sampling kernels and micro-optimizing the current custom
+  Q/K/RoPE/KV kernel alone. Their measured GPU time ceilings are 3.42% and
+  1.58% respectively.
+
+Artifact:
+`benchmarks/results/l20-serving-optimization-ceiling/`.
+
 ### V23 Tensor-Core Hypothesis Check
 
 FlashInfer exposes both CUDA-core decode and a tensor-core path. The wrapper
