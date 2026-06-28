@@ -64,3 +64,13 @@ def test_l20_prewarm_covers_vllm_rng_sampler_kernel():
     assert "for dtype in (torch.float16, torch.float32)" in source
     assert "warmed_dtypes" in source
     assert "vllm_rng_output_shape" in source
+
+
+def test_sampling_winner_summary_uses_strict_gate():
+    source = Path("scripts/summarize_l20_sampling_winner.py").read_text()
+
+    assert "strict_win" in source
+    assert "median_itl_delta < 0.0 and throughput_delta > 0.0" in source
+    assert "FlashInfer must reduce median ITL" in source
+    assert "increase output throughput" in source
+    assert "standalone L20 sampler remains disabled" in source

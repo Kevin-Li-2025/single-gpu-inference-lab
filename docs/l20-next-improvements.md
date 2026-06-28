@@ -186,6 +186,15 @@ or a logits/LM-head epilogue that avoids materializing full logits before
 top-k/top-p/multinomial. Artifacts live under
 `benchmarks/results/l20-vllm-sampling-itl/`.
 
+The positive serving result is the production FlashInfer route, not the custom
+standalone hook. `benchmarks/results/l20-vllm-sampling-winner/` compares
+torch/native sampling with FlashInfer sampling across Qwen2.5-Coder-1.5B,
+Qwen3-0.6B, and Qwen3-1.7B using c1/c4, i512/o32, three-run medians. The strict
+gate requires both lower median ITL and higher output throughput. FlashInfer
+passes 5/6 pairs and all c4 pairs; c4 median ITL improves 4.35%-7.84%, and c4
+output throughput improves 3.46%-6.69%. The one non-strict case still improves
+median ITL but misses throughput by 0.05%, so the gate remains conservative.
+
 ## 4. Spec Decode Acceptance-Rate Study
 
 New entries:

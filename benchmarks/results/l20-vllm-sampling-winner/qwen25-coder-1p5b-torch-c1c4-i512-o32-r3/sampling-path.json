@@ -1,0 +1,58 @@
+{
+  "cpu_fallback_suspected": false,
+  "line_count": 355,
+  "log": "benchmarks/results/l20-vllm-sampling-winner/qwen25-coder-1p5b-torch-c1c4-i512-o32-r3/server.log",
+  "match_counts": {
+    "cpu": 0,
+    "cuda13": 0,
+    "fallback": 0,
+    "flashinfer": 6,
+    "sampling": 2
+  },
+  "matches": {
+    "cpu": [],
+    "cuda13": [],
+    "fallback": [],
+    "flashinfer": [
+      {
+        "line": 8,
+        "text": "ph_mode': <CUDAGraphMode.FULL: 2>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': None, 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': None, 'pass_config': {'fuse_rope_kvcache': False}, 'max_cudagraph_capture_size': None, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': None, 'static_all_moe_layers': []}}"
+      },
+      {
+        "line": 16,
+        "text": "e, 'fuse_act_padding': False, 'fuse_rope_kvcache': False}, 'max_cudagraph_capture_size': 512, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native']), enable_flashinfer_autotune=True, moe_backend='auto', linear_backend='auto')"
+      },
+      {
+        "line": 23,
+        "text": "(EngineCore pid=636918) INFO 06-29 00:40:10 [topk_topp_sampler.py:39] FlashInfer top-p/top-k sampling disabled via VLLM_USE_FLASHINFER_SAMPLER=0."
+      },
+      {
+        "line": 25,
+        "text": "(EngineCore pid=636918) INFO 06-29 00:40:11 [cuda.py:423] Using AttentionBackendEnum.FLASHINFER backend."
+      },
+      {
+        "line": 44,
+        "text": "(EngineCore pid=636918) WARNING 06-29 00:41:02 [compilation.py:1358] CUDAGraphMode.FULL is not supported with FlashInferBackend backend (support: AttentionCGSupport.UNIFORM_SINGLE_TOKEN_DECODE); setting cudagraph_mode=FULL_DECODE_ONLY"
+      },
+      {
+        "line": 51,
+        "text": "(EngineCore pid=636918) INFO 06-29 00:41:31 [kernel_warmup.py:101] Warming up FlashInfer attention."
+      }
+    ],
+    "sampling": [
+      {
+        "line": 16,
+        "text": "e, 'fuse_act_padding': False, 'fuse_rope_kvcache': False}, 'max_cudagraph_capture_size': 512, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native']), enable_flashinfer_autotune=True, moe_backend='auto', linear_backend='auto')"
+      },
+      {
+        "line": 23,
+        "text": "(EngineCore pid=636918) INFO 06-29 00:40:10 [topk_topp_sampler.py:39] FlashInfer top-p/top-k sampling disabled via VLLM_USE_FLASHINFER_SAMPLER=0."
+      }
+    ]
+  },
+  "notes": [
+    "This is log evidence only. Absence of CPU/fallback strings does not prove that no CPU synchronization happened inside lower-level kernels.",
+    "Use paired stochastic serving latency and FlashInfer prewarm status as the primary service-level signal."
+  ],
+  "schema_version": 1
+}

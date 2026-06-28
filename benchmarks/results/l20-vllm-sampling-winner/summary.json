@@ -1,0 +1,201 @@
+{
+  "input_dir": "benchmarks/results/l20-vllm-sampling-winner",
+  "pairs": [
+    {
+      "flashinfer_dir": "benchmarks/results/l20-vllm-sampling-winner/qwen25-coder-1p5b-flashinfer-c1c4-i512-o32-r3",
+      "key": "qwen25-coder-1p5b-c1c4-i512-o32-r3",
+      "shapes": {
+        "c1-i512": {
+          "deltas": {
+            "mean_itl_ms_pct": -2.0192903295406457,
+            "median_itl_ms_pct": -1.9413713786064648,
+            "median_ttft_ms_pct": 0.08731535177722248,
+            "output_throughput_pct": 1.0736166901647517,
+            "p99_itl_ms_pct": -1.3749175793854937
+          },
+          "flashinfer": {
+            "mean_itl_ms": 5.035677346430959,
+            "median_itl_ms": 5.056381458416581,
+            "median_ttft_ms": 30.19127156585455,
+            "output_throughput": 170.8941991375935,
+            "p99_itl_ms": 5.596966284792871,
+            "runs": 3
+          },
+          "median_itl_win": true,
+          "strict_win": true,
+          "throughput_win": true,
+          "torch": {
+            "mean_itl_ms": 5.139457923266286,
+            "median_itl_ms": 5.156488041393459,
+            "median_ttft_ms": 30.16493294853717,
+            "output_throughput": 169.0789394243798,
+            "p99_itl_ms": 5.674992757849396,
+            "runs": 3
+          }
+        },
+        "c4-i512": {
+          "deltas": {
+            "mean_itl_ms_pct": -5.787344490871086,
+            "median_itl_ms_pct": -5.831807215029066,
+            "median_ttft_ms_pct": 1.0552207142711068,
+            "output_throughput_pct": 3.4582303676964736,
+            "p99_itl_ms_pct": 15.126005530841148
+          },
+          "flashinfer": {
+            "mean_itl_ms": 6.007013050792364,
+            "median_itl_ms": 5.722005967982113,
+            "median_ttft_ms": 68.83011548779905,
+            "output_throughput": 510.8073526786791,
+            "p99_itl_ms": 17.35341580351815,
+            "runs": 3
+          },
+          "median_itl_win": true,
+          "strict_win": true,
+          "throughput_win": true,
+          "torch": {
+            "mean_itl_ms": 6.376015003855085,
+            "median_itl_ms": 6.076368037611246,
+            "median_ttft_ms": 68.11138999182731,
+            "output_throughput": 493.7329305394462,
+            "p99_itl_ms": 15.073410845362247,
+            "runs": 3
+          }
+        }
+      },
+      "torch_dir": "benchmarks/results/l20-vllm-sampling-winner/qwen25-coder-1p5b-torch-c1c4-i512-o32-r3"
+    },
+    {
+      "flashinfer_dir": "benchmarks/results/l20-vllm-sampling-winner/qwen3-0p6b-flashinfer-c1c4-i512-o32-r3",
+      "key": "qwen3-0p6b-c1c4-i512-o32-r3",
+      "shapes": {
+        "c1-i512": {
+          "deltas": {
+            "mean_itl_ms_pct": -1.778677449396642,
+            "median_itl_ms_pct": -2.2559450854722676,
+            "median_ttft_ms_pct": 7.509787276276742,
+            "output_throughput_pct": -0.049163152700515675,
+            "p99_itl_ms_pct": 0.0651213784698986
+          },
+          "flashinfer": {
+            "mean_itl_ms": 2.827432081310077,
+            "median_itl_ms": 2.874898025766015,
+            "median_ttft_ms": 30.63803492113948,
+            "output_throughput": 274.01749201906017,
+            "p99_itl_ms": 3.306038533337414,
+            "runs": 3
+          },
+          "median_itl_win": true,
+          "strict_win": false,
+          "throughput_win": false,
+          "torch": {
+            "mean_itl_ms": 2.8786336895976854,
+            "median_itl_ms": 2.9412510339170694,
+            "median_ttft_ms": 28.497903025709093,
+            "output_throughput": 274.15227392011946,
+            "p99_itl_ms": 3.303886996582152,
+            "runs": 3
+          }
+        },
+        "c4-i512": {
+          "deltas": {
+            "mean_itl_ms_pct": -7.727829316509639,
+            "median_itl_ms_pct": -7.838806484725515,
+            "median_ttft_ms_pct": -1.4463878899293878,
+            "output_throughput_pct": 6.690591254698736,
+            "p99_itl_ms_pct": 18.644709752327678
+          },
+          "flashinfer": {
+            "mean_itl_ms": 3.440195982083453,
+            "median_itl_ms": 3.4492939012125134,
+            "median_ttft_ms": 45.98886356689036,
+            "output_throughput": 838.3480176474776,
+            "p99_itl_ms": 5.910174704622477,
+            "runs": 3
+          },
+          "median_itl_win": true,
+          "strict_win": true,
+          "throughput_win": true,
+          "torch": {
+            "mean_itl_ms": 3.7283137013042915,
+            "median_itl_ms": 3.7426749477162957,
+            "median_ttft_ms": 46.663803164847195,
+            "output_throughput": 785.775022697286,
+            "p99_itl_ms": 4.981406012084349,
+            "runs": 3
+          }
+        }
+      },
+      "torch_dir": "benchmarks/results/l20-vllm-sampling-winner/qwen3-0p6b-torch-c1c4-i512-o32-r3"
+    },
+    {
+      "flashinfer_dir": "benchmarks/results/l20-vllm-sampling-winner/qwen3-1p7b-flashinfer-c1c4-i512-o32-r3",
+      "key": "qwen3-1p7b-c1c4-i512-o32-r3",
+      "shapes": {
+        "c1-i512": {
+          "deltas": {
+            "mean_itl_ms_pct": -0.6793405296881451,
+            "median_itl_ms_pct": -0.6241347673396708,
+            "median_ttft_ms_pct": 0.6640725937665,
+            "output_throughput_pct": 1.4081285490684576,
+            "p99_itl_ms_pct": -1.5851782173472049
+          },
+          "flashinfer": {
+            "mean_itl_ms": 5.986973803843402,
+            "median_itl_ms": 6.035924074240029,
+            "median_ttft_ms": 33.752835588529706,
+            "output_throughput": 146.0153283995802,
+            "p99_itl_ms": 6.48802349111066,
+            "runs": 3
+          },
+          "median_itl_win": true,
+          "strict_win": true,
+          "throughput_win": true,
+          "torch": {
+            "mean_itl_ms": 6.027923934227381,
+            "median_itl_ms": 6.073832977563143,
+            "median_ttft_ms": 33.53017091285437,
+            "output_throughput": 143.98779514891413,
+            "p99_itl_ms": 6.592526789754629,
+            "runs": 3
+          }
+        },
+        "c4-i512": {
+          "deltas": {
+            "mean_itl_ms_pct": -4.029211749156201,
+            "median_itl_ms_pct": -4.345043463052517,
+            "median_ttft_ms_pct": -1.1579761690539965,
+            "output_throughput_pct": 4.010843927842947,
+            "p99_itl_ms_pct": 20.531267860723297
+          },
+          "flashinfer": {
+            "mean_itl_ms": 6.819877841354033,
+            "median_itl_ms": 6.601347588002682,
+            "median_ttft_ms": 81.43176499288529,
+            "output_throughput": 446.5747028850715,
+            "p99_itl_ms": 9.749456816352904,
+            "runs": 3
+          },
+          "median_itl_win": true,
+          "strict_win": true,
+          "throughput_win": true,
+          "torch": {
+            "mean_itl_ms": 7.106201757485378,
+            "median_itl_ms": 6.9012080784887075,
+            "median_ttft_ms": 82.38577260635793,
+            "output_throughput": 429.3539846622922,
+            "p99_itl_ms": 8.088736631907523,
+            "runs": 3
+          }
+        }
+      },
+      "torch_dir": "benchmarks/results/l20-vllm-sampling-winner/qwen3-1p7b-torch-c1c4-i512-o32-r3"
+    }
+  ],
+  "schema_version": 1,
+  "winner_gate": {
+    "definition": "FlashInfer must reduce median ITL and increase output throughput versus the paired torch/native sampler.",
+    "strict_win_fraction": 0.8333333333333334,
+    "strict_win_pairs": 5,
+    "total_pairs": 6
+  }
+}

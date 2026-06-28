@@ -35,7 +35,7 @@ those negative results because they are the useful part of the L20 study.
 | RoPE + KV-cache append | Strong kernel win, small serving win | Paged append is 2.37x-7.82x faster than FlashInfer/vLLM write-path baselines on measured cases, but full vLLM ITL improves only about 0.46%-0.72% under the safe gate. |
 | Q/K norm + RoPE + KV write | Proven O2 hook, small serving win | The L20 fused microkernel is correct and 1.26x-1.47x faster than vLLM's fused QK-norm/RoPE plus cache-write boundary for 1-64 tokens. With vLLM compile cache disabled, Nsight Systems now captures 1,260 custom kernel instances in a Qwen3-0.6B O2 i512/o16 serving run. Median ITL improves 4.52% in the paired 3-run matrix, but the custom kernel is only 1.6% of GPU kernel time, so the end-to-end win is Amdahl-limited. |
 | Residual RMSNorm | Shape-gated | Custom fused path is useful only above the measured hidden-size crossover; smaller shapes stay on the baseline path. |
-| GPU sampling | Micro win, serving loss | The self-written two-stage top-k/top-p sampler beats FlashInfer 0.6.12 by 1.51x at batch 1 and 1.17x at batch 4 in isolation, but a real Qwen2.5-Coder-1.5B vLLM ITL campaign regresses median ITL by about 32% at concurrency 1 and 4. The standalone hook stays experimental and disabled. |
+| GPU sampling | Production route win, custom hook loss | FlashInfer top-k/top-p with CUDA 13 prewarm beats torch/native sampling in 5/6 paired Qwen serving shapes, including all concurrency-4 cases. Median ITL improves 0.62%-7.84% on strict-win shapes, and c4 output throughput improves 3.46%-6.69%. The self-written standalone L20 sampler still regresses real serving and stays disabled. |
 | LM-head top-k boundary | Negative but useful | A Qwen2.5-Coder-1.5B-shaped probe shows chunked no-full-logits top-k is still 1.10x-2.28x slower than full logits + `torch.topk`, and the best experimental Triton direct top-1 path is 1.02x slower than full logits top-1. A real win likely needs GEMM epilogue integration, not a standalone replacement kernel. |
 | Serving optimization ceiling | Active gate | NSYS family summaries show GEMM/GEMV reaches 62.10% of GPU kernel time, while standalone sampling reaches only 3.42% and the current custom Q/K/RoPE/KV kernel 1.58%. The next P0 target is a production GEMM/GEMV epilogue or upstream logits boundary, not another isolated sampler or QK microkernel. |
 | FP8 KV-cache decode | Correct, not production-ready | Fused FP8 dequant beats materializing K/V, but current CUDA/Triton split-decode kernels are still slower than BF16 predequantized attention, so vLLM dispatch is disabled. |
@@ -176,6 +176,9 @@ production paths unless their policy function enables them.
   serving-level Nsight Systems kernel-count and launch-sequence artifact.
 - `benchmarks/results/nsys/sampling/README.md` contains the serving-level
   FlashInfer sampling timeline and CPU-sync evidence.
+- `benchmarks/results/l20-vllm-sampling-winner/README.md` contains the paired
+  torch/native versus FlashInfer serving gate across Qwen2.5-Coder-1.5B,
+  Qwen3-0.6B, and Qwen3-1.7B.
 - `benchmarks/results/l20-serving-optimization-ceiling/README.md` converts the
   NSYS family summaries into Amdahl ceilings and the current P0/P1/Stop list.
 - `benchmarks/results/l20-vllm-logits-boundary-scout/README.md` maps that P0
@@ -221,6 +224,9 @@ Qwen3-0.6B, Qwen3-1.7B, and Qwen2.5-Coder-1.5B. The current kernel step is
 `scripts/benchmark_l20_topk_topp_sampling.py`, a narrow L20 two-stage
 top-k/top-p sampler prototype. It wins as a microbenchmark but loses real vLLM
 serving in `benchmarks/results/l20-vllm-sampling-itl/`, because the standalone
-hook adds RNG, Python gate, and uncaptured Triton launches. P1 work should move
-to a compiled sampler/logits epilogue boundary instead of enabling this hook by
+hook adds RNG, Python gate, and uncaptured Triton launches. The production
+serving path is FlashInfer sampler hardening with CUDA 13 JIT prewarm and
+fallback checks; `benchmarks/results/l20-vllm-sampling-winner/` shows 5/6
+strict paired wins over torch/native sampling. P1 work should move to a compiled
+sampler/logits epilogue boundary instead of enabling the standalone hook by
 default.
