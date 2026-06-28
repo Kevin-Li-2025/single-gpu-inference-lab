@@ -34,6 +34,7 @@ concurrencies=${CONCURRENCIES:-"1"}
 runs=${RUNS:-2}
 num_prompts=${NUM_PROMPTS:-24}
 output_tokens=${OUTPUT_TOKENS:-64}
+request_rate=${REQUEST_RATE:-1}
 max_model_len=${MAX_MODEL_LEN:-2048}
 gpu_memory_utilization=${GPU_MEMORY_UTILIZATION:-0.80}
 attention_backend=${ATTENTION_BACKEND:-FLASHINFER}
@@ -98,6 +99,7 @@ payload = {
     "runs": int("$runs"),
     "num_prompts": int("$num_prompts"),
     "output_tokens": int("$output_tokens"),
+    "request_rate": "$request_rate",
     "max_model_len": int("$max_model_len"),
     "gpu_memory_utilization": float("$gpu_memory_utilization"),
     "cuda_home": os.environ.get("CUDA_HOME"),
@@ -184,7 +186,8 @@ for concurrency in $concurrencies; do
         --random-input-len "$input_tokens" \
         --random-output-len "$output_tokens" \
         --num-prompts "$num_prompts" \
-        --request-rate 1 \
+        --request-rate "$request_rate" \
+        --max-concurrency "$concurrency" \
         --ignore-eos \
         --temperature 0 \
         --save-result \

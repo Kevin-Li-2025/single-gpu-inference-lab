@@ -246,11 +246,24 @@ The larger Q/K norm boundary has two separate artifacts:
   writes. It is correct against vLLM's `fused_qk_norm_rope` followed by
   `reshape_and_cache_flash`, and reaches 1.26x to 1.47x speedup for 1 to 64
   tokens on the L20.
-- `benchmarks/results/l20-qk-norm-rope-serving/qwen3-0p6b-o2-smoke-v1/`
+- `benchmarks/results/l20-qk-norm-rope-serving/qwen3-0p6b-o2-full-v1/`
   measures vLLM's native `enable_qk_norm_rope_fusion` gate under O2/CUDA graph
-  settings on Qwen3-0.6B. In a one-run smoke it changed output throughput by
-  +0.007%, mean ITL by -3.339%, median ITL by -2.765%, P99 ITL by -6.884%, and
-  mean TTFT by +6.983%.
+  settings on Qwen3-0.6B across 18 reports per variant. The matrix uses input
+  lengths 512 and 1024, max concurrency 1, 4, and 16, three runs per shape, 32
+  prompts per run, 64 output tokens, and `REQUEST_RATE=inf`. Overall it changed
+  output throughput by +1.618%, mean ITL by -0.935%, median ITL by -1.221%,
+  P99 ITL by -1.427%, and mean TTFT by -3.804%.
+
+Per-shape changes:
+
+| Max concurrency | Input tokens | Output throughput | Mean ITL | Median ITL | P99 ITL | Mean TTFT |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 512 | +2.038% | -1.456% | -1.145% | -2.182% | -5.169% |
+| 1 | 1024 | +6.967% | -0.947% | -1.130% | -0.150% | -34.965% |
+| 4 | 512 | +0.289% | -1.550% | -1.249% | -2.651% | +7.491% |
+| 4 | 1024 | +1.866% | -0.956% | -1.258% | -1.546% | -1.744% |
+| 16 | 512 | -0.101% | -1.060% | -1.531% | -14.753% | -1.923% |
+| 16 | 1024 | +0.587% | +0.364% | +0.299% | -10.820% | -3.506% |
 
 This is useful but not a final serving claim for the L20 three-way kernel. The
 current vLLM graph has separate compiler passes for Q/K RMSNorm+RoPE and

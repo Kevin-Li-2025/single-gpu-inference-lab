@@ -38,26 +38,30 @@ tokens 64: 0.01165 ms baseline -> 0.00926 ms fused, 1.26x, correct
 This is a real low-token microbenchmark win on L20. It is not yet an end-to-end
 ITL claim; the next gate is a vLLM decode run with the fused path enabled.
 
-A first O2 serving smoke with vLLM's native `enable_qk_norm_rope_fusion` gate
+A full O2 serving matrix with vLLM's native `enable_qk_norm_rope_fusion` gate
 enabled on Qwen3-0.6B produced the following paired result:
 
 ```text
-benchmarks/results/l20-qk-norm-rope-serving/qwen3-0p6b-o2-smoke-v1/
-output throughput: +0.007%
-mean ITL:           -3.339%
-median ITL:         -2.765%
-p99 ITL:            -6.884%
-mean TTFT:          +6.983%
+benchmarks/results/l20-qk-norm-rope-serving/qwen3-0p6b-o2-full-v1/
+18 reports per variant: inputs 512/1024, max concurrency 1/4/16, 3 runs each
+output throughput: +1.618%
+mean ITL:           -0.935%
+median ITL:         -1.221%
+p99 ITL:            -1.427%
+mean TTFT:          -3.804%
 ```
 
-This smoke shows that the Q/K norm + RoPE boundary can move real decode ITL
-under O2/CUDA graph settings, but it is not yet the L20 three-way fused kernel.
-The current compiler-pass gap is structural: vLLM has one pass for Q/K
-RMSNorm+RoPE and another pass for RoPE+KV cache update, and these pattern
-replacements do not compose into a single side-effecting Q/K norm + Q/K RoPE +
-KV write op. The upstreamable implementation should add a custom op following
-the `unified_kv_cache_update` dependency style, then register a single pattern
-that matches `qkv -> split -> q/k norm -> rotary -> attention cache update`.
+The per-shape result is not uniformly positive: c16/i1024 regresses by +0.364%
+mean ITL and +0.299% median ITL, while P99 ITL still improves by -10.820%.
+This matrix shows that the Q/K norm + RoPE boundary can move real decode ITL
+under O2/CUDA graph settings, but the effect size is low-single-digit and it is
+not yet the L20 three-way fused kernel. The current compiler-pass gap is
+structural: vLLM has one pass for Q/K RMSNorm+RoPE and another pass for RoPE+KV
+cache update, and these pattern replacements do not compose into a single
+side-effecting Q/K norm + Q/K RoPE + KV write op. The upstreamable
+implementation should add a custom op following the `unified_kv_cache_update`
+dependency style, then register a single pattern that matches `qkv -> split ->
+q/k norm -> rotary -> attention cache update`.
 
 The paged-decode RFC path now has an O2/CUDA graph serving smoke across
 Qwen3-0.6B, Qwen3-1.7B, and Qwen2.5-Coder-1.5B:

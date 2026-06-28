@@ -106,6 +106,8 @@ def test_paged_decode_rfc_campaign_tracks_o2_and_flashinfer():
     assert "VLLM_L20_PAGED_DECODE_CUDAGRAPH" in campaign
     assert "l20-paged-decode-trace.txt" in campaign
     assert "run-config.json" in campaign
+    assert "REQUEST_RATE" in campaign
+    assert "--max-concurrency" in campaign
     assert "eager o2" in matrix
     assert "summarize_l20_paged_decode_rfc_matrix.py" in matrix
     assert "trace_hit_count" in summary
@@ -122,12 +124,17 @@ def test_paged_decode_rfc_campaign_preserves_compilation_config_json():
 
 def test_qk_norm_serving_smoke_compares_o2_fusion_gate():
     source = Path("scripts/run_vllm_l20_qk_norm_rope_serving_smoke.sh").read_text()
+    matrix = Path("scripts/run_vllm_l20_qk_norm_rope_serving_matrix.sh").read_text()
     assert "enable_qk_norm_rope_fusion" in source
     assert "qk-off" in source
     assert "qk-on" in source
     assert "cudagraph_mode" in source
     assert "qk-serving-summary.json" in source
     assert "flashinfer_sampling" in source
+    assert "shape_summaries" in source
+    assert "max_concurrency" in source
+    assert "REQUEST_RATE" in matrix
+    assert "run_vllm_l20_qk_norm_rope_serving_smoke.sh" in matrix
 
 
 def test_decode_attention_has_isolated_tensor_core_candidate():
