@@ -1,0 +1,22 @@
+{
+  "attention_backend": "FLASHINFER",
+  "concurrencies": [
+    "1"
+  ],
+  "cuda_home": "/home/hhai/venvs/vllm-l20/bin/../lib/python3.12/site-packages/nvidia/cu13",
+  "cudacxx": "/home/hhai/venvs/vllm-l20/bin/../lib/python3.12/site-packages/nvidia/cu13/bin/nvcc",
+  "enable_l20_paged_decode": true,
+  "execution_mode": "o2",
+  "gpu_memory_utilization": 0.55,
+  "inputs": [
+    "512"
+  ],
+  "max_model_len": 1024,
+  "model": "/home/hhai/models/Qwen3-0.6B",
+  "num_prompts": 16,
+  "output_tokens": 32,
+  "runs": 1,
+  "schema_version": 1,
+  "served_name": "qwen3-0p6b-l20-rfc",
+  "trace_enabled": true
+}

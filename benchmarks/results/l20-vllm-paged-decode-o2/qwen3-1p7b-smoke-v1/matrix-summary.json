@@ -1,0 +1,96 @@
+{
+  "matrix_dir": "/home/hhai/l20-stack/benchmarks/results/l20-vllm-paged-decode-o2/qwen3-1p7b-smoke-v1",
+  "schema_version": 1,
+  "summaries": [
+    {
+      "baseline_dir": "/home/hhai/l20-stack/benchmarks/results/l20-vllm-paged-decode-o2/qwen3-1p7b-smoke-v1/o2-baseline",
+      "baseline_flags": {
+        "cudagraph_disabled": false,
+        "cudagraph_mentioned": true,
+        "flashinfer_backend": true,
+        "server_log_exists": true,
+        "trace_hit_count": 0
+      },
+      "execution_mode": "o2",
+      "l20_dir": "/home/hhai/l20-stack/benchmarks/results/l20-vllm-paged-decode-o2/qwen3-1p7b-smoke-v1/o2-l20",
+      "l20_flags": {
+        "cudagraph_disabled": false,
+        "cudagraph_mentioned": true,
+        "flashinfer_backend": true,
+        "server_log_exists": true,
+        "trace_hit_count": 28
+      },
+      "model": "/home/hhai/models/Qwen3-1.7B",
+      "served_name": "qwen3-1p7b-l20-rfc",
+      "shapes": [
+        {
+          "input_tokens": 512,
+          "max_concurrency": 1,
+          "metrics": {
+            "mean_itl_ms": {
+              "baseline": 5.971222,
+              "change_pct": -0.069,
+              "l20": 5.967086
+            },
+            "mean_tpot_ms": {
+              "baseline": 5.971198,
+              "change_pct": -0.069,
+              "l20": 5.967056
+            },
+            "mean_ttft_ms": {
+              "baseline": 43.027608,
+              "change_pct": 1.095,
+              "l20": 43.498582
+            },
+            "median_itl_ms": {
+              "baseline": 5.895676,
+              "change_pct": -0.242,
+              "l20": 5.881415
+            },
+            "median_tpot_ms": {
+              "baseline": 5.834483,
+              "change_pct": -0.09,
+              "l20": 5.829238
+            },
+            "median_ttft_ms": {
+              "baseline": 42.163644,
+              "change_pct": 2.326,
+              "l20": 43.14451
+            },
+            "output_throughput": {
+              "baseline": 31.543283,
+              "change_pct": 0.011,
+              "l20": 31.546701
+            },
+            "p99_itl_ms": {
+              "baseline": 9.733025,
+              "change_pct": -0.697,
+              "l20": 9.66519
+            },
+            "p99_tpot_ms": {
+              "baseline": 6.983678,
+              "change_pct": 0.308,
+              "l20": 7.005215
+            },
+            "p99_ttft_ms": {
+              "baseline": 53.912037,
+              "change_pct": 17.961,
+              "l20": 63.595414
+            },
+            "request_throughput": {
+              "baseline": 0.985728,
+              "change_pct": 0.011,
+              "l20": 0.985834
+            },
+            "total_token_throughput": {
+              "baseline": 536.235818,
+              "change_pct": 0.011,
+              "l20": 536.293915
+            }
+          },
+          "runs_per_variant": 1
+        }
+      ]
+    }
+  ]
+}

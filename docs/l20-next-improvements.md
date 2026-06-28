@@ -38,6 +38,21 @@ tokens 64: 0.01147 ms baseline -> 0.00891 ms fused, 1.29x, correct
 This is a real low-token microbenchmark win on L20. It is not yet an end-to-end
 ITL claim; the next gate is a vLLM decode run with the fused path enabled.
 
+The paged-decode RFC path now has an O2/CUDA graph serving smoke across
+Qwen3-0.6B, Qwen3-1.7B, and Qwen2.5-Coder-1.5B:
+
+```text
+benchmarks/results/l20-vllm-paged-decode-o2/
+Qwen3-0.6B O2:              output -0.026%, mean ITL -0.056%
+Qwen3-1.7B O2:              output +0.011%, mean ITL -0.069%
+Qwen2.5-Coder-1.5B O2:      output -0.039%, mean ITL +0.314%
+```
+
+This means the O2 execution path is no longer the main blocker for the isolated
+paged-decode hook. The serving boundary is too small. The next Q/K norm work
+should be evaluated as a larger fused boundary, not as another isolated decode
+kernel tweak.
+
 ## 2. FP8 KV Fused Attention Kernel Boundary
 
 Current entries:

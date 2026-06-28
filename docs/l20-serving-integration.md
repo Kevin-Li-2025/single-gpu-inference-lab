@@ -208,3 +208,31 @@ larger fused boundary, not more tuning of this isolated paged decode hook.
 Raw artifact:
 
 - `benchmarks/results/l20-vllm-serving-rfc/`
+
+## O2/CUDA Graph Serving Matrix
+
+The next smoke matrix removed the eager-only uncertainty. It ran the same
+FlashInfer serving path under vLLM O2/CUDA graph settings, with the L20 paged
+decode path disabled and enabled. The matrix used 512-token random prompts,
+32 generated tokens, 16 prompts, and 1 RPS.
+
+All O2 L20 variants kept CUDA graphs enabled in the server log and emitted 28
+L20 trace hits, so the custom path was reached under the default production
+execution mode.
+
+| Model | Mode | Output throughput change | Mean ITL change | Median ITL change | P99 ITL change |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Qwen3-0.6B | eager | +0.006% | +1.286% | +0.084% | +49.301% |
+| Qwen3-0.6B | O2 | -0.026% | -0.056% | -0.219% | +13.184% |
+| Qwen3-1.7B | O2 | +0.011% | -0.069% | -0.242% | -0.697% |
+| Qwen2.5-Coder-1.5B | O2 | -0.039% | +0.314% | +0.155% | +12.696% |
+
+This changes the diagnosis. The problem is no longer simply that the custom path
+only works in eager mode. The O2 path can execute it, but the paged-decode
+boundary is too narrow to move full serving metrics. The next production
+candidate should be a larger fused boundary, such as Q/K norm + Q/K RoPE + KV
+write, or FP8 KV dequantization fused inside the attention kernel.
+
+Raw artifact:
+
+- `benchmarks/results/l20-vllm-paged-decode-o2/`

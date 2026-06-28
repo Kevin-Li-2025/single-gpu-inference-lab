@@ -1,0 +1,186 @@
+{
+  "matrix_dir": "/home/hhai/l20-stack/benchmarks/results/l20-vllm-paged-decode-o2/qwen3-0p6b-smoke-v1",
+  "schema_version": 1,
+  "summaries": [
+    {
+      "baseline_dir": "/home/hhai/l20-stack/benchmarks/results/l20-vllm-paged-decode-o2/qwen3-0p6b-smoke-v1/eager-baseline",
+      "baseline_flags": {
+        "cudagraph_disabled": true,
+        "cudagraph_mentioned": true,
+        "flashinfer_backend": true,
+        "server_log_exists": true,
+        "trace_hit_count": 0
+      },
+      "execution_mode": "eager",
+      "l20_dir": "/home/hhai/l20-stack/benchmarks/results/l20-vllm-paged-decode-o2/qwen3-0p6b-smoke-v1/eager-l20",
+      "l20_flags": {
+        "cudagraph_disabled": true,
+        "cudagraph_mentioned": true,
+        "flashinfer_backend": true,
+        "server_log_exists": true,
+        "trace_hit_count": 28
+      },
+      "model": "/home/hhai/models/Qwen3-0.6B",
+      "served_name": "qwen3-0p6b-l20-rfc",
+      "shapes": [
+        {
+          "input_tokens": 512,
+          "max_concurrency": 1,
+          "metrics": {
+            "mean_itl_ms": {
+              "baseline": 13.006973,
+              "change_pct": 1.286,
+              "l20": 13.174196
+            },
+            "mean_tpot_ms": {
+              "baseline": 12.928274,
+              "change_pct": 1.286,
+              "l20": 13.094493
+            },
+            "mean_ttft_ms": {
+              "baseline": 50.814217,
+              "change_pct": 1.832,
+              "l20": 51.745228
+            },
+            "median_itl_ms": {
+              "baseline": 13.178727,
+              "change_pct": 0.084,
+              "l20": 13.189742
+            },
+            "median_tpot_ms": {
+              "baseline": 12.789443,
+              "change_pct": 1.13,
+              "l20": 12.933966
+            },
+            "median_ttft_ms": {
+              "baseline": 48.852505,
+              "change_pct": -0.645,
+              "l20": 48.53744
+            },
+            "output_throughput": {
+              "baseline": 31.109233,
+              "change_pct": 0.006,
+              "l20": 31.111061
+            },
+            "p99_itl_ms": {
+              "baseline": 14.852525,
+              "change_pct": 49.301,
+              "l20": 22.17502
+            },
+            "p99_tpot_ms": {
+              "baseline": 14.167749,
+              "change_pct": 5.196,
+              "l20": 14.903888
+            },
+            "p99_ttft_ms": {
+              "baseline": 77.890525,
+              "change_pct": -0.073,
+              "l20": 77.833435
+            },
+            "request_throughput": {
+              "baseline": 0.972164,
+              "change_pct": 0.006,
+              "l20": 0.972221
+            },
+            "total_token_throughput": {
+              "baseline": 528.856966,
+              "change_pct": 0.006,
+              "l20": 528.888043
+            }
+          },
+          "runs_per_variant": 1
+        }
+      ]
+    },
+    {
+      "baseline_dir": "/home/hhai/l20-stack/benchmarks/results/l20-vllm-paged-decode-o2/qwen3-0p6b-smoke-v1/o2-baseline",
+      "baseline_flags": {
+        "cudagraph_disabled": false,
+        "cudagraph_mentioned": true,
+        "flashinfer_backend": true,
+        "server_log_exists": true,
+        "trace_hit_count": 0
+      },
+      "execution_mode": "o2",
+      "l20_dir": "/home/hhai/l20-stack/benchmarks/results/l20-vllm-paged-decode-o2/qwen3-0p6b-smoke-v1/o2-l20",
+      "l20_flags": {
+        "cudagraph_disabled": false,
+        "cudagraph_mentioned": true,
+        "flashinfer_backend": true,
+        "server_log_exists": true,
+        "trace_hit_count": 28
+      },
+      "model": "/home/hhai/models/Qwen3-0.6B",
+      "served_name": "qwen3-0p6b-l20-rfc",
+      "shapes": [
+        {
+          "input_tokens": 512,
+          "max_concurrency": 1,
+          "metrics": {
+            "mean_itl_ms": {
+              "baseline": 2.749701,
+              "change_pct": -0.056,
+              "l20": 2.748156
+            },
+            "mean_tpot_ms": {
+              "baseline": 2.749673,
+              "change_pct": -0.056,
+              "l20": 2.748128
+            },
+            "mean_ttft_ms": {
+              "baseline": 34.768507,
+              "change_pct": 7.357,
+              "l20": 37.326272
+            },
+            "median_itl_ms": {
+              "baseline": 2.734874,
+              "change_pct": -0.219,
+              "l20": 2.728882
+            },
+            "median_tpot_ms": {
+              "baseline": 2.671548,
+              "change_pct": 0.158,
+              "l20": 2.675775
+            },
+            "median_ttft_ms": {
+              "baseline": 36.283214,
+              "change_pct": -1.255,
+              "l20": 35.827837
+            },
+            "output_throughput": {
+              "baseline": 31.772926,
+              "change_pct": -0.026,
+              "l20": 31.764622
+            },
+            "p99_itl_ms": {
+              "baseline": 3.362362,
+              "change_pct": 13.184,
+              "l20": 3.80566
+            },
+            "p99_tpot_ms": {
+              "baseline": 3.232977,
+              "change_pct": 0.095,
+              "l20": 3.236057
+            },
+            "p99_ttft_ms": {
+              "baseline": 48.368667,
+              "change_pct": 18.803,
+              "l20": 57.4633
+            },
+            "request_throughput": {
+              "baseline": 0.992904,
+              "change_pct": -0.026,
+              "l20": 0.992644
+            },
+            "total_token_throughput": {
+              "baseline": 540.13975,
+              "change_pct": -0.026,
+              "l20": 539.998578
+            }
+          },
+          "runs_per_variant": 1
+        }
+      ]
+    }
+  ]
+}

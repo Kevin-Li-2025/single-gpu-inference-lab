@@ -93,6 +93,26 @@ def test_ncu_summary_accepts_cuda_13_stall_metric_names():
     assert "sm__pipe_tensor_cycles_active_v2" in source
 
 
+def test_paged_decode_rfc_campaign_tracks_o2_and_flashinfer():
+    campaign = Path("scripts/run_vllm_l20_paged_decode_rfc_campaign.sh").read_text()
+    matrix = Path("scripts/run_vllm_l20_paged_decode_rfc_matrix.sh").read_text()
+    summary = Path("scripts/summarize_l20_paged_decode_rfc_matrix.py").read_text()
+    assert "EXECUTION_MODE: eager|o2" in campaign
+    assert "--attention-backend" in campaign
+    assert "FLASHINFER" in campaign
+    assert "--enforce-eager" in campaign
+    assert "cudagraph_mode" in campaign
+    assert "VLLM_L20_PAGED_DECODE" in campaign
+    assert "VLLM_L20_PAGED_DECODE_CUDAGRAPH" in campaign
+    assert "l20-paged-decode-trace.txt" in campaign
+    assert "run-config.json" in campaign
+    assert "eager o2" in matrix
+    assert "summarize_l20_paged_decode_rfc_matrix.py" in matrix
+    assert "trace_hit_count" in summary
+    assert "cudagraph_disabled" in summary
+    assert "AttentionBackendEnum.FLASHINFER" in summary
+
+
 def test_decode_attention_has_isolated_tensor_core_candidate():
     op_source = Path("src/l20_stack/ops/triton_decode_attention.py").read_text()
     sweep_source = Path("scripts/benchmark_decode_attention_tile_sweep.py").read_text()

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "date": "2026-06-28",
+  "status": "blocked",
+  "target": "new Nsight Compute report for L20 paged decode O2 serving path",
+  "reason": "The shared L20 host has Nsight Compute section files but no ncu executable in PATH or under /home/hhai/Documents/NVIDIA Nsight Compute/2025.3.1.",
+  "checked_paths": [
+    "PATH",
+    "/home/hhai/Documents/NVIDIA Nsight Compute/2025.3.1"
+  ],
+  "available_profile_artifacts": [
+    "benchmarks/results/l20-vllm-rope-kv-profile/ncu/summary.json",
+    "benchmarks/results/l20-vllm-rope-kv-profile/ncu/tokens-1024.json"
+  ]
+}

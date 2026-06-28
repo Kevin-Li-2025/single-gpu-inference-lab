@@ -1,0 +1,22 @@
+{
+  "attention_backend": "FLASHINFER",
+  "concurrencies": [
+    "1"
+  ],
+  "cuda_home": "/home/hhai/venvs/vllm-l20/bin/../lib/python3.12/site-packages/nvidia/cu13",
+  "cudacxx": "/home/hhai/venvs/vllm-l20/bin/../lib/python3.12/site-packages/nvidia/cu13/bin/nvcc",
+  "enable_l20_paged_decode": true,
+  "execution_mode": "o2",
+  "gpu_memory_utilization": 0.6,
+  "inputs": [
+    "512"
+  ],
+  "max_model_len": 1024,
+  "model": "/home/hhai/models/Qwen2.5-Coder-1.5B-Instruct",
+  "num_prompts": 16,
+  "output_tokens": 32,
+  "runs": 1,
+  "schema_version": 1,
+  "served_name": "qwen25-coder-1p5b-l20-rfc",
+  "trace_enabled": true
+}
