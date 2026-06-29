@@ -195,6 +195,16 @@ passes 5/6 pairs and all c4 pairs; c4 median ITL improves 4.35%-7.84%, and c4
 output throughput improves 3.46%-6.69%. The one non-strict case still improves
 median ITL but misses throughput by 0.05%, so the gate remains conservative.
 
+The follow-up matrix is now automated by
+`scripts/run_vllm_l20_sampling_winner_matrix.sh`. On Qwen3-0.6B i512/o32 with
+five-run medians, FlashInfer strict-wins at c2, c4, and c8, with median ITL
+improvements of 8.07%, 8.73%, and 3.63%. The c1/o32 case still improves median
+ITL by 2.49% but loses output throughput by 1.05%, so it remains an ITL-only
+signal. A c1/i512/o128 follow-up strict-wins, with median ITL -2.39% and output
+throughput +3.85%, which shows the short-output c1 miss is mostly launch/TTFT
+noise rather than a FlashInfer route regression. Artifacts live under
+`benchmarks/results/l20-vllm-sampling-winner-v2/`.
+
 ## 4. Spec Decode Acceptance-Rate Study
 
 New entries:
