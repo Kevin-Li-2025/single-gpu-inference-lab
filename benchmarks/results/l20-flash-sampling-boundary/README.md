@@ -72,7 +72,22 @@ VLLM_L20_FLASHSAMPLING_MODE=gumbel \
 
 python scripts/summarize_l20_flashsampling_trace.py \
   /tmp/l20-flashsampling.jsonl \
-  --output /tmp/l20-flashsampling-summary.md
+  --output /tmp/l20-flashsampling-summary.md \
+  --output-json /tmp/l20-flashsampling-summary.json
+```
+
+For the standard remote serving campaign, use the wrapper. Its defaults are set
+to full-vocabulary Gumbel (`TOP_K=-1`, `TOP_P=1.0`) so the first FlashSampling
+gate can be eligible instead of immediately falling back to top-k/top-p:
+
+```bash
+PYTHON=/home/hhai/venvs/vllm-l20/bin/python \
+INPUTS="512" CONCURRENCIES="1 4" RUNS=1 NUM_PROMPTS=16 \
+OUTPUT_TOKENS=32 REQUEST_RATE=inf EXECUTION_MODE=o2 \
+scripts/run_vllm_l20_flashsampling_trace_campaign.sh \
+  /home/hhai/models/Qwen3-0.6B qwen3-0p6b \
+  benchmarks/results/l20-flash-sampling-boundary/qwen3-0p6b-o2-trace-v1 \
+  /home/hhai/vllm-l20-rfc
 ```
 
 This trace still runs after logits are materialized. A real serving win requires

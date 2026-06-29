@@ -60,8 +60,14 @@ VLLM_L20_FLASHSAMPLING_MODE=gumbel \
 
 python scripts/summarize_l20_flashsampling_trace.py \
   /tmp/l20-flashsampling.jsonl \
-  --output /tmp/l20-flashsampling-summary.md
+  --output /tmp/l20-flashsampling-summary.md \
+  --output-json /tmp/l20-flashsampling-summary.json
 ```
+
+The remote campaign wrapper is `scripts/run_vllm_l20_flashsampling_trace_campaign.sh`.
+It defaults to full-vocabulary Gumbel (`TOP_K=-1`, `TOP_P=1.0`) because the first
+FlashSampling epilogue prototype intentionally leaves top-k/top-p on the baseline
+path.
 
 The FlashSampling trace is intentionally downstream of `compute_logits` today.
 It proves legality, fallback reasons, and avoidable logits bytes before replacing

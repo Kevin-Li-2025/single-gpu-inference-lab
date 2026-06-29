@@ -13,7 +13,8 @@ from typing import Any, Iterable
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("trace", type=Path)
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=Path, help="Markdown summary output path.")
+    parser.add_argument("--output-json", type=Path, help="JSON summary output path.")
     return parser.parse_args()
 
 
@@ -97,3 +98,25 @@ def render_markdown(summary: dict[str, Any]) -> str:
     else:
         lines.append("- none")
     return "\n".join(lines) + "\n"
+
+
+def main() -> int:
+    args = parse_args()
+    summary = summarize(read_events(args.trace))
+    markdown = render_markdown(summary)
+    if args.output_json:
+        args.output_json.parent.mkdir(parents=True, exist_ok=True)
+        args.output_json.write_text(
+            json.dumps(summary, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(markdown, encoding="utf-8")
+    else:
+        print(markdown, end="")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

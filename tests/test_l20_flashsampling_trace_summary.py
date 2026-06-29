@@ -1,5 +1,7 @@
 import importlib.util
 import json
+import subprocess
+import sys
 
 
 def load_module(path: str, name: str):
@@ -65,3 +67,50 @@ def test_flashsampling_trace_summary_counts_reasons_and_bytes(tmp_path):
         "b1-h512-v10-gumbel": 1,
         "b2-h512-v10-gumbel": 1,
     }
+
+
+def test_flashsampling_trace_summary_cli_writes_markdown_and_json(tmp_path):
+    trace = tmp_path / "trace.jsonl"
+    trace.write_text(
+        json.dumps(
+            {
+                "eligible": True,
+                "metadata": {
+                    "flashsampling_epilogue": {
+                        "would_use_epilogue": True,
+                        "fallback_reasons": [],
+                        "logits_materialization_bytes": 20,
+                        "avoidable_logits_materialization_bytes": 20,
+                        "flashsampling_request": {
+                            "batch_size": 1,
+                            "hidden_size": 512,
+                            "vocab_size": 10,
+                            "sampling_mode": "gumbel",
+                        },
+                    }
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    markdown = tmp_path / "summary.md"
+    json_path = tmp_path / "summary.json"
+
+    subprocess.run(
+        [
+            sys.executable,
+            "scripts/summarize_l20_flashsampling_trace.py",
+            str(trace),
+            "--output",
+            str(markdown),
+            "--output-json",
+            str(json_path),
+        ],
+        check=True,
+    )
+
+    assert "eligible fraction: 100.00%" in markdown.read_text(encoding="utf-8")
+    summary = json.loads(json_path.read_text(encoding="utf-8"))
+    assert summary["eligible_events"] == 1
+    assert summary["avoidable_logits_bytes"] == 20
