@@ -89,11 +89,16 @@ PYTHONPYCACHEPREFIX=/tmp/l20-pycache /usr/bin/python3 \
 | --- | --- |
 | One-page research summary | `docs/where-optimizations-stop-mattering.md` |
 | Logits-boundary RFC | `docs/logits-boundary-rfc.md` |
+| Logits-boundary A/B plan | `docs/logits-boundary-ab.md` |
 | Boundary-impact graph/table | `benchmarks/results/l20-boundary-impact/` |
+| Serving ceiling/Amdahl report | `benchmarks/results/l20-serving-optimization-ceiling/README.md` |
+| Logits-boundary scout report | `benchmarks/results/l20-vllm-logits-boundary-scout/README.md` |
+| Top-tier kernel gap checklist | `docs/l20-top-tier-kernel-gaps.md` |
 | Main serving case study | `docs/l20-serving-case-study.md` |
 | Experiment status and negative results | `docs/experiment-status.md` |
 | vLLM hook status | `integrations/vllm/README.md` |
 | Benchmark artifact index | `benchmarks/results/README.md` |
+| Top-k/top-p sampling benchmark | `scripts/benchmark_l20_topk_topp_sampling.py` |
 | Next optimization plan | `docs/l20-next-improvements.md` |
 | Operator research log | `docs/l20-operator-research.md` |
 

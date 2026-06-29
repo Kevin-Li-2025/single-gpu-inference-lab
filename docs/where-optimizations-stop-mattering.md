@@ -94,3 +94,6 @@ prototype:
 
 Success is not a new microbenchmark. Success is a serving-level curve shift that
 survives O2/CUDA graph execution and production sampler semantics.
+
+The public staging note for that paired experiment is
+[`docs/logits-boundary-ab.md`](logits-boundary-ab.md).
