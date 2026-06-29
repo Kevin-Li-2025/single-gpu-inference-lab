@@ -31,8 +31,10 @@ boundary with enough coverage to test.
 ## What Is Not Proven Yet
 
 The current evidence does not prove that an epilogue improves ITL, TTFT,
-throughput, or tail latency. It also does not prove correctness for every
-sampling feature.
+throughput, or tail latency. The batch-4 direct top-1 microbenchmark is a useful
+positive signal for greedy decoding, but it does not prove top-k/top-p or
+serving-level correctness. It also does not prove correctness for every sampling
+feature.
 
 Unsupported cases must stay on the baseline vLLM path until they have their own
 correctness and serving evidence:

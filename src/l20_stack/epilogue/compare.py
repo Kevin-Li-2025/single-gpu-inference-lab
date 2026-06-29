@@ -115,6 +115,21 @@ def _max_flashinfer_sampling_itl_win(root: Path) -> float | None:
     return max(wins) if wins else None
 
 
+def _best_batched_lm_head_top1_speedup(root: Path) -> float | None:
+    values: list[float] = []
+    base = root / "benchmarks/results/l20-lm-head-topk-boundary"
+    for path in base.glob("qwen25-b4-h1536-v151936-k1-batched*.json"):
+        summary = _load_json(path)
+        if not summary:
+            continue
+        ratio = summary.get("ratios", {}).get("triton_top1_over_full_logits_top1")
+        if ratio:
+            ratio = float(ratio)
+            if ratio > 0.0:
+                values.append(1.0 / ratio)
+    return max(values) if values else None
+
+
 def _custom_sampler_regression(root: Path) -> float | None:
     summary = _load_json(
         root / "benchmarks/results/l20-vllm-sampling-itl/qwen25-coder-1p5b-summary.json"
@@ -144,6 +159,7 @@ def build_boundary_impacts(root: str | Path = ".") -> list[BoundaryImpact]:
     sampling_gpu_pct = _max_gpu_boundary_pct(ceiling, "standalone_sampling")
     gemm_gpu_pct = _max_gpu_boundary_pct(ceiling, "gemm_or_gemv")
     lm_head_speedup = _best_lm_head_speedup(ceiling)
+    batched_top1_speedup = _best_batched_lm_head_top1_speedup(repo)
 
     return [
         BoundaryImpact(
@@ -215,6 +231,19 @@ def build_boundary_impacts(root: str | Path = ".") -> list[BoundaryImpact]:
             decision="avoid_standalone_replacement",
             evidence="benchmarks/results/l20-lm-head-topk-boundary/",
             note="Best standalone candidate is slower than full logits plus optimized top-k.",
+        ),
+        BoundaryImpact(
+            boundary="Batched LM-head greedy top-1",
+            status="positive_greedy_micro_only",
+            micro_speedup_x=batched_top1_speedup,
+            serving_impact_pct=None,
+            serving_metric="not run in serving; greedy top-1 only",
+            gpu_time_pct=gemm_gpu_pct,
+            eligible_fraction_pct=None,
+            materialization_mib=None,
+            decision="epilogue_prototype_only",
+            evidence="benchmarks/results/l20-lm-head-topk-boundary/",
+            note="Batch-4 batched partial kernel beats full logits top-1 but lacks production sampler semantics.",
         ),
         BoundaryImpact(
             boundary="LM-head/logits epilogue",
@@ -290,7 +319,8 @@ def render_markdown(rows: Iterable[BoundaryImpact]) -> str:
             "## Reading The Table",
             "",
             "- RoPE/KV and Q/K fusion rows show why micro wins are not enough.",
-            "- Standalone sampler and standalone LM-head rows are negative controls.",
+            "- Standalone sampler and standalone LM-head top-k rows are negative controls.",
+            "- Batched greedy top-1 is a positive micro signal, not a serving claim.",
             "- The logits epilogue row is not a speed claim; it is the measured "
             "budget for the next implementation.",
         ]

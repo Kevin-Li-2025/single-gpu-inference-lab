@@ -70,6 +70,32 @@ def lm_head_top1_launch_config(
     )
 
 
+def lm_head_top1_policy_config(
+    batch: int,
+    vocab_size: int,
+    hidden_size: int,
+    *,
+    block_vocab: Optional[int] = None,
+    block_hidden: Optional[int] = None,
+) -> LMHeadTop1LaunchConfig:
+    """Select the measured L20 launch config for the experimental path."""
+
+    if batch <= 0:
+        raise ValueError("batch must be positive")
+    selected_block_vocab = block_vocab
+    selected_block_hidden = block_hidden
+    if selected_block_vocab is None:
+        selected_block_vocab = 64 if batch > 1 else 32
+    if selected_block_hidden is None:
+        selected_block_hidden = 128 if batch > 1 else 64
+    return lm_head_top1_launch_config(
+        vocab_size,
+        hidden_size,
+        block_vocab=selected_block_vocab,
+        block_hidden=selected_block_hidden,
+    )
+
+
 def should_use_l20_lm_head_top1(
     batch: int,
     vocab_size: int,
@@ -86,6 +112,14 @@ def should_use_l20_lm_head_top1(
     if hidden_size % 64 != 0:
         return False
     return batch <= 4 and vocab_size <= 262_144 and hidden_size <= 8192
+
+
+def lm_head_top1_batch_block(batch: int) -> int:
+    """Batch rows per partial program for the experimental direct path."""
+
+    if batch <= 0:
+        raise ValueError("batch must be positive")
+    return 4 if batch > 1 else 1
 
 
 if triton is not None:  # pragma: no cover - requires CUDA
@@ -129,6 +163,51 @@ if triton is not None:  # pragma: no cover - requires CUDA
         tl.store(partial_tokens + out_offset, token)
 
     @triton.jit
+    def _lm_head_top1_batched_partial_kernel(
+        hidden,
+        weight,
+        partial_values,
+        partial_tokens,
+        BATCH: tl.constexpr,
+        HIDDEN: tl.constexpr,
+        VOCAB: tl.constexpr,
+        BLOCK_BATCH: tl.constexpr,
+        BLOCK_VOCAB: tl.constexpr,
+        BLOCK_HIDDEN: tl.constexpr,
+        BLOCKS_PER_ROW: tl.constexpr,
+    ):
+        batch_block = tl.program_id(0)
+        vocab_block = tl.program_id(1)
+        batch_offsets = batch_block * BLOCK_BATCH + tl.arange(0, BLOCK_BATCH)
+        vocab_offsets = vocab_block * BLOCK_VOCAB + tl.arange(0, BLOCK_VOCAB)
+        hidden_offsets = tl.arange(0, BLOCK_HIDDEN)
+        acc = tl.zeros((BLOCK_VOCAB, BLOCK_BATCH), dtype=tl.float32)
+
+        for hidden_start in range(0, HIDDEN, BLOCK_HIDDEN):
+            h_offsets = hidden_start + hidden_offsets
+            h = tl.load(
+                hidden + h_offsets[:, None] + batch_offsets[None, :] * HIDDEN,
+                mask=batch_offsets[None, :] < BATCH,
+                other=0.0,
+            )
+            w = tl.load(
+                weight + vocab_offsets[:, None] * HIDDEN + h_offsets[None, :],
+                mask=vocab_offsets[:, None] < VOCAB,
+                other=0.0,
+            )
+            acc += tl.dot(w, h, out_dtype=tl.float32)
+
+        valid = vocab_offsets[:, None] < VOCAB
+        acc = tl.where(valid, acc, -float("inf"))
+        max_values = tl.max(acc, axis=0)
+        token_candidates = tl.where(acc == max_values[None, :], vocab_offsets[:, None], VOCAB)
+        tokens = tl.min(token_candidates, axis=0)
+        out_offsets = batch_offsets * BLOCKS_PER_ROW + vocab_block
+        out_mask = batch_offsets < BATCH
+        tl.store(partial_values + out_offsets, max_values, mask=out_mask)
+        tl.store(partial_tokens + out_offsets, tokens, mask=out_mask)
+
+    @triton.jit
     def _lm_head_top1_reduce_kernel(
         partial_values,
         partial_tokens,
@@ -167,7 +246,7 @@ def lm_head_top1_out(
     partial_values,
     partial_tokens,
     block_vocab: Optional[int] = None,
-    block_hidden: int = 64,
+    block_hidden: Optional[int] = None,
 ):
     """Compute direct LM-head top-1 into caller-owned output tensors."""
 
@@ -191,7 +270,8 @@ def lm_head_top1_out(
         int(batch), int(vocab_size), int(hidden_size), top_k=1
     ):
         raise ValueError("shape is outside the L20 LM-head top-1 gate")
-    config = lm_head_top1_launch_config(
+    config = lm_head_top1_policy_config(
+        int(batch),
         int(vocab_size),
         int(hidden_size),
         block_vocab=block_vocab,
@@ -205,19 +285,38 @@ def lm_head_top1_out(
     if not partial_values.is_cuda or not partial_tokens.is_cuda:
         raise ValueError("partial workspaces must be CUDA tensors")
 
-    _lm_head_top1_partial_kernel[(batch, config.blocks_per_row)](
-        hidden,
-        weight,
-        partial_values,
-        partial_tokens,
-        HIDDEN=int(hidden_size),
-        VOCAB=int(vocab_size),
-        BLOCK_VOCAB=config.block_vocab,
-        BLOCK_HIDDEN=config.block_hidden,
-        BLOCKS_PER_ROW=config.blocks_per_row,
-        num_warps=config.num_warps,
-        num_stages=3,
-    )
+    block_batch = lm_head_top1_batch_block(int(batch))
+    if block_batch == 1:
+        _lm_head_top1_partial_kernel[(batch, config.blocks_per_row)](
+            hidden,
+            weight,
+            partial_values,
+            partial_tokens,
+            HIDDEN=int(hidden_size),
+            VOCAB=int(vocab_size),
+            BLOCK_VOCAB=config.block_vocab,
+            BLOCK_HIDDEN=config.block_hidden,
+            BLOCKS_PER_ROW=config.blocks_per_row,
+            num_warps=config.num_warps,
+            num_stages=3,
+        )
+    else:
+        partial_grid = (triton.cdiv(int(batch), block_batch), config.blocks_per_row)
+        _lm_head_top1_batched_partial_kernel[partial_grid](
+            hidden,
+            weight,
+            partial_values,
+            partial_tokens,
+            BATCH=int(batch),
+            HIDDEN=int(hidden_size),
+            VOCAB=int(vocab_size),
+            BLOCK_BATCH=block_batch,
+            BLOCK_VOCAB=config.block_vocab,
+            BLOCK_HIDDEN=config.block_hidden,
+            BLOCKS_PER_ROW=config.blocks_per_row,
+            num_warps=config.num_warps,
+            num_stages=3,
+        )
     _lm_head_top1_reduce_kernel[(batch,)](
         partial_values,
         partial_tokens,
@@ -237,7 +336,7 @@ def lm_head_top1(
     weight,
     *,
     block_vocab: Optional[int] = None,
-    block_hidden: int = 64,
+    block_hidden: Optional[int] = None,
 ):
     """Allocate workspaces and compute direct LM-head top-1."""
 
@@ -245,7 +344,8 @@ def lm_head_top1(
         raise RuntimeError("lm_head_top1 requires PyTorch")
     batch, hidden_size = hidden.shape
     vocab_size = weight.shape[0]
-    config = lm_head_top1_launch_config(
+    config = lm_head_top1_policy_config(
+        int(batch),
         int(vocab_size),
         int(hidden_size),
         block_vocab=block_vocab,

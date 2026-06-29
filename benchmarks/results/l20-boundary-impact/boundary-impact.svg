@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="486" viewBox="0 0 1100 486">
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="544" viewBox="0 0 1100 544">
 <rect width="100%" height="100%" fill="#ffffff"/>
 <style>text{font-family:Inter,Arial,sans-serif;fill:#172033}.small{font-size:13px}.label{font-size:14px;font-weight:600}.title{font-size:22px;font-weight:700}.muted{fill:#667085}.axis{stroke:#d0d5dd;stroke-width:1}.good{fill:#137333}.bad{fill:#b42318}.budget{fill:#175cd3}.micro{fill:#7a5af8}</style>
 <text x="28" y="36" class="title">Where L20 inference optimizations stop mattering</text>
@@ -44,10 +44,17 @@
 <text x="660" y="326" class="small muted">pending</text>
 <text x="900" y="326" class="small muted">n/a</text>
 <line x1="28" y1="358" x2="1072" y2="358" class="axis"/>
-<text x="28" y="380" class="label">LM-head/logits epilogue</text>
-<text x="28" y="400" class="small muted">next_core_module</text>
-<text x="430" y="384" class="small muted">not measured</text>
+<text x="28" y="380" class="label">Batched LM-head greedy top-1</text>
+<text x="28" y="400" class="small muted">epilogue_prototype_only</text>
+<rect x="430" y="371" width="21.8" height="16" rx="2" class="micro"/>
+<text x="459.8" y="384" class="small">1.05x</text>
 <text x="660" y="384" class="small muted">pending</text>
-<rect x="900" y="371" width="160.0" height="16" rx="2" class="budget"/>
-<text x="1068.0" y="384" class="small">96.0%, 339.9 MiB</text>
+<text x="900" y="384" class="small muted">n/a</text>
+<line x1="28" y1="416" x2="1072" y2="416" class="axis"/>
+<text x="28" y="438" class="label">LM-head/logits epilogue</text>
+<text x="28" y="458" class="small muted">next_core_module</text>
+<text x="430" y="442" class="small muted">not measured</text>
+<text x="660" y="442" class="small muted">pending</text>
+<rect x="900" y="429" width="160.0" height="16" rx="2" class="budget"/>
+<text x="1068.0" y="442" class="small">96.0%, 339.9 MiB</text>
 </svg>

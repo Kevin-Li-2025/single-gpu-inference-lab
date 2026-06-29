@@ -50,13 +50,39 @@ The custom kernel is correct, but it is still slower than the cuBLAS/CUTLASS
 full-logits path. This is a useful negative result: a standalone Triton LM-head
 replacement is not the right next step.
 
+## Batched Direct Triton Top-1 Sweep
+
+Shape: batch 4, hidden 1536, vocab 151936, FP16, top-k 1. The batched
+partial kernel computes four rows per partial program and avoids materializing
+the `[batch, vocab]` logits tensor for greedy top-1 only.
+
+| Block vocab | Block hidden | Full logits top-1 | Triton direct top-1 | Triton / full |
+| ---: | ---: | ---: | ---: | ---: |
+| 16 | 64 | 0.712 ms | 0.689 ms | 0.968x |
+| 16 | 128 | 0.712 ms | 0.682 ms | 0.959x |
+| 32 | 64 | 0.712 ms | 0.714 ms | 1.003x |
+| 32 | 128 | 0.712 ms | 0.680 ms | 0.955x |
+| 64 | 64 | 0.711 ms | 0.721 ms | 1.014x |
+| 64 | 128 | 0.712 ms | 0.677 ms | 0.952x |
+
+The best measured L20 policy for this batch-4 greedy shape is therefore
+`block_vocab=64`, `block_hidden=128`, with a 4.8% median microbenchmark speedup
+over full logits top-1. The default experimental policy now uses the old
+`32/64` path for batch 1 and the measured `64/128` path for batch >1.
+
+This is the first positive self-written LM-head boundary micro signal in this
+repo. It is still not a serving claim: the path only covers greedy top-1, still
+uses a separate reduction kernel, and does not implement top-k/top-p, penalties,
+logprobs, structured-output masks, or vLLM scheduler semantics.
+
 ## Conclusion
 
-The next high-value sampler boundary is not chunked logits or an isolated
-direct-top-k kernel. To beat the current path, the work has to happen inside a
-production GEMM epilogue or an upstreamable vLLM/FlashInfer/CUTLASS integration
-where top-k/top-p state is produced while the optimized LM-head GEMM is already
-running.
+Chunked logits and batch-1 direct top-1 do not beat the optimized full-logits
+path. A batched direct top-1 kernel can win a narrow greedy microbenchmark, but
+it is too limited to replace production sampling. To move serving ITL, the work
+still has to happen at a production LM-head/GEMM epilogue or an upstreamable
+vLLM/FlashInfer/CUTLASS integration where sampler state is produced while the
+optimized LM-head GEMM is already running.
 
 ## Artifacts
 
@@ -71,4 +97,12 @@ running.
 - `qwen25-b1-h1536-v151936-k1-bv16-bh128.json`
 - `qwen25-b1-h1536-v151936-k1-bv64-bh64.json`
 - `qwen25-b1-h1536-v151936-k1-bv64-bh128.json`
+- `qwen25-b4-h1536-v151936-k1-batched-v1.json`
+- `qwen25-b4-h1536-v151936-k1-batched-policy-v2.json`
+- `qwen25-b4-h1536-v151936-k1-batched-bv16-bh64.json`
+- `qwen25-b4-h1536-v151936-k1-batched-bv16-bh128.json`
+- `qwen25-b4-h1536-v151936-k1-batched-bv32-bh64.json`
+- `qwen25-b4-h1536-v151936-k1-batched-bv32-bh128.json`
+- `qwen25-b4-h1536-v151936-k1-batched-bv64-bh64.json`
+- `qwen25-b4-h1536-v151936-k1-batched-bv64-bh128.json`
 - `smoke-b1-h512-v8192-k1.json`

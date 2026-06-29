@@ -65,6 +65,19 @@
     "status": "negative_micro_result"
   },
   {
+    "boundary": "Batched LM-head greedy top-1",
+    "decision": "epilogue_prototype_only",
+    "eligible_fraction_pct": null,
+    "evidence": "benchmarks/results/l20-lm-head-topk-boundary/",
+    "gpu_time_pct": 62.10202176584764,
+    "materialization_mib": null,
+    "micro_speedup_x": 1.050642468705243,
+    "note": "Batch-4 batched partial kernel beats full logits top-1 but lacks production sampler semantics.",
+    "serving_impact_pct": null,
+    "serving_metric": "not run in serving; greedy top-1 only",
+    "status": "positive_greedy_micro_only"
+  },
+  {
     "boundary": "LM-head/logits epilogue",
     "decision": "next_core_module",
     "eligible_fraction_pct": 96.0,

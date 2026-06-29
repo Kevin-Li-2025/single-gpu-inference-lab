@@ -23,8 +23,8 @@ from pathlib import Path
 import torch
 
 from l20_stack.ops.triton_lm_head_top1 import (
-    lm_head_top1_launch_config,
     lm_head_top1_out,
+    lm_head_top1_policy_config,
 )
 
 
@@ -38,8 +38,8 @@ def parse_args():
     parser.add_argument("--rounds", type=int, default=30)
     parser.add_argument("--warmup", type=int, default=10)
     parser.add_argument("--dtype", choices=("float16", "bfloat16"), default="float16")
-    parser.add_argument("--block-vocab", type=int, default=32)
-    parser.add_argument("--block-hidden", type=int, default=64)
+    parser.add_argument("--block-vocab", type=int, default=None)
+    parser.add_argument("--block-hidden", type=int, default=None)
     parser.add_argument("--include-triton-top1", action="store_true")
     parser.add_argument("--output", type=Path)
     return parser.parse_args()
@@ -176,7 +176,8 @@ def main() -> int:
     if args.include_triton_top1:
         if args.top_k != 1:
             raise ValueError("--include-triton-top1 requires --top-k 1")
-        config = lm_head_top1_launch_config(
+        config = lm_head_top1_policy_config(
+            args.batch,
             args.vocab,
             args.hidden,
             block_vocab=args.block_vocab,
