@@ -27,4 +27,9 @@ This is the first real vLLM native serving run where the L20 FlashSampling candi
 
 The candidate path is correctly wired into the real vLLM native decode path and avoids logits materialization for decode events, but the standalone two-stage Triton LM-head sampler is not yet a throughput win over vLLM baseline on this small model. The useful result is the boundary: the next version needs an LM-head epilogue attached to the existing GEMM path, not a separate replacement GEMV-style kernel.
 
+The checked-in dispatch policy now defaults the candidate to batch-one path
+proof and falls back for batch > 1. Use
+`VLLM_L20_FLASHSAMPLING_CANDIDATE_MAX_BATCH=4` only to reproduce this original
+c1/c4 artifact.
+
 Raw serving JSON is kept under `baseline/` and `candidate/`.

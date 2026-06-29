@@ -17,6 +17,7 @@ from typing import Any
 ENABLE_ENV = "VLLM_L20_FLASHSAMPLING_CANDIDATE"
 TRACE_ENV = "VLLM_L20_FLASHSAMPLING_CANDIDATE_TRACE"
 TRACE_LIMIT_ENV = "VLLM_L20_FLASHSAMPLING_CANDIDATE_TRACE_LIMIT"
+MAX_BATCH_ENV = "VLLM_L20_FLASHSAMPLING_CANDIDATE_MAX_BATCH"
 _ALLOW_NON_L20_ENV = "VLLM_L20_LOGITS_BOUNDARY_ALLOW_NON_L20"
 _TRACE_COUNT = 0
 
@@ -30,6 +31,21 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _candidate_max_batch() -> int:
+    """Default to path-proof only; larger batches regressed in serving."""
+
+    value = _safe_int(os.environ.get(MAX_BATCH_ENV), 1)
+    return max(1, value)
+
+
+def _candidate_batch_reasons(request: dict[str, Any]) -> list[str]:
+    batch = _safe_int(request.get("batch_size"), 0)
+    max_batch = _candidate_max_batch()
+    if batch > max_batch:
+        return [f"candidate_batch_gt_{max_batch}"]
+    return []
 
 
 def _active_num_reqs(input_batch: Any) -> int:
@@ -251,6 +267,8 @@ def maybe_l20_flashsampling_compute_logits_or_sample(
     )
     if not scheduled_ok:
         reasons.extend(scheduled_reasons)
+    if request:
+        reasons.extend(_candidate_batch_reasons(request))
 
     if not reasons and request:
         try:

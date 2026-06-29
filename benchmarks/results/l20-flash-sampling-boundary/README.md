@@ -8,7 +8,8 @@ This is not a serving win claim yet. The first checked path is intentionally
 narrow:
 
 - safe decode only;
-- batch <= 4;
+- batch 1 by default, with `VLLM_L20_FLASHSAMPLING_CANDIDATE_MAX_BATCH=4` only
+  for reproducing the first c1/c4 path-proof run;
 - vocab <= 262144;
 - hidden divisible by 64;
 - greedy or full-vocabulary Gumbel-max only;
@@ -95,7 +96,8 @@ now reaches the native vLLM decode path and skips logits materialization for the
 safe decode subset, but its standalone two-stage Triton LM-head sampler is not a
 throughput win yet. The next optimization must attach sampling to the existing
 LM-head GEMM epilogue rather than replacing GEMM with a separate candidate
-kernel.
+kernel. Because the first c4 run regressed throughput, the checked-in candidate
+policy falls back for batch > 1 unless the max batch is explicitly overridden.
 
 ## Artifacts
 

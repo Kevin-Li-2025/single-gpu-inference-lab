@@ -76,13 +76,16 @@ The candidate installer is separate from trace-only mode. It only activates when
 vLLM's baseline logits path. The first native-path paired run is stored in
 `benchmarks/results/l20-flash-sampling-boundary/qwen3-0p6b-o2-i512-c1c4-candidate-v1/`:
 it hits 773/775 candidate events, slightly improves p50 ITL, but regresses
-throughput. Use it only for paired A/B runs:
+throughput. The checked-in candidate therefore defaults to batch-one path proof;
+set `VLLM_L20_FLASHSAMPLING_CANDIDATE_MAX_BATCH=4` only when reproducing the
+original c1/c4 experiment. Use it only for paired A/B runs:
 
 ```bash
 python integrations/vllm/install_l20_flashsampling_epilogue_candidate.py \
   --vllm-source /home/hhai/vllm-l20-rfc
 
 VLLM_L20_FLASHSAMPLING_CANDIDATE=1 \
+VLLM_L20_FLASHSAMPLING_CANDIDATE_MAX_BATCH=1 \
 VLLM_L20_FLASHSAMPLING_CANDIDATE_TRACE=/tmp/l20-flashsampling-candidate.jsonl \
   <run paired vLLM serving benchmark>
 ```
