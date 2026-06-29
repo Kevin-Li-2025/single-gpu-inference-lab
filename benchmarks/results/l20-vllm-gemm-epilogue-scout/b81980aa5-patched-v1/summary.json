@@ -1,0 +1,300 @@
+{
+  "complete": true,
+  "evidence": {
+    "serving_decision": "do_not_claim_serving_win",
+    "serving_delta_pct": {
+      "median_itl_ms": -1.1092076795040138,
+      "median_ttft_ms": 13.762051469310999,
+      "output_throughput": -2.9471406375442064,
+      "p95_itl_ms": 0.4474229512504792
+    },
+    "serving_reason": "Policy repair improved standalone tile choice and median ITL moved slightly, but throughput and TTFT regressed in this smoke run.",
+    "tile_best_keys": [
+      "b1-h1024-v151936-gumbel",
+      "b1-h1536-v151936-gumbel",
+      "b4-h1024-v151936-gumbel",
+      "b4-h1536-v151936-gumbel"
+    ],
+    "tile_policy_decision": {
+      "batch1_default": {
+        "block_hidden": 256,
+        "block_vocab": 32
+      },
+      "batched_default": {
+        "block_hidden": 256,
+        "block_vocab": 64
+      },
+      "reason": "hidden tile 256 consistently reduced standalone candidate latency; wider vocab tiles did not improve and 256x256 exceeds shared-memory limits."
+    }
+  },
+  "first_safe_gate": [
+    "CUDA L20 / SM89 only",
+    "tensor parallel size 1 for the first implementation",
+    "decode path only, one scheduled token per active request",
+    "no prompt logprobs, token logprobs, or raw/processed logits return",
+    "no grammar or structured-output bitmask",
+    "no speculative decoding or rejection sampler",
+    "no LoRA or per-request adapter path in the first implementation",
+    "no per-request torch.Generator semantics until RNG state is plumbed",
+    "fallback to compute_logits plus sampler for every unsupported request"
+  ],
+  "implementation_plan": [
+    {
+      "details": "Add an opt-in API that can return None before compute_logits; do not ship a new CUDA kernel in the first upstream patch.",
+      "priority": "P0",
+      "ready": true,
+      "step": "open a clean upstream-shaped trace PR around the LM-head callsite"
+    },
+    {
+      "details": "The policy-v2 serving smoke is negative for throughput and TTFT.",
+      "priority": "P0",
+      "ready": true,
+      "step": "keep standalone FlashSampling disabled"
+    },
+    {
+      "details": "The first kernel should preserve lm_head.quant_method.apply or add a quant-method epilogue hook; do not duplicate the LM-head matmul.",
+      "priority": "P1",
+      "ready": true,
+      "step": "prototype the GEMM epilogue behind LogitsProcessor"
+    },
+    {
+      "details": "The current remote source has local L20 patches and backup files.",
+      "priority": "Blocker",
+      "ready": false,
+      "step": "rescan a clean vLLM checkout before publishing an upstream diff"
+    }
+  ],
+  "patch_points": [
+    {
+      "complete": true,
+      "exists": true,
+      "expected_groups": 3,
+      "id": "gpu_runner_logits_boundary",
+      "matched_groups": 3,
+      "matches": [
+        {
+          "line": 634,
+          "needle": "sample_hidden_states = hidden_states[input_batch.logits_indices]",
+          "text": "sample_hidden_states = hidden_states[input_batch.logits_indices]"
+        },
+        {
+          "line": 1057,
+          "needle": "maybe_l20_flashsampling_compute_logits_or_sample(",
+          "text": "logits = maybe_l20_flashsampling_compute_logits_or_sample("
+        },
+        {
+          "line": 1096,
+          "needle": "self.sampler(logits, input_batch)",
+          "text": "sampler_output = self.sampler(logits, input_batch)"
+        }
+      ],
+      "path": "vllm/v1/worker/gpu/model_runner.py",
+      "required": true,
+      "required_complete": true,
+      "role": "decode callsite where sample hidden states become logits before sampler dispatch"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_groups": 3,
+      "id": "legacy_gpu_runner_logits_boundary",
+      "matched_groups": 3,
+      "matches": [
+        {
+          "line": 417,
+          "needle": "sample_hidden_states",
+          "text": "sample_hidden_states: torch.Tensor"
+        },
+        {
+          "line": 4376,
+          "needle": "self.model.compute_logits",
+          "text": "self.model.compute_logits,"
+        },
+        {
+          "line": 4504,
+          "needle": "self._sample(logits",
+          "text": "sampler_output = self._sample(logits, spec_decode_metadata)"
+        }
+      ],
+      "path": "vllm/v1/worker/gpu_model_runner.py",
+      "required": false,
+      "required_complete": true,
+      "role": "older v1 runner callsite kept for source-tree compatibility"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_groups": 5,
+      "id": "logits_processor_lm_head",
+      "matched_groups": 5,
+      "matches": [
+        {
+          "line": 19,
+          "needle": "class LogitsProcessor",
+          "text": "class LogitsProcessor(PluggableLayer):"
+        },
+        {
+          "line": 89,
+          "needle": "def _get_logits",
+          "text": "def _get_logits("
+        },
+        {
+          "line": 96,
+          "needle": "lm_head.quant_method.apply(lm_head, hidden_states",
+          "text": "logits = lm_head.quant_method.apply(lm_head, hidden_states, bias=embedding_bias)"
+        },
+        {
+          "line": 99,
+          "needle": "logits = self._gather_logits(logits)",
+          "text": "logits = self._gather_logits(logits)"
+        },
+        {
+          "line": 106,
+          "needle": "def get_top_tokens",
+          "text": "def get_top_tokens("
+        }
+      ],
+      "path": "vllm/model_executor/layers/logits_processor.py",
+      "required": true,
+      "required_complete": true,
+      "role": "optimized LM-head logits producer; a real epilogue must preserve this path"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_groups": 4,
+      "id": "parallel_lm_head_contract",
+      "matched_groups": 4,
+      "matches": [
+        {
+          "line": 110,
+          "needle": "class VocabParallelEmbedding",
+          "text": "class VocabParallelEmbeddingShardIndices:"
+        },
+        {
+          "line": 505,
+          "needle": "class ParallelLMHead",
+          "text": "class ParallelLMHead(VocabParallelEmbedding):"
+        },
+        {
+          "line": 543,
+          "needle": "self.quant_config = quant_config",
+          "text": "self.quant_config = quant_config"
+        },
+        {
+          "line": 80,
+          "needle": "def tie_weights",
+          "text": "def tie_weights("
+        }
+      ],
+      "path": "vllm/model_executor/layers/vocab_parallel_embedding.py",
+      "required": true,
+      "required_complete": true,
+      "role": "LM-head weight, padding, shard, bias, and quantization abstraction"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_groups": 4,
+      "id": "sampler_output_contract",
+      "matched_groups": 4,
+      "matches": [
+        {
+          "line": 20,
+          "needle": "class Sampler",
+          "text": "class Sampler(nn.Module):"
+        },
+        {
+          "line": 96,
+          "needle": "logits = logits.to(torch.float32)",
+          "text": "logits = logits.to(torch.float32)"
+        },
+        {
+          "line": 102,
+          "needle": "sampled, processed_logprobs = self.sample(logits, sampling_metadata)",
+          "text": "sampled, processed_logprobs = self.sample(logits, sampling_metadata)"
+        },
+        {
+          "line": 142,
+          "needle": "sampler_output = SamplerOutput(",
+          "text": "sampler_output = SamplerOutput("
+        }
+      ],
+      "path": "vllm/v1/sample/sampler.py",
+      "required": true,
+      "required_complete": true,
+      "role": "SamplerOutput/logprobs semantics that any epilogue output must match"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_groups": 3,
+      "id": "topk_topp_sampler_contract",
+      "matched_groups": 3,
+      "matches": [
+        {
+          "line": 71,
+          "needle": "class TopKTopPSampler",
+          "text": "class TopKTopPSampler(nn.Module):"
+        },
+        {
+          "line": 148,
+          "needle": "def forward_cuda",
+          "text": "def forward_cuda("
+        },
+        {
+          "line": 22,
+          "needle": "flashinfer_sample",
+          "text": "def flashinfer_sampler_supported() -> bool:"
+        }
+      ],
+      "path": "vllm/v1/sample/ops/topk_topp_sampler.py",
+      "required": true,
+      "required_complete": true,
+      "role": "current production top-k/top-p backend and FlashInfer fallback contract"
+    },
+    {
+      "complete": true,
+      "exists": true,
+      "expected_groups": 2,
+      "id": "lora_logits_processor",
+      "matched_groups": 2,
+      "matches": [
+        {
+          "line": 20,
+          "needle": "class LogitsProcessorWithLoRA",
+          "text": "class LogitsProcessorWithLoRA(BaseLayerWithLoRA):"
+        },
+        {
+          "line": 152,
+          "needle": "actual_lm_head.quant_method.apply",
+          "text": "logits = actual_lm_head.quant_method.apply(actual_lm_head, hidden_states)"
+        }
+      ],
+      "path": "vllm/lora/layers/logits_processor.py",
+      "required": false,
+      "required_complete": true,
+      "role": "LoRA-aware logits path; first epilogue gate should fallback when LoRA is active"
+    }
+  ],
+  "schema_version": 1,
+  "source": {
+    "branch": "l20-sm89-paged-decode-rfc",
+    "commit": "b81980aa5",
+    "dirty": true,
+    "l20_local_patch_present": true,
+    "path": "/home/hhai/vllm-l20-rfc",
+    "status_line_count": 31
+  },
+  "upstream_api": {
+    "dirty_source_warning": "The scanned vLLM tree contains local L20 patches; use a clean upstream checkout before producing a PR diff.",
+    "fallback_contract": "return None and run existing compute_logits plus sampler",
+    "not_ready_for_perf_claim": true,
+    "proposed_api": "try_sample_from_lm_head(lm_head, hidden_states, sampling_metadata, embedding_bias=None) -> SamplerOutput | None",
+    "proposed_callsite": "GPUModelRunner.sample before model.compute_logits",
+    "proposed_owner": "LogitsProcessor / ParallelLMHead, not TopKTopPSampler",
+    "ready_for_trace_pr": true,
+    "why_not_sampler_only": "TopKTopPSampler receives materialized logits; it is too late to avoid LM-head output traffic.",
+    "why_not_standalone_kernel": "Standalone candidate fixed tile policy but still lost serving throughput/TTFT."
+  }
+}

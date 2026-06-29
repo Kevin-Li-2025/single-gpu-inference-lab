@@ -5,6 +5,8 @@ AB_DOC = Path("docs/logits-boundary-ab.md")
 PUBLIC_DOCS = [
     AB_DOC,
     Path("docs/where-optimizations-stop-mattering.md"),
+    Path("docs/experiment-status.md"),
+    Path("docs/logits-boundary-rfc.md"),
     Path("README.md"),
     Path("benchmarks/results/README.md"),
 ]
@@ -31,6 +33,21 @@ def test_public_summaries_link_the_ab_plan_once():
     assert read(Path("docs/where-optimizations-stop-mattering.md")).count(
         summary_link
     ) == 1
+
+
+def test_logits_boundary_docs_track_gemm_epilogue_scout():
+    rfc = read(Path("docs/logits-boundary-rfc.md"))
+    status = read(Path("docs/experiment-status.md"))
+    results_index = read(Path("benchmarks/results/README.md"))
+    artifact = "benchmarks/results/l20-vllm-gemm-epilogue-scout/"
+    assert artifact in rfc
+    assert artifact in status
+    assert "l20-vllm-gemm-epilogue-scout/" in results_index
+    assert "LogitsProcessor" in rfc
+    assert "ParallelLMHead" in rfc
+    assert "TopKTopPSampler" in rfc
+    assert "sampler-only hook is too late" in rfc
+    assert "not a sampler-only hook" in status
 
 
 def test_ab_doc_keeps_shadow_and_performance_claims_separate():

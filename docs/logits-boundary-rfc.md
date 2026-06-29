@@ -52,6 +52,29 @@ It confirms that `metadata.shadow_epilogue` is emitted in real vLLM O2 serving:
 | c1 i512/o32 median ITL | 2.82927 ms |
 | c4 i512/o32 median ITL | 3.27361 ms |
 
+The latest boundary scout is:
+
+```text
+benchmarks/results/l20-vllm-gemm-epilogue-scout/b81980aa5-patched-v1/
+```
+
+It scanned the real L20 vLLM checkout after the standalone FlashSampling
+candidate lost real serving throughput/TTFT. The actionable conclusion is that
+the first real implementation must live at the LM-head producer boundary:
+
+```text
+try_sample_from_lm_head(
+    lm_head,
+    hidden_states,
+    sampling_metadata,
+    embedding_bias=None,
+) -> SamplerOutput | None
+```
+
+The owner should be `LogitsProcessor` / `ParallelLMHead`, not
+`TopKTopPSampler`. `TopKTopPSampler` receives materialized logits, so a
+sampler-only hook is too late to remove the LM-head output traffic.
+
 ## Current Patch Points
 
 The trace-only implementation patches the vLLM V1 GPU runner after logits are
@@ -86,6 +109,18 @@ It includes:
 - `avoidable_logits_materialization_bytes`
 - `covered_semantics`
 - `mutates_outputs=false`
+
+The epilogue scout identifies the next patch boundary as:
+
+- `vllm/model_executor/layers/logits_processor.py`
+- `vllm/model_executor/layers/vocab_parallel_embedding.py`
+- `vllm/v1/worker/gpu/model_runner.py`
+
+`LogitsProcessor.get_top_tokens()` already provides a greedy/vocab-parallel
+precedent, but the sampled path still needs a new fallback-first API for
+top-k/top-p style semantics. The scanned source tree was dirty and contained
+local L20 patches, so any upstream PR diff must be regenerated from a clean
+vLLM checkout before publication.
 
 ## First Safe Gate
 
@@ -141,7 +176,10 @@ Still no token-output mutation.
 
 Only after Phase 1 is stable, add a candidate epilogue path for the safe subset.
 The implementation should preserve the optimized LM-head path rather than
-replacing it with a slower standalone top-k path.
+replacing it with a slower standalone top-k path. The first prototype should be
+a `LogitsProcessor` / `ParallelLMHead` method that returns `None` for every
+unsupported request and lets vLLM continue through `compute_logits` plus the
+existing sampler.
 
 ### Phase 3: Upstream PR
 

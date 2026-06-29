@@ -23,7 +23,7 @@ small.
 | vLLM native QK norm/RoPE fusion | Confirmed low-single-digit signal | `benchmarks/results/l20-qk-norm-rope-serving/` | Confirms the boundary matters; custom three-way integration still needs a stronger system win. |
 | FlashInfer sampling route | Confirmed production route | `benchmarks/results/l20-vllm-sampling-winner/`, `benchmarks/results/l20-vllm-sampling-winner-v2/` | Harden and prewarm FlashInfer; keep self-written sampler disabled. |
 | Self-written L20 top-k/top-p sampler | Negative serving result | `benchmarks/results/l20-vllm-sampling-itl/` | Do not enable as a serving path; use only as research/control code. |
-| LM-head/logits boundary | Active P0 | `benchmarks/results/l20-vllm-logits-boundary-scout/`, `benchmarks/results/l20-vllm-logits-boundary-trace-p1/` | Next meaningful implementation target is an upstream-shaped epilogue or compiled sampler boundary. |
+| LM-head/logits boundary | Active P0 | `benchmarks/results/l20-vllm-logits-boundary-scout/`, `benchmarks/results/l20-vllm-logits-boundary-trace-p1/`, `benchmarks/results/l20-vllm-gemm-epilogue-scout/b81980aa5-patched-v1/` | Next meaningful implementation target is an upstream-shaped GEMM epilogue owned by `LogitsProcessor` / `ParallelLMHead`, not a sampler-only hook. |
 | Standalone LM-head top-k | Negative micro result | `benchmarks/results/l20-lm-head-topk-boundary/` | Standalone replacement is slower; only an epilogue can plausibly win. |
 | FlashSampling standalone LM-head candidate | Negative serving result | `benchmarks/results/l20-flash-sampling-boundary/tile-policy-v2/`, `benchmarks/results/l20-flash-sampling-boundary/qwen3-0p6b-o2-i512-c1-policy-v2-smoke/` | Tile policy repaired the standalone kernel, but real serving still loses throughput/TTFT; next target must be a true GEMM epilogue. |
 | FP8 KV fused attention | Experimental / negative dispatch | `docs/l20-next-improvements.md`, `benchmarks/results/l20-vllm-paged-decode-o2/` | Keep disabled until repeated vLLM ITL beats BF16/FlashInfer. |
@@ -40,7 +40,8 @@ small.
    isolated measurements.
 3. The current high-leverage target is the LM-head/logits/sampling boundary,
    because trace data shows a large eligible full-logits materialization budget
-   in safe decode shapes.
+   in safe decode shapes. The latest scout narrows the first implementation to
+   a `LogitsProcessor` / `ParallelLMHead` GEMM epilogue with strict fallback.
 
 ## Claims Not To Make Yet
 
@@ -60,7 +61,8 @@ The current public story should be:
 
 ```text
 RoPE/KV micro wins -> vLLM serving dilution -> NSYS/Amdahl ceiling ->
-FlashInfer sampling hardening -> logits-boundary trace budget -> epilogue target
+FlashInfer sampling hardening -> logits-boundary trace budget ->
+GEMM epilogue target
 ```
 
 That path is stronger than a list of kernels because it shows a complete systems
