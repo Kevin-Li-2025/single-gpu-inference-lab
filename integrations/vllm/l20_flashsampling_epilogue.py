@@ -8,7 +8,10 @@ first epilogue kernel does not implement.
 
 from __future__ import annotations
 
+import json
 import os
+import time
+from pathlib import Path
 from typing import Any
 
 try:
@@ -24,6 +27,9 @@ except ImportError:  # pragma: no cover - used by repo-local tests.
     l20_logits_boundary_gate = _trace_module.l20_logits_boundary_gate
 
 TRACE_MODE_ENV = "VLLM_L20_FLASHSAMPLING_MODE"
+TRACE_ENV = "VLLM_L20_FLASHSAMPLING_TRACE"
+TRACE_LIMIT_ENV = "VLLM_L20_FLASHSAMPLING_TRACE_LIMIT"
+_TRACE_COUNT = 0
 
 
 def _safe_int(value: Any, default: int) -> int:
@@ -115,3 +121,42 @@ def plan_l20_flashsampling_epilogue(
         "logits_materialization_bytes": logits_bytes,
         "avoidable_logits_materialization_bytes": logits_bytes if eligible else 0,
     }
+
+
+def maybe_trace_l20_flashsampling_epilogue(
+    model_runner: Any,
+    input_batch: Any,
+    grammar_output: Any,
+    sample_hidden_states: Any,
+    logits: Any,
+    scheduler_output: Any = None,
+) -> None:
+    """Write a behavior-preserving FlashSampling shadow-plan event if enabled."""
+
+    path = os.environ.get(TRACE_ENV)
+    if not path:
+        return
+    global _TRACE_COUNT
+    limit = int(os.environ.get(TRACE_LIMIT_ENV, "4096"))
+    if _TRACE_COUNT >= limit:
+        return
+    plan = plan_l20_flashsampling_epilogue(
+        model_runner,
+        input_batch,
+        grammar_output,
+        sample_hidden_states,
+        logits,
+        scheduler_output,
+    )
+    event = {
+        "ts": time.time(),
+        "event": "l20_flashsampling_epilogue_gate",
+        "eligible": plan["would_use_epilogue"],
+        "reasons": plan["fallback_reasons"],
+        "metadata": {"flashsampling_epilogue": plan},
+    }
+    _TRACE_COUNT += 1
+    trace_path = Path(path)
+    trace_path.parent.mkdir(parents=True, exist_ok=True)
+    with trace_path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(event, sort_keys=True) + "\n")

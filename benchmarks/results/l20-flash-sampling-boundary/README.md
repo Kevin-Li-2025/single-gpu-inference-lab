@@ -55,6 +55,30 @@ PYTHONPATH=src python scripts/benchmark_l20_flash_sampling_boundary.py \
 The serving-level gate is separate. A positive microbenchmark only says the
 LM-head boundary is worth integrating; it does not prove vLLM ITL movement.
 
+## Serving Trace Gate
+
+The behavior-preserving vLLM hook writes a JSONL event per sampled step, then the
+summary script reports eligible fraction, fallback reasons, shape counts, and
+avoidable logits bytes:
+
+```bash
+python integrations/vllm/install_l20_flashsampling_epilogue_trace.py \
+  --vllm-source /home/hhai/vllm-l20-rfc
+
+VLLM_L20_FLASHSAMPLING_TRACE=/tmp/l20-flashsampling.jsonl \
+VLLM_L20_FLASHSAMPLING_TRACE_LIMIT=4096 \
+VLLM_L20_FLASHSAMPLING_MODE=gumbel \
+  <run paired vLLM serving benchmark>
+
+python scripts/summarize_l20_flashsampling_trace.py \
+  /tmp/l20-flashsampling.jsonl \
+  --output /tmp/l20-flashsampling-summary.md
+```
+
+This trace still runs after logits are materialized. A real serving win requires
+the next patch to move the candidate selection into the LM-head epilogue and
+show paired ITL movement.
+
 ## Artifacts
 
 - `qwen3-b4-h1024-v151936-gumbel-v1.json`

@@ -11,6 +11,7 @@ serving behavior.
 | --- | --- | --- | --- |
 | `install_l20_logits_boundary_trace.py` | Safe trace | Records where an LM-head/logits/sampling epilogue could be legal. | Behavior-preserving only; no speed claim. |
 | `l20_flashsampling_epilogue.py` | Shadow helper | Narrows the logits-boundary trace to the FlashSampling-style full-vocab Gumbel epilogue gate. | Behavior-preserving only; micro result is not serving proof. |
+| `install_l20_flashsampling_epilogue_trace.py` | Safe trace | Installs the logits-boundary trace plus the narrower FlashSampling gate into vLLM. | Behavior-preserving only; path-proof/fallback accounting. |
 | `install_l20_qk_norm_rope_kv.py` | Experimental | Tests a fused Q/K norm + Q/K RoPE + KV write boundary. | Path proof and small serving signal, not a broad win. |
 | `install_l20_rope_kv.py` | Confirmed kernel / limited serving | Fuses RoPE and KV-cache append. | Useful case-study evidence; Amdahl-limited in full serving. |
 | `install_l20_topk_topp_sampler.py` | Negative serving result | Wires the self-written L20 sampler into vLLM. | Disabled for production claims after ITL regression. |
@@ -44,6 +45,27 @@ under the current safe gate. `l20_flashsampling_epilogue.py` is the next narrowe
 shadow planner: it only accepts full-vocabulary greedy/Gumbel cases and keeps
 top-k/top-p, logprobs, penalties, structured output, and speculative decode on
 the baseline path.
+
+Install the narrower FlashSampling shadow gate when the next question is how
+often real serving traffic could skip full logits materialization:
+
+```bash
+python integrations/vllm/install_l20_flashsampling_epilogue_trace.py \
+  --vllm-source /home/hhai/vllm-l20-rfc
+
+VLLM_L20_FLASHSAMPLING_TRACE=/tmp/l20-flashsampling.jsonl \
+VLLM_L20_FLASHSAMPLING_TRACE_LIMIT=4096 \
+VLLM_L20_FLASHSAMPLING_MODE=gumbel \
+  <run the same paired vLLM serving command>
+
+python scripts/summarize_l20_flashsampling_trace.py \
+  /tmp/l20-flashsampling.jsonl \
+  --output /tmp/l20-flashsampling-summary.md
+```
+
+The FlashSampling trace is intentionally downstream of `compute_logits` today.
+It proves legality, fallback reasons, and avoidable logits bytes before replacing
+the LM-head epilogue. It is not a latency optimization by itself.
 
 ## Dispatch Rules
 
