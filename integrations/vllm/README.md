@@ -12,6 +12,7 @@ serving behavior.
 | `install_l20_logits_boundary_trace.py` | Safe trace | Records where an LM-head/logits/sampling epilogue could be legal. | Behavior-preserving only; no speed claim. |
 | `l20_flashsampling_epilogue.py` | Shadow helper | Narrows the logits-boundary trace to the FlashSampling-style full-vocab Gumbel epilogue gate. | Behavior-preserving only; micro result is not serving proof. |
 | `install_l20_flashsampling_epilogue_trace.py` | Safe trace | Installs the logits-boundary trace plus the narrower FlashSampling gate into vLLM. | Behavior-preserving only; path-proof/fallback accounting. |
+| `install_l20_flashsampling_epilogue_candidate.py` | Experimental | Opt-in LM-head FlashSampling candidate for full-vocab decode. | Requires paired serving A/B before any win claim. |
 | `install_l20_qk_norm_rope_kv.py` | Experimental | Tests a fused Q/K norm + Q/K RoPE + KV write boundary. | Path proof and small serving signal, not a broad win. |
 | `install_l20_rope_kv.py` | Confirmed kernel / limited serving | Fuses RoPE and KV-cache append. | Useful case-study evidence; Amdahl-limited in full serving. |
 | `install_l20_topk_topp_sampler.py` | Negative serving result | Wires the self-written L20 sampler into vLLM. | Disabled for production claims after ITL regression. |
@@ -68,6 +69,20 @@ The remote campaign wrapper is `scripts/run_vllm_l20_flashsampling_trace_campaig
 It defaults to full-vocabulary Gumbel (`TOP_K=-1`, `TOP_P=1.0`) because the first
 FlashSampling epilogue prototype intentionally leaves top-k/top-p on the baseline
 path.
+
+
+The candidate installer is separate from trace-only mode. It only activates when
+`VLLM_L20_FLASHSAMPLING_CANDIDATE=1` is set, and unsupported cases fall back to
+vLLM's baseline logits path. Use it only for paired A/B runs:
+
+```bash
+python integrations/vllm/install_l20_flashsampling_epilogue_candidate.py \
+  --vllm-source /home/hhai/vllm-l20-rfc
+
+VLLM_L20_FLASHSAMPLING_CANDIDATE=1 \
+VLLM_L20_FLASHSAMPLING_CANDIDATE_TRACE=/tmp/l20-flashsampling-candidate.jsonl \
+  <run paired vLLM serving benchmark>
+```
 
 The FlashSampling trace is intentionally downstream of `compute_logits` today.
 It proves legality, fallback reasons, and avoidable logits bytes before replacing
