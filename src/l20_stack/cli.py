@@ -1,4 +1,4 @@
-"""Command line interface for L20 Stack."""
+"""Command line interface for Single-GPU Inference Lab."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from l20_stack.operators import OperatorTarget, l20_operator_summary, plan_opera
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="l20-stack")
+    parser = argparse.ArgumentParser(prog="single-gpu-infer")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     plan = subparsers.add_parser("plan", help="estimate memory for an experiment config")

@@ -1,6 +1,6 @@
 # Hardware Scope
 
-This repo is L20-first, not L20-only.
+Single-GPU Inference Lab is L20-first, not L20-only.
 
 The codebase started as an NVIDIA L20 / Ada SM89 serving stack because a 48 GB
 GDDR6 card exposes a different optimization regime from HBM GPUs. The current
@@ -44,12 +44,15 @@ The following must stay hardware-scoped:
 
 ## Naming
 
-The Python package remains `l20_stack` for compatibility with existing scripts,
-artifacts, and remote validation paths. New documentation should describe the
-project as:
+The public project name is **Single-GPU Inference Lab**.
+
+The distribution/package metadata is `single-gpu-inference-lab`, and the primary
+CLI entry point is `single-gpu-infer`. The Python implementation namespace
+remains `l20_stack` for compatibility with existing scripts, artifacts, and
+remote validation paths. New documentation should describe the project as:
 
 ```text
-L20-first single-GPU LLM inference systems research.
+Single-GPU LLM inference systems research, with L20-first measurements.
 ```
 
 Avoid calling it a generic production inference library until at least one

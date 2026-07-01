@@ -1,10 +1,10 @@
 # L20 Top-Tier Kernel Gap Register
 
-This document tracks what is still missing before `l20-stack` can be presented
-as a top-tier kernel and serving systems project rather than a collection of
-strong L20 experiments. The standard here is intentionally high: something that
-could survive review by maintainers of vLLM, FlashInfer, TensorRT-LLM, or a
-serious CUDA kernel library.
+This document tracks what is still missing before Single-GPU Inference Lab can
+be presented as a top-tier kernel and serving systems project rather than a
+collection of strong L20 experiments. The standard here is intentionally high:
+something that could survive review by maintainers of vLLM, FlashInfer,
+TensorRT-LLM, or a serious CUDA kernel library.
 
 ## 1. Complete Profiling Package
 

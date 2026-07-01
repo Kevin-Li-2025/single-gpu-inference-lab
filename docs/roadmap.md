@@ -1,6 +1,9 @@
 # Roadmap
 
-L20 Stack is a single-GPU LLM infrastructure reference stack for NVIDIA L20 48 GB machines. The project should win by being reproducible, honest about limits, and useful on real single-card hardware.
+Single-GPU Inference Lab is an evidence-driven LLM inference systems workspace
+for real single-card serving. The primary measurement target remains NVIDIA L20
+48 GB, but the project should win by being reproducible, honest about limits,
+and portable enough to use A100 controls when they sharpen a claim.
 
 ## Positioning
 
@@ -213,7 +216,7 @@ Every commit:
 
 ```bash
 PYTHONPATH=src /usr/bin/python3 -m unittest discover -s tests
-PYTHONPYCACHEPREFIX=/private/tmp/l20-stack-pycache PYTHONPATH=src /usr/bin/python3 -m compileall -q src tests
+PYTHONPYCACHEPREFIX=/private/tmp/single-gpu-infer-pycache PYTHONPATH=src /usr/bin/python3 -m compileall -q src tests
 git diff --check
 ```
 

@@ -17,9 +17,9 @@ This file is the fastest way to orient in the repo.
 
 | Area | What lives there |
 | --- | --- |
-| `src/l20_stack/epilogue/` | CPU-safe planning for logits/sampling epilogue boundaries. |
-| `src/l20_stack/ops/` | Triton and CUDA-facing operator prototypes. |
-| `src/l20_stack/` | CLI, memory estimators, config, hardware descriptors, and research utilities. |
+| `src/l20_stack/epilogue/` | Legacy namespace for CPU-safe planning around logits/sampling epilogue boundaries. |
+| `src/l20_stack/ops/` | Legacy namespace for Triton and CUDA-facing operator prototypes. |
+| `src/l20_stack/` | Legacy implementation namespace for CLI, memory estimators, config, hardware descriptors, and research utilities. |
 | `integrations/vllm/` | Patch installers and runtime dispatch helpers for local vLLM experiments. |
 | `scripts/` | Benchmarks, profilers, serving campaigns, scouts, and summarizers. |
 | `tests/` | CPU-safe and source-level regression tests. |
@@ -55,10 +55,19 @@ Relevant files:
 - `benchmarks/results/a100-vllm-sampling-semantics-qwen25-05b/`
 - `benchmarks/results/a100-fused-topk-topp-penalty/`
 
+## Naming Policy
+
+- Public project name: **Single-GPU Inference Lab**.
+- Distribution/package metadata: `single-gpu-inference-lab`.
+- CLI entry point: `single-gpu-infer`.
+- Legacy Python implementation namespace: `l20_stack`.
+
+Do not rename the implementation namespace in this pass. Existing artifacts,
+remote scripts, and vLLM patch installers depend on `l20_stack`, so a full
+namespace migration should be a separate compatibility project.
+
 ## Current Non-Goals
 
-- Do not rename the Python package yet. Existing artifacts and remote scripts
-  depend on `l20_stack`.
 - Do not default-enable custom vLLM hooks from microbenchmark wins alone.
 - Do not remove negative results; they are part of the systems evidence.
 - Do not commit large logs, profiler databases, model caches, datasets, or

@@ -1,6 +1,6 @@
-# l20-stack
+# Single-GPU Inference Lab
 
-Single-GPU LLM inference systems research.
+Evidence-driven LLM inference systems research for single-card serving.
 
 This repository studies where low-level inference optimizations actually matter
 once they are placed inside a real serving stack. The primary target is the
@@ -10,9 +10,9 @@ claim discipline.
 
 The short version:
 
-> l20-stack is an evidence-driven lab for vLLM, FlashInfer, Triton, CUDA, and
-> single-GPU decode serving. It keeps both wins and negative results, then uses
-> them to decide the next kernel boundary.
+> Single-GPU Inference Lab is a research workspace for vLLM, FlashInfer,
+> Triton, CUDA, and single-GPU decode serving. It keeps both wins and negative
+> results, then uses them to decide the next kernel boundary.
 
 It is not a replacement for vLLM, FlashInfer, TensorRT-LLM, PEFT, TRL, or
 Megatron-LM. The useful output is the measured boundary between microkernel
@@ -134,7 +134,7 @@ scripts/run_vllm_l20_logits_boundary_trace_campaign.sh \
 
 | Area | Purpose |
 | --- | --- |
-| `src/l20_stack/` | CPU-safe planners, policy gates, memory calculators, and Triton/CUDA operator wrappers. |
+| `src/l20_stack/` | Legacy implementation namespace for CPU-safe planners, policy gates, memory calculators, and Triton/CUDA operator wrappers. |
 | `integrations/vllm/` | Local vLLM patch installers and guarded dispatch helpers. |
 | `scripts/` | Benchmarks, profiling wrappers, serving campaigns, scouts, and summarizers. |
 | `benchmarks/results/` | Compact checked-in evidence: JSON summaries, serving reports, and short Markdown notes. |
@@ -159,14 +159,20 @@ Start with:
 - Do not commit model weights, checkpoints, datasets, secrets, `server.log`,
   `.nsys-rep`, SQLite exports, or large raw profiler captures.
 
-## Why The Name Still Says L20
+## Project Name
 
-The original target is still important: L20 is a widely available single GPU
+The public project name is **Single-GPU Inference Lab**.
+
+The original L20 target is still important: L20 is a widely available single GPU
 with a very different bandwidth/compute balance from HBM parts. That makes it a
-good stress test for decode serving bottlenecks. The repo keeps the name for
-continuity, but the project scope is now broader:
+good stress test for decode serving bottlenecks. But L20 is now a primary
+hardware target, not the repo identity:
 
 ```text
-L20-first single-GPU inference research, with A100 controls and upstream-shaped
-vLLM/FlashInfer/Triton prototypes.
+Single-GPU inference systems research, with L20-first measurements, A100
+controls, and upstream-shaped vLLM/FlashInfer/Triton prototypes.
 ```
+
+The Python implementation namespace remains `l20_stack` for compatibility with
+existing scripts and checked-in artifacts. New public references should use
+`Single-GPU Inference Lab` and the CLI entry point `single-gpu-infer`.
