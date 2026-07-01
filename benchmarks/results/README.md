@@ -9,6 +9,7 @@ of git.
 
 | Result directory | Status | Why it matters |
 | --- | --- | --- |
+| `a100-lmhead-flashsampling-boundary/` | A100 control | Shows the standalone LM-head/Gumbel candidate compiles on A100/Triton 3.4 after `BLOCK_BATCH=16` padding and beats full-logits reference by 1.07x-1.21x on four shapes. |
 | `l20-boundary-impact/` | Paper-summary artifact | Converts the repo's key positive and negative results into one table, JSON, CSV, and SVG graph. |
 | `l20-vllm-logits-boundary-rfc-shadow/` | RFC shadow smoke | Confirms the trace hook emits `metadata.shadow_epilogue` in real vLLM O2 serving without mutating outputs; see the next-stage A/B plan in `docs/logits-boundary-ab.md`. |
 | `l20-logits-boundary-ab-smoke/` | Negative A/B smoke | Runs the first paired logits-boundary baseline vs sampler-boundary candidate; candidate path is traced but currently regresses ITL/throughput. |

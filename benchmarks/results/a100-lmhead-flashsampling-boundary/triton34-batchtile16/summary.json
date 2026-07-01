@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "result_type": "a100_standalone_lmhead_flashsampling",
+  "hardware": "NVIDIA A100-SXM4-80GB",
+  "software": {
+    "torch": "2.8.0+cu128",
+    "cuda": "12.8",
+    "triton": "3.4.0"
+  },
+  "repo_commit": "66641d6 plus local BLOCK_BATCH=16 fix",
+  "remote_path": "/workspace/runs/a100-lmhead-standalone-fixed-1782918419",
+  "benchmark_command_template": "PYTHONPATH=src /workspace/venvs/vllm-a100-nodeps/bin/python scripts/benchmark_l20_flash_sampling_boundary.py --batch <b> --hidden <h> --vocab 151936 --rounds 30 --warmup 8 --dtype float16 --sampling-mode gumbel --top-k -1 --top-p 1.0 --include-candidate",
+  "fix": {
+    "problem": "Triton 3.4 rejects tl.dot shapes with N < 16; the previous batch-one/four policy used BLOCK_BATCH=1 or 4 and failed to compile on A100.",
+    "change": "Pad BLOCK_BATCH to 16 while masking padded batch lanes.",
+    "claim_boundary": "This is a standalone LM-head/Gumbel benchmark, not a vLLM serving ITL result."
+  },
+  "rows": [
+    {
+      "file": "b1-h1024-gumbel.json",
+      "batch": 1,
+      "hidden": 1024,
+      "vocab": 151936,
+      "full_logits_reference_median_ms": 0.26548799872398376,
+      "candidate_median_ms": 0.23446399718523026,
+      "full_logits_reference_over_candidate": 1.1323188289511419,
+      "block_batch": 16,
+      "block_vocab": 32,
+      "block_hidden": 256
+    },
+    {
+      "file": "b1-h2048-gumbel.json",
+      "batch": 1,
+      "hidden": 2048,
+      "vocab": 151936,
+      "full_logits_reference_median_ms": 0.4381280094385147,
+      "candidate_median_ms": 0.4079039990901947,
+      "full_logits_reference_over_candidate": 1.074095891228654,
+      "block_batch": 16,
+      "block_vocab": 32,
+      "block_hidden": 256
+    },
+    {
+      "file": "b4-h1024-gumbel.json",
+      "batch": 4,
+      "hidden": 1024,
+      "vocab": 151936,
+      "full_logits_reference_median_ms": 0.2868960052728653,
+      "candidate_median_ms": 0.23796799778938293,
+      "full_logits_reference_over_candidate": 1.205607509992948,
+      "block_batch": 16,
+      "block_vocab": 64,
+      "block_hidden": 256
+    },
+    {
+      "file": "b4-h2048-gumbel.json",
+      "batch": 4,
+      "hidden": 2048,
+      "vocab": 151936,
+      "full_logits_reference_median_ms": 0.45795199275016785,
+      "candidate_median_ms": 0.40881599485874176,
+      "full_logits_reference_over_candidate": 1.1201909869216444,
+      "block_batch": 16,
+      "block_vocab": 64,
+      "block_hidden": 256
+    }
+  ],
+  "aggregate": {
+    "min_speedup": 1.074095891228654,
+    "max_speedup": 1.205607509992948,
+    "median_speedup": 1.1262549079363932
+  },
+  "checks": {
+    "remote_pytest": "PYTHONPATH=src /workspace/venvs/vllm-a100-nodeps/bin/python -m pytest tests/test_lm_head_sampling.py tests/test_l20_flash_sampling_benchmark.py -q -> 9 passed in 7.79s",
+    "a100_kernel_compile": "passed for batch 1 and 4 after BLOCK_BATCH=16 padding"
+  },
+  "not_claimed": [
+    "vLLM serving throughput win",
+    "L20-specific performance",
+    "top-k/top-p support"
+  ]
+}

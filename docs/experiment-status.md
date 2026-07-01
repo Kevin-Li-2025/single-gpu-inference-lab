@@ -18,6 +18,7 @@ small.
 
 | Topic | Status | Main evidence | Current decision |
 | --- | --- | --- | --- |
+| A100 LM-head FlashSampling standalone | A100 control / standalone win | `benchmarks/results/a100-lmhead-flashsampling-boundary/triton34-batchtile16/` | Keep as A100 kernel evidence only; next A100 proof must be real vLLM serving ITL. |
 | RoPE + paged KV append | Confirmed | `docs/l20-serving-case-study.md`, `benchmarks/results/l20-decode-layer-v1/` | Keep as case-study evidence; do not spend the next iteration on tiny append-only gains. |
 | Q/K norm + Q/K RoPE + KV write | Smoke / Amdahl-limited | `benchmarks/results/l20-qk-norm-rope-kv-serving/`, `benchmarks/results/nsys/qk-norm-rope-kv/` | Useful path proof, but not enough for an industry-leading claim by itself. |
 | vLLM native QK norm/RoPE fusion | Confirmed low-single-digit signal | `benchmarks/results/l20-qk-norm-rope-serving/` | Confirms the boundary matters; custom three-way integration still needs a stronger system win. |

@@ -55,7 +55,11 @@ def lm_head_sampling_launch_config(
     block_vocab: Optional[int] = None,
     block_hidden: Optional[int] = None,
 ) -> LMHeadSamplingLaunchConfig:
-    """Return the measured L20 policy for the LM-head sampling boundary."""
+    """Return the launch policy for the LM-head sampling boundary.
+
+    The policy started as an L20 probe, but the batch tile is padded to 16 so
+    the same Triton dot path compiles on A100/Triton 3.4 as well.
+    """
 
     if batch <= 0 or vocab_size <= 0 or hidden_size <= 0:
         raise ValueError("batch, vocab_size, and hidden_size must be positive")
@@ -81,7 +85,10 @@ def lm_head_sampling_launch_config(
     return LMHeadSamplingLaunchConfig(
         block_vocab=selected_block_vocab,
         block_hidden=selected_block_hidden,
-        block_batch=4 if batch > 1 else 1,
+        # Triton 3.4 requires tl.dot's N dimension to be at least 16. The
+        # kernel masks padded batch lanes, so small decode batches still store
+        # only the real rows.
+        block_batch=16,
         blocks_per_row=blocks_per_row,
         reduce_block=next_power_of_2(blocks_per_row),
         num_warps=8 if selected_block_vocab >= 64 else 4,
