@@ -80,6 +80,25 @@ class GPUModelRunner:
         return sampler_output
 """
 
+GPU_MODEL_RUNNER_0102_SOURCE = """from vllm.v1.worker.gpu_input_batch import CachedRequestState, InputBatch
+
+class GPUModelRunner:
+    def execute_model(self, hidden_states, logits_indices, scheduler_output, spec_decode_metadata):
+        if True:
+                sample_hidden_states = hidden_states[logits_indices]
+                logits = self.model.compute_logits(sample_hidden_states, None)
+            # Apply structured output bitmasks if present
+            if scheduler_output.grammar_bitmask is not None:
+                self.apply_grammar_bitmask(scheduler_output, logits)
+
+        with record_function_or_nullcontext("Sample"):
+            sampler_output = self._sample(logits, spec_decode_metadata)
+
+        with record_function_or_nullcontext("Bookkeep"):
+            self._bookkeeping_sync(scheduler_output, sampler_output, logits)
+        return sampler_output
+"""
+
 
 HELPER_SOURCE = """def maybe_try_l20_gemm_epilogue(*args, **kwargs):
     return None
@@ -154,3 +173,31 @@ def test_gemm_epilogue_installer_requires_helper(tmp_path):
     assert logits_processor.read_text(encoding="utf-8") == LOGITS_PROCESSOR_SOURCE
     assert model_runner.read_text(encoding="utf-8") == MODEL_RUNNER_SOURCE
     assert gpu_model_runner.read_text(encoding="utf-8") == GPU_MODEL_RUNNER_SOURCE
+
+
+def test_gemm_epilogue_installer_supports_vllm_0102_gpu_model_runner(tmp_path):
+    installer = load_installer()
+    package = tmp_path / "vllm"
+    gpu_model_runner = package / "v1/worker/gpu_model_runner.py"
+    gpu_model_runner.parent.mkdir(parents=True, exist_ok=True)
+    gpu_model_runner.write_text(GPU_MODEL_RUNNER_0102_SOURCE, encoding="utf-8")
+    helper_source = tmp_path / "l20_gemm_epilogue_trace.py"
+    helper_source.write_text(HELPER_SOURCE, encoding="utf-8")
+    installer.HELPER_SOURCE = helper_source
+
+    installer.install(package)
+
+    patched = gpu_model_runner.read_text(encoding="utf-8")
+    assert "maybe_try_l20_gemm_epilogue(" in patched
+    assert "self.model.compute_logits(sample_hidden_states, None)" in patched
+    assert "maybe_take_l20_gemm_epilogue_sampler_output(self)" in patched
+    assert "if sampler_output is None:" in patched
+    assert (package / "v1/worker/gpu/__init__.py").exists()
+    assert (package / "v1/worker/gpu/l20_gemm_epilogue_trace.py").exists()
+
+    installer.install(package)
+    assert gpu_model_runner.read_text(encoding="utf-8") == patched
+
+    installer.uninstall(package)
+    assert gpu_model_runner.read_text(encoding="utf-8") == GPU_MODEL_RUNNER_0102_SOURCE
+    assert not (package / "v1/worker/gpu/l20_gemm_epilogue_trace.py").exists()

@@ -144,6 +144,47 @@ V2_SAMPLE_BLOCK = """        # Clear ephemeral state.
         self._update_states_after_model_execute(
 """
 
+VLLM_0102_COMPUTE_PATCH_POINT = """                sample_hidden_states = hidden_states[logits_indices]
+                logits = self.model.compute_logits(sample_hidden_states, None)
+"""
+
+VLLM_0102_COMPUTE_PATCHED = """                sample_hidden_states = hidden_states[logits_indices]
+                self._l20_gemm_epilogue_sampler_output = maybe_try_l20_gemm_epilogue(
+                    self,
+                    self.input_batch,
+                    None,
+                    sample_hidden_states,
+                    scheduler_output,
+                    spec_decode_metadata,
+                )
+                if self._l20_gemm_epilogue_sampler_output is None:
+                    logits = self.model.compute_logits(sample_hidden_states, None)
+                else:
+                    logits = None
+"""
+
+VLLM_0102_SAMPLE_BLOCK = """            # Apply structured output bitmasks if present
+            if scheduler_output.grammar_bitmask is not None:
+                self.apply_grammar_bitmask(scheduler_output, logits)
+
+        with record_function_or_nullcontext("Sample"):
+            sampler_output = self._sample(logits, spec_decode_metadata)
+
+        with record_function_or_nullcontext("Bookkeep"):
+"""
+
+VLLM_0102_SAMPLE_BLOCK_PATCHED = """            sampler_output = maybe_take_l20_gemm_epilogue_sampler_output(self)
+            if sampler_output is None:
+                # Apply structured output bitmasks if present
+                if scheduler_output.grammar_bitmask is not None:
+                    self.apply_grammar_bitmask(scheduler_output, logits)
+
+                with record_function_or_nullcontext("Sample"):
+                    sampler_output = self._sample(logits, spec_decode_metadata)
+
+        with record_function_or_nullcontext("Bookkeep"):
+"""
+
 V2_SAMPLE_BLOCK_PATCHED = """        # Clear ephemeral state.
         self.execute_model_state = None
 
@@ -232,20 +273,36 @@ def patch_gpu_model_runner(source: str) -> str:
         "gpu_model_runner GEMM epilogue import",
     )
     if "maybe_try_l20_gemm_epilogue(" not in source:
-        source = replace_once(
-            source,
-            V2_COMPUTE_PATCH_POINT,
-            V2_COMPUTE_PATCHED,
-            "gpu_model_runner GEMM epilogue compute",
-        )
+        try:
+            source = replace_once(
+                source,
+                V2_COMPUTE_PATCH_POINT,
+                V2_COMPUTE_PATCHED,
+                "gpu_model_runner GEMM epilogue compute",
+            )
+        except RuntimeError:
+            source = replace_once(
+                source,
+                VLLM_0102_COMPUTE_PATCH_POINT,
+                VLLM_0102_COMPUTE_PATCHED,
+                "gpu_model_runner GEMM epilogue compute vllm 0.10.2",
+            )
     if "maybe_take_l20_gemm_epilogue_sampler_output(" in source:
         return source
-    source = replace_once(
-        source,
-        V2_SAMPLE_BLOCK,
-        V2_SAMPLE_BLOCK_PATCHED,
-        "gpu_model_runner GEMM epilogue sample output",
-    )
+    try:
+        source = replace_once(
+            source,
+            V2_SAMPLE_BLOCK,
+            V2_SAMPLE_BLOCK_PATCHED,
+            "gpu_model_runner GEMM epilogue sample output",
+        )
+    except RuntimeError:
+        source = replace_once(
+            source,
+            VLLM_0102_SAMPLE_BLOCK,
+            VLLM_0102_SAMPLE_BLOCK_PATCHED,
+            "gpu_model_runner GEMM epilogue sample output vllm 0.10.2",
+        )
     return source
 
 
@@ -267,6 +324,8 @@ def install(package: Path) -> None:
         raise RuntimeError(f"missing helper source: {HELPER_SOURCE}")
     helper_target = package / "v1" / "worker" / "gpu" / HELPER_NAME
     helper_target.parent.mkdir(parents=True, exist_ok=True)
+    init_file = helper_target.parent / "__init__.py"
+    init_file.touch(exist_ok=True)
     if helper_target.exists() and helper_target.read_bytes() != HELPER_SOURCE.read_bytes():
         backup = _backup_path(helper_target)
         if not backup.exists():

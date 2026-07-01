@@ -1,0 +1,70 @@
+{
+  "api_called": 378,
+  "eligible": 378,
+  "events": 384,
+  "fallback_to_compute_logits": 384,
+  "first_event": {
+    "eligible": false,
+    "event": "l20_gemm_epilogue_boundary",
+    "metadata": {
+      "api": {
+        "api_called": false,
+        "api_returned_output": false,
+        "fallback_to_compute_logits": true,
+        "lm_head_found": true,
+        "logits_processor_found": true,
+        "output_enabled": false,
+        "try_api_found": true
+      },
+      "hidden_dtype": "torch.bfloat16",
+      "hidden_shape": [
+        1,
+        896
+      ],
+      "mutates_outputs": false,
+      "num_reqs": 1,
+      "phase": "fallback_first_api_trace",
+      "scheduler_total_num_scheduled_tokens": 93
+    },
+    "reasons": [
+      "not_single_token_decode",
+      "scheduled_tokens_mismatch"
+    ],
+    "ts": 1782942703.7579722
+  },
+  "hidden_shapes": {
+    "(1, 896)": 384
+  },
+  "ineligible": 6,
+  "last_event": {
+    "eligible": true,
+    "event": "l20_gemm_epilogue_boundary",
+    "metadata": {
+      "api": {
+        "api_called": true,
+        "api_returned_output": false,
+        "fallback_to_compute_logits": true,
+        "lm_head_found": true,
+        "logits_processor_found": true,
+        "output_enabled": false,
+        "try_api_found": true
+      },
+      "hidden_dtype": "torch.bfloat16",
+      "hidden_shape": [
+        1,
+        896
+      ],
+      "mutates_outputs": false,
+      "num_reqs": 1,
+      "phase": "fallback_first_api_trace",
+      "scheduler_total_num_scheduled_tokens": 1
+    },
+    "reasons": [],
+    "ts": 1782942710.3715549
+  },
+  "reason_counts": {
+    "not_single_token_decode": 6,
+    "scheduled_tokens_mismatch": 6
+  },
+  "trace_path": "/workspace/runs/a100-vllm-gemm-epilogue-qwen25-05b-trace-nopenalty-tf4562-20260701-214847/gemm_epilogue_trace.jsonl"
+}

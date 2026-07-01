@@ -116,6 +116,8 @@ def _scheduled_reasons(scheduler_output: Any, expected_reqs: int) -> list[str]:
     if scheduler_output is None:
         return []
     reasons: list[str] = []
+    if getattr(scheduler_output, "grammar_bitmask", None) is not None:
+        reasons.append("grammar_output")
     counts = getattr(scheduler_output, "num_scheduled_tokens", None)
     total = _safe_int(
         getattr(scheduler_output, "total_num_scheduled_tokens", None),
