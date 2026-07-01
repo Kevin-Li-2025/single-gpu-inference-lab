@@ -1,0 +1,34 @@
+{
+  "artifact": "a100-fused-topk-topp-penalty",
+  "claim_boundary": "A100 microbenchmark for dense token-count prototype; not a vLLM serving result and not an L20 measurement.",
+  "hardware": "NVIDIA A100-SXM4-80GB",
+  "rows": [
+    {
+      "baseline_apply_then_sample_median_ms": 0.19152000546455383,
+      "batch": 1,
+      "fused_median_ms": 0.1406719982624054,
+      "fused_speedup_vs_apply_then_sample": 1.3614650238158845,
+      "fused_speedup_vs_torch_reference": 1.4112830493992905,
+      "history_tokens": 128,
+      "shape": "batch1",
+      "top_k": 50,
+      "top_p": 0.9,
+      "torch_reference_median_ms": 0.1985280066728592,
+      "vocab": 151936
+    },
+    {
+      "baseline_apply_then_sample_median_ms": 0.23339200019836426,
+      "batch": 4,
+      "fused_median_ms": 0.16473599523305893,
+      "fused_speedup_vs_apply_then_sample": 1.4167638339646098,
+      "fused_speedup_vs_torch_reference": 1.5009712810086397,
+      "history_tokens": 128,
+      "shape": "batch4",
+      "top_k": 50,
+      "top_p": 0.9,
+      "torch_reference_median_ms": 0.24726399779319763,
+      "vocab": 151936
+    }
+  ],
+  "schema_version": 1
+}

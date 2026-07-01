@@ -1,12 +1,15 @@
 import importlib.util
 import unittest
+from pathlib import Path
 
 from l20_stack.operators import OperatorShape, OperatorTarget, plan_operator
 from l20_stack.ops.triton_sampling import (
+    apply_dense_token_penalties_reference,
     greedy_sampling_launch_config,
     should_prefer_l20_topk_topp_sampling,
     should_use_l20_gpu_greedy_sampling,
     should_use_l20_topk_topp_sampling,
+    topk_topp_penalty_sample_from_uniform_reference,
     topk_topp_sampling_launch_config,
 )
 
@@ -115,10 +118,62 @@ class L20SamplingTest(unittest.TestCase):
     def test_vllm_rng_sampler_entrypoint_is_available(self):
         spec = importlib.util.find_spec("l20_stack.ops.triton_sampling")
         self.assertIsNotNone(spec)
-        source = open(spec.origin, encoding="utf-8").read()
+        source = Path(spec.origin).read_text(encoding="utf-8")
         self.assertIn("topk_topp_sample_with_vllm_rng_out", source)
         self.assertIn("_topk_topp_reduce_sample_seed_kernel", source)
         self.assertIn("tl.randint(seed, position)", source)
+
+    def test_penalty_fused_sampler_entrypoint_is_available(self):
+        spec = importlib.util.find_spec("l20_stack.ops.triton_sampling")
+        self.assertIsNotNone(spec)
+        source = Path(spec.origin).read_text(encoding="utf-8")
+        self.assertIn("topk_topp_penalty_sample_from_uniform_out", source)
+        self.assertIn("_topk_topp_penalty_partial_kernel", source)
+        self.assertIn("REPETITION_PENALTY", source)
+        self.assertIn("FREQUENCY_PENALTY", source)
+        self.assertIn("PRESENCE_PENALTY", source)
+
+    def test_dense_penalty_reference_matches_repetition_frequency_presence(self):
+        try:
+            import torch
+        except ImportError:
+            self.skipTest("torch is not installed")
+        logits = torch.tensor([[2.0, -2.0, 1.0, 0.5]])
+        counts = torch.tensor([[2, 1, 0, 3]])
+
+        adjusted = apply_dense_token_penalties_reference(
+            logits,
+            counts,
+            frequency_penalty=0.1,
+            presence_penalty=0.2,
+            repetition_penalty=2.0,
+        )
+
+        expected = torch.tensor([[0.6, -4.3, 1.0, -0.25]])
+        self.assertTrue(torch.allclose(adjusted.cpu(), expected))
+
+    def test_penalty_reference_can_change_sampled_token(self):
+        try:
+            import torch
+        except ImportError:
+            self.skipTest("torch is not installed")
+        logits = torch.tensor([[2.0, 1.9, 0.0, -1.0]])
+        counts = torch.tensor([[3, 0, 0, 0]])
+        uniforms = torch.tensor([0.01])
+
+        sampled = topk_topp_penalty_sample_from_uniform_reference(
+            logits,
+            counts,
+            uniforms,
+            top_k=2,
+            top_p=1.0,
+            temperature=1.0,
+            frequency_penalty=0.2,
+            presence_penalty=0.1,
+            repetition_penalty=2.0,
+        )
+
+        self.assertEqual(int(sampled.item()), 1)
 
 
 if __name__ == "__main__":

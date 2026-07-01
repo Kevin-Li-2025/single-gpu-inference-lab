@@ -226,10 +226,17 @@ prototype should target those semantics rather than plain greedy argmax.
 The current planner selects `fused_topk_topp+penalty` as the first P0 target,
 with `fused_token_logprobs` also marked P0.
 
+The first dense-count fused prototype is now implemented and correct on A100:
+for Qwen-sized vocab, it beats the apply-penalty-then-sample baseline by 1.36x
+at batch 1 and 1.42x at batch 4. This is still a microbenchmark; production
+serving needs a sparse vLLM token-history layout instead of dense
+`[batch, vocab]` counts.
+
 Artifact:
 
 ```text
 benchmarks/results/a100-vllm-sampling-semantics-qwen25-05b/
+benchmarks/results/a100-fused-topk-topp-penalty/
 ```
 
 ### Phase 3: Upstream PR

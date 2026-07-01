@@ -56,6 +56,7 @@ serving win unless the full stack improves.
 | FlashSampling-style LM-head Gumbel | Tile-policy-v2 improves the standalone candidate policy; batch-4 h1024 reaches 0.911x candidate/full-logits ratio | Native vLLM candidate path is wired, but c1 policy-v2 smoke still loses throughput and TTFT | Negative standalone result |
 | A100 output-changing greedy LM-head epilogue | Candidate returns `SamplerOutput` for 378/378 eligible decode events without full-logits materialization | Same-session no-trace Qwen2.5-0.5B median ITL is 6.733 ms vs 6.727 ms baseline | Functional boundary proof, not a speedup |
 | A100 sampling semantics probe | Greedy/no-penalty control is 6.720 ms median ITL | repetition/top-k/top-p/logprobs move median ITL to 9.22-9.56 ms, +37-42% | Optimize semantics boundary, not greedy argmax |
+| Fused top-k/top-p + dense penalties | A100 Qwen-vocab microbench: 0.1407 ms vs 0.1915 ms at batch 1, 1.36x | Dense-count prototype only; no serving integration yet | Carry forward to sparse token-history prototype |
 | LM-head/logits epilogue | 96.00% trace eligibility; 339.93 MiB eligible logits materialization in latest smoke | A/B sampler hook and standalone FlashSampling candidate both regressed serving throughput | Current P0: true GEMM epilogue only |
 
 The generated artifact for this table is:
@@ -122,3 +123,6 @@ The first output-changing A100 boundary artifact is:
 
 The first A100 sampling-semantics artifact is:
 `benchmarks/results/a100-vllm-sampling-semantics-qwen25-05b/`.
+
+The first fused top-k/top-p + penalty microbenchmark artifact is:
+`benchmarks/results/a100-fused-topk-topp-penalty/`.

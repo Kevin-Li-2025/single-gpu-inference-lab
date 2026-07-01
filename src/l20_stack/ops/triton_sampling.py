@@ -251,6 +251,55 @@ if triton is not None:  # pragma: no cover - requires CUDA
             values = tl.where(offsets == token, -float("inf"), values)
 
     @triton.jit
+    def _topk_topp_penalty_partial_kernel(
+        logits,
+        token_counts,
+        partial_values,
+        partial_tokens,
+        VOCAB: tl.constexpr,
+        TOP_K: tl.constexpr,
+        BLOCK_VOCAB: tl.constexpr,
+        BLOCKS_PER_ROW: tl.constexpr,
+        TEMPERATURE: tl.constexpr,
+        FREQUENCY_PENALTY: tl.constexpr,
+        PRESENCE_PENALTY: tl.constexpr,
+        REPETITION_PENALTY: tl.constexpr,
+    ):
+        row = tl.program_id(0)
+        block = tl.program_id(1)
+        offsets = block * BLOCK_VOCAB + tl.arange(0, BLOCK_VOCAB)
+        mask = offsets < VOCAB
+        values = tl.load(logits + row * VOCAB + offsets, mask=mask, other=-float("inf"))
+        values = values.to(tl.float32)
+        counts = tl.load(token_counts + row * VOCAB + offsets, mask=mask, other=0)
+        counts = counts.to(tl.float32)
+        present = counts > 0.0
+
+        if REPETITION_PENALTY != 1.0:
+            repeated_values = tl.where(
+                values < 0.0,
+                values * REPETITION_PENALTY,
+                values / REPETITION_PENALTY,
+            )
+            values = tl.where(present, repeated_values, values)
+        if FREQUENCY_PENALTY != 0.0:
+            values -= counts * FREQUENCY_PENALTY
+        if PRESENCE_PENALTY != 0.0:
+            values -= tl.where(present, PRESENCE_PENALTY, 0.0)
+        if TEMPERATURE != 1.0:
+            values = values / TEMPERATURE
+
+        base = (row * BLOCKS_PER_ROW + block) * TOP_K
+        for rank in tl.static_range(0, TOP_K):
+            max_value = tl.max(values, axis=0)
+            is_max = (values == max_value) & mask
+            token_values = tl.where(is_max, offsets, VOCAB)
+            token = tl.min(token_values, axis=0)
+            tl.store(partial_values + base + rank, max_value)
+            tl.store(partial_tokens + base + rank, token)
+            values = tl.where(offsets == token, -float("inf"), values)
+
+    @triton.jit
     def _topk_topp_reduce_sample_kernel(
         partial_values,
         partial_tokens,
@@ -713,6 +762,149 @@ def topk_topp_sample_from_uniform_out(
     return None
 
 
+def topk_topp_penalty_sample_from_uniform_out(
+    logits,
+    token_counts,
+    uniforms,
+    output,
+    *,
+    partial_values,
+    partial_tokens,
+    top_k: int,
+    top_p: float,
+    temperature: float = 1.0,
+    frequency_penalty: float = 0.0,
+    presence_penalty: float = 0.0,
+    repetition_penalty: float = 1.0,
+    block_vocab_override: Optional[int] = None,
+):
+    """Write penalty-adjusted top-k/top-p samples into caller-owned tensors.
+
+    ``token_counts`` is a dense prototype layout: ``[batch, vocab]`` counts of
+    prior prompt/output tokens. Production vLLM integration should replace this
+    with a sparse token-history layout, but this primitive validates the fused
+    arithmetic and sampling semantics.
+    """
+
+    if torch is None or triton is None:
+        raise RuntimeError("topk_topp_penalty_sample_from_uniform_out requires PyTorch and Triton")
+    if logits.ndim != 2 or token_counts.ndim != 2:
+        raise ValueError("expected logits and token_counts with shape [batch, vocab]")
+    if token_counts.shape != logits.shape:
+        raise ValueError("token_counts must match logits shape")
+    if uniforms.shape != (logits.shape[0],):
+        raise ValueError("uniforms must have shape [batch]")
+    if output.shape != (logits.shape[0],) or output.dtype != torch.int64:
+        raise ValueError("output must have shape [batch] and dtype int64")
+    for name, tensor in (
+        ("logits", logits),
+        ("token_counts", token_counts),
+        ("uniforms", uniforms),
+        ("output", output),
+    ):
+        if not tensor.is_cuda:
+            raise ValueError(f"{name} must be a CUDA tensor")
+    if temperature <= 0:
+        raise ValueError("temperature must be positive")
+    if repetition_penalty <= 0:
+        raise ValueError("repetition_penalty must be positive")
+    batch, vocab = logits.shape
+    if not should_use_l20_topk_topp_sampling(int(batch), int(vocab), int(top_k), float(top_p)):
+        raise ValueError("shape or sampling policy is outside the L20 top-k/top-p gate")
+    config = topk_topp_sampling_launch_config(
+        int(vocab),
+        int(top_k),
+        batch=int(batch),
+        block_vocab_override=block_vocab_override,
+    )
+    expected_workspace = (batch, config.blocks_per_row, int(top_k))
+    if partial_values.shape != expected_workspace:
+        raise ValueError("partial_values workspace has the wrong shape")
+    if partial_tokens.shape != expected_workspace:
+        raise ValueError("partial_tokens workspace has the wrong shape")
+    if partial_values.dtype != torch.float32 or partial_tokens.dtype != torch.int64:
+        raise ValueError("partial workspaces must be float32 and int64")
+    if not partial_values.is_cuda or not partial_tokens.is_cuda:
+        raise ValueError("partial workspaces must be CUDA tensors")
+
+    _topk_topp_penalty_partial_kernel[(batch, config.blocks_per_row)](
+        logits,
+        token_counts,
+        partial_values,
+        partial_tokens,
+        VOCAB=int(vocab),
+        TOP_K=int(top_k),
+        BLOCK_VOCAB=config.block_vocab,
+        BLOCKS_PER_ROW=config.blocks_per_row,
+        TEMPERATURE=float(temperature),
+        FREQUENCY_PENALTY=float(frequency_penalty),
+        PRESENCE_PENALTY=float(presence_penalty),
+        REPETITION_PENALTY=float(repetition_penalty),
+        num_warps=config.num_warps,
+        num_stages=config.num_stages,
+    )
+    candidate_count = config.blocks_per_row * int(top_k)
+    _topk_topp_reduce_sample_kernel[(batch,)](
+        partial_values,
+        partial_tokens,
+        uniforms,
+        output,
+        VOCAB=int(vocab),
+        TOP_K=int(top_k),
+        BLOCKS_PER_ROW=config.blocks_per_row,
+        CANDIDATE_BLOCK=next_power_of_2(candidate_count),
+        TOP_P=float(top_p),
+        num_warps=8,
+        num_stages=1,
+    )
+    return None
+
+
+def topk_topp_penalty_sample_from_uniform(
+    logits,
+    token_counts,
+    uniforms,
+    *,
+    top_k: int,
+    top_p: float,
+    temperature: float = 1.0,
+    frequency_penalty: float = 0.0,
+    presence_penalty: float = 0.0,
+    repetition_penalty: float = 1.0,
+    block_vocab_override: Optional[int] = None,
+):
+    """Allocate workspaces and run penalty-adjusted top-k/top-p sampling."""
+
+    if torch is None or triton is None:
+        raise RuntimeError("topk_topp_penalty_sample_from_uniform requires PyTorch and Triton")
+    output = torch.empty((logits.shape[0],), device=logits.device, dtype=torch.int64)
+    config = topk_topp_sampling_launch_config(
+        int(logits.shape[1]),
+        int(top_k),
+        batch=int(logits.shape[0]),
+        block_vocab_override=block_vocab_override,
+    )
+    partial_shape = (int(logits.shape[0]), config.blocks_per_row, int(top_k))
+    partial_values = torch.empty(partial_shape, device=logits.device, dtype=torch.float32)
+    partial_tokens = torch.empty(partial_shape, device=logits.device, dtype=torch.int64)
+    topk_topp_penalty_sample_from_uniform_out(
+        logits,
+        token_counts,
+        uniforms,
+        output,
+        partial_values=partial_values,
+        partial_tokens=partial_tokens,
+        top_k=top_k,
+        top_p=top_p,
+        temperature=temperature,
+        frequency_penalty=frequency_penalty,
+        presence_penalty=presence_penalty,
+        repetition_penalty=repetition_penalty,
+        block_vocab_override=block_vocab_override,
+    )
+    return output
+
+
 def topk_topp_sample_with_vllm_rng_out(
     logits,
     output,
@@ -828,3 +1020,62 @@ def topk_topp_sample_from_uniform_reference(
     cumulative_kept = torch.cumsum(filtered, dim=-1)
     choice = torch.argmax((cumulative_kept >= target[:, None]).to(torch.int32), dim=-1)
     return torch.gather(indices, dim=-1, index=choice[:, None]).squeeze(-1).to(torch.int64)
+
+
+def apply_dense_token_penalties_reference(
+    logits,
+    token_counts,
+    *,
+    frequency_penalty: float = 0.0,
+    presence_penalty: float = 0.0,
+    repetition_penalty: float = 1.0,
+):
+    """PyTorch reference for dense-count token penalties."""
+
+    if torch is None:
+        raise RuntimeError("apply_dense_token_penalties_reference requires PyTorch")
+    if logits.shape != token_counts.shape:
+        raise ValueError("token_counts must match logits shape")
+    if repetition_penalty <= 0:
+        raise ValueError("repetition_penalty must be positive")
+    values = logits.float()
+    counts = token_counts.to(values.device).float()
+    present = counts > 0
+    if repetition_penalty != 1.0:
+        repeated = torch.where(values < 0, values * repetition_penalty, values / repetition_penalty)
+        values = torch.where(present, repeated, values)
+    if frequency_penalty != 0.0:
+        values = values - counts * frequency_penalty
+    if presence_penalty != 0.0:
+        values = values - present.to(values.dtype) * presence_penalty
+    return values
+
+
+def topk_topp_penalty_sample_from_uniform_reference(
+    logits,
+    token_counts,
+    uniforms,
+    *,
+    top_k: int,
+    top_p: float,
+    temperature: float = 1.0,
+    frequency_penalty: float = 0.0,
+    presence_penalty: float = 0.0,
+    repetition_penalty: float = 1.0,
+):
+    """Reference for fused penalties plus top-k/top-p sampling."""
+
+    adjusted = apply_dense_token_penalties_reference(
+        logits,
+        token_counts,
+        frequency_penalty=frequency_penalty,
+        presence_penalty=presence_penalty,
+        repetition_penalty=repetition_penalty,
+    )
+    return topk_topp_sample_from_uniform_reference(
+        adjusted,
+        uniforms,
+        top_k=top_k,
+        top_p=top_p,
+        temperature=temperature,
+    )
