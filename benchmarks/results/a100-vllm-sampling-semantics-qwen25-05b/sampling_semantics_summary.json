@@ -1,0 +1,339 @@
+{
+  "case_definitions": [
+    {
+      "description": "Greedy decode with penalties disabled; this is the current narrow epilogue control.",
+      "name": "greedy_no_penalty",
+      "sampling": {
+        "frequency_penalty": 0.0,
+        "presence_penalty": 0.0,
+        "repetition_penalty": 1.0,
+        "temperature": 0.0,
+        "top_k": -1,
+        "top_p": 1.0
+      }
+    },
+    {
+      "description": "Greedy decode with vLLM-style repetition penalty active.",
+      "name": "greedy_default_repetition",
+      "sampling": {
+        "frequency_penalty": 0.0,
+        "presence_penalty": 0.0,
+        "repetition_penalty": 1.05,
+        "temperature": 0.0,
+        "top_k": -1,
+        "top_p": 1.0
+      }
+    },
+    {
+      "description": "Stochastic top-k/top-p sampling without penalties.",
+      "name": "sample_topk_topp",
+      "sampling": {
+        "frequency_penalty": 0.0,
+        "presence_penalty": 0.0,
+        "repetition_penalty": 1.0,
+        "temperature": 0.8,
+        "top_k": 50,
+        "top_p": 0.9
+      }
+    },
+    {
+      "description": "Stochastic top-k/top-p sampling with repetition/presence/frequency penalties.",
+      "name": "sample_topk_topp_penalty",
+      "sampling": {
+        "frequency_penalty": 0.1,
+        "presence_penalty": 0.1,
+        "repetition_penalty": 1.05,
+        "temperature": 0.8,
+        "top_k": 50,
+        "top_p": 0.9
+      }
+    },
+    {
+      "description": "Greedy decode requesting token logprobs.",
+      "name": "greedy_token_logprobs",
+      "sampling": {
+        "frequency_penalty": 0.0,
+        "logprobs": 5,
+        "presence_penalty": 0.0,
+        "repetition_penalty": 1.0,
+        "temperature": 0.0,
+        "top_k": -1,
+        "top_p": 1.0
+      }
+    }
+  ],
+  "cases": [
+    {
+      "case": "greedy_no_penalty",
+      "completion_tokens": {
+        "max": 64.0,
+        "mean": 63.5,
+        "median": 63.5,
+        "min": 63.0
+      },
+      "description": "Greedy decode with penalties disabled; this is the current narrow epilogue control.",
+      "errors": [],
+      "itl_ms": {
+        "max": 6.758174975402653,
+        "mean": 6.4494948426727206,
+        "median": 6.719665238051675,
+        "min": 4.084967978997156
+      },
+      "ms_per_output_token": {
+        "max": 7.200982936266218,
+        "mean": 6.527426826495583,
+        "median": 6.861599226795079,
+        "min": 4.432912380988931
+      },
+      "ok_runs": 10,
+      "output_chunks": {
+        "max": 64.0,
+        "mean": 63.5,
+        "median": 63.5,
+        "min": 63.0
+      },
+      "runs": 10,
+      "sampling": {
+        "frequency_penalty": 0.0,
+        "presence_penalty": 0.0,
+        "repetition_penalty": 1.0,
+        "temperature": 0.0,
+        "top_k": -1,
+        "top_p": 1.0
+      },
+      "stream": true,
+      "total_ms": {
+        "max": 453.66192498477176,
+        "mean": 414.5043492957484,
+        "median": 437.1680640033446,
+        "min": 279.2734800023027
+      },
+      "ttft_ms": {
+        "max": 19.29406402632594,
+        "mean": 13.642089709173888,
+        "median": 12.340528512140736,
+        "min": 10.474478011019528
+      },
+      "warmup": 2
+    },
+    {
+      "case": "greedy_default_repetition",
+      "completion_tokens": {
+        "max": 64.0,
+        "mean": 63.9,
+        "median": 64.0,
+        "min": 63.0
+      },
+      "description": "Greedy decode with vLLM-style repetition penalty active.",
+      "errors": [],
+      "itl_ms": {
+        "max": 9.277866047341377,
+        "mean": 8.23400939698331,
+        "median": 9.224146517226472,
+        "min": 4.258162982296199
+      },
+      "ms_per_output_token": {
+        "max": 9.33685496875114,
+        "mean": 7.980591824016012,
+        "median": 8.858122750098119,
+        "min": 4.522843562881462
+      },
+      "ok_runs": 10,
+      "output_chunks": {
+        "max": 64.0,
+        "mean": 63.9,
+        "median": 64.0,
+        "min": 63.0
+      },
+      "runs": 10,
+      "sampling": {
+        "frequency_penalty": 0.0,
+        "presence_penalty": 0.0,
+        "repetition_penalty": 1.05,
+        "temperature": 0.0,
+        "top_k": -1,
+        "top_p": 1.0
+      },
+      "stream": true,
+      "total_ms": {
+        "max": 597.558718000073,
+        "mean": 510.2982338052243,
+        "median": 566.9198560062796,
+        "min": 289.4619880244136
+      },
+      "ttft_ms": {
+        "max": 15.326121007092297,
+        "mean": 12.036489002639428,
+        "median": 12.465288979001343,
+        "min": 9.236527024768293
+      },
+      "warmup": 2
+    },
+    {
+      "case": "sample_topk_topp",
+      "completion_tokens": {
+        "max": 64.0,
+        "mean": 63.8,
+        "median": 64.0,
+        "min": 63.0
+      },
+      "description": "Stochastic top-k/top-p sampling without penalties.",
+      "errors": [],
+      "itl_ms": {
+        "max": 9.56804701127112,
+        "mean": 9.021423550439067,
+        "median": 9.54369199462235,
+        "min": 4.472453496418893
+      },
+      "ms_per_output_token": {
+        "max": 9.787818890799826,
+        "mean": 9.052093410743495,
+        "median": 9.648447461131582,
+        "min": 5.503262190835639
+      },
+      "ok_runs": 10,
+      "output_chunks": {
+        "max": 64.0,
+        "mean": 63.8,
+        "median": 64.0,
+        "min": 63.0
+      },
+      "runs": 10,
+      "sampling": {
+        "frequency_penalty": 0.0,
+        "presence_penalty": 0.0,
+        "repetition_penalty": 1.0,
+        "temperature": 0.8,
+        "top_k": 50,
+        "top_p": 0.9
+      },
+      "stream": true,
+      "total_ms": {
+        "max": 626.4204090111889,
+        "mean": 578.0165132018737,
+        "median": 617.5006375124212,
+        "min": 346.70551802264526
+      },
+      "ttft_ms": {
+        "max": 23.88715703273192,
+        "mean": 15.290631802054122,
+        "median": 15.35613602027297,
+        "min": 9.213396988343447
+      },
+      "warmup": 2
+    },
+    {
+      "case": "sample_topk_topp_penalty",
+      "completion_tokens": {
+        "max": 64.0,
+        "mean": 63.8,
+        "median": 64.0,
+        "min": 63.0
+      },
+      "description": "Stochastic top-k/top-p sampling with repetition/presence/frequency penalties.",
+      "errors": [],
+      "itl_ms": {
+        "max": 9.654146968387067,
+        "mean": 8.558785144123249,
+        "median": 9.561551996739581,
+        "min": 4.5269835100043565
+      },
+      "ms_per_output_token": {
+        "max": 9.921557586898821,
+        "mean": 8.472933318699646,
+        "median": 9.655931296492781,
+        "min": 4.727284640466678
+      },
+      "ok_runs": 10,
+      "output_chunks": {
+        "max": 64.0,
+        "mean": 63.8,
+        "median": 64.0,
+        "min": 63.0
+      },
+      "runs": 10,
+      "sampling": {
+        "frequency_penalty": 0.1,
+        "presence_penalty": 0.1,
+        "repetition_penalty": 1.05,
+        "temperature": 0.8,
+        "top_k": 50,
+        "top_p": 0.9
+      },
+      "stream": true,
+      "total_ms": {
+        "max": 625.0581279746257,
+        "mean": 540.7178825873416,
+        "median": 617.979602975538,
+        "min": 302.5462169898674
+      },
+      "ttft_ms": {
+        "max": 15.588690992444754,
+        "mean": 12.540852895472199,
+        "median": 13.318738987436518,
+        "min": 9.214305959176272
+      },
+      "warmup": 2
+    },
+    {
+      "case": "greedy_token_logprobs",
+      "completion_tokens": {
+        "max": 64.0,
+        "mean": 63.7,
+        "median": 64.0,
+        "min": 62.0
+      },
+      "description": "Greedy decode requesting token logprobs.",
+      "errors": [],
+      "itl_ms": {
+        "max": 9.41642650286667,
+        "mean": 8.081598955322988,
+        "median": 9.33613203233108,
+        "min": 4.3298130040057
+      },
+      "ms_per_output_token": {
+        "max": 9.808335761864862,
+        "mean": 8.285316914434734,
+        "median": 9.554150601161382,
+        "min": 5.027641338529065
+      },
+      "ok_runs": 10,
+      "output_chunks": {
+        "max": 64.0,
+        "mean": 63.7,
+        "median": 64.0,
+        "min": 62.0
+      },
+      "runs": 10,
+      "sampling": {
+        "frequency_penalty": 0.0,
+        "logprobs": 5,
+        "presence_penalty": 0.0,
+        "repetition_penalty": 1.0,
+        "temperature": 0.0,
+        "top_k": -1,
+        "top_p": 1.0
+      },
+      "stream": true,
+      "total_ms": {
+        "max": 617.9251529974863,
+        "mean": 528.2739206799306,
+        "median": 611.4656384743284,
+        "min": 311.71376298880205
+      },
+      "ttft_ms": {
+        "max": 19.20086401514709,
+        "mean": 15.432420198339969,
+        "median": 16.854816989507526,
+        "min": 8.656796999275684
+      },
+      "warmup": 2
+    }
+  ],
+  "max_tokens": 64,
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "prompt_preview": "List practical reasons batch-one LLM decode can be slow on a PCIe GPU. Use numbered points and keep each point concise.",
+  "schema_version": 1,
+  "stream": true,
+  "url": "http://127.0.0.1:18080/v1/completions"
+}

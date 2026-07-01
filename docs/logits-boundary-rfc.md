@@ -219,6 +219,17 @@ Artifact:
 benchmarks/results/a100-vllm-gemm-epilogue-candidate/
 ```
 
+A follow-up A100 semantics probe confirms why the greedy epilogue is not enough:
+greedy/no-penalty median ITL is 6.720 ms, while repetition penalty, top-k/top-p,
+and token logprobs move median ITL to 9.22-9.56 ms. The next output-changing
+prototype should target those semantics rather than plain greedy argmax.
+
+Artifact:
+
+```text
+benchmarks/results/a100-vllm-sampling-semantics-qwen25-05b/
+```
+
 ### Phase 3: Upstream PR
 
 Open a small PR or RFC with:
