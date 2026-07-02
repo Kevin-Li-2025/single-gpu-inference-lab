@@ -1,0 +1,50 @@
+{
+  "cpu_fallback_suspected": false,
+  "line_count": 85,
+  "log": "/root/sgi-a100-combined-logprobs20-smoke/20260702-133710/candidate-fused-top-logprobs/server.log",
+  "match_counts": {
+    "cpu": 1,
+    "cuda13": 0,
+    "fallback": 0,
+    "flashinfer": 0,
+    "sampling": 5
+  },
+  "matches": {
+    "cpu": [
+      {
+        "line": 62,
+        "text": "\u001b[1;36m(APIServer pid=46304)\u001b[0;0m INFO 07-02 13:38:57 [async_llm.py:180] Torch profiler disabled. AsyncLLM CPU traces will not be collected."
+      }
+    ],
+    "cuda13": [],
+    "fallback": [],
+    "flashinfer": [],
+    "sampling": [
+      {
+        "line": 19,
+        "text": "\u001b[1;36m(EngineCore_DP0 pid=46733)\u001b[0;0m INFO 07-02 13:38:44 [topk_topp_sampler.py:46] Using experimental L20 top-p & top-k sampler hook."
+      },
+      {
+        "line": 64,
+        "text": "\u001b[1;36m(APIServer pid=46304)\u001b[0;0m WARNING 07-02 13:38:57 [__init__.py:1695] Default sampling parameters have been overridden by the model's Hugging Face generation config recommended from the model creator. If this is not intended, please relaunch vLLM instance with `--generation-config vllm`."
+      },
+      {
+        "line": 65,
+        "text": "\u001b[1;36m(APIServer pid=46304)\u001b[0;0m INFO 07-02 13:38:57 [serving_responses.py:130] Using default chat sampling params from model: {'repetition_penalty': 1.1, 'temperature': 0.7, 'top_k': 20, 'top_p': 0.8}"
+      },
+      {
+        "line": 66,
+        "text": "\u001b[1;36m(APIServer pid=46304)\u001b[0;0m INFO 07-02 13:38:57 [serving_chat.py:137] Using default chat sampling params from model: {'repetition_penalty': 1.1, 'temperature': 0.7, 'top_k': 20, 'top_p': 0.8}"
+      },
+      {
+        "line": 67,
+        "text": "\u001b[1;36m(APIServer pid=46304)\u001b[0;0m INFO 07-02 13:38:57 [serving_completion.py:76] Using default completion sampling params from model: {'repetition_penalty': 1.1, 'temperature': 0.7, 'top_k': 20, 'top_p': 0.8}"
+      }
+    ]
+  },
+  "notes": [
+    "This is log evidence only. Absence of CPU/fallback strings does not prove that no CPU synchronization happened inside lower-level kernels.",
+    "Use paired stochastic serving latency and FlashInfer prewarm status as the primary service-level signal."
+  ],
+  "schema_version": 1
+}

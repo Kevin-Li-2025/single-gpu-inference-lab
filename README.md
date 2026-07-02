@@ -28,8 +28,11 @@ speedups, integration behavior, and end-to-end token latency.
   narrow: it beats vLLM's native PyTorch sampler path and shows a smaller
   low-single-digit improvement versus a FlashInfer-enabled path for the measured
   Qwen2.5-0.5B workload.
-- Fused top-logprobs and producer-side LM-head experiments are useful boundary
-  checks, but they are not broad serving-speed claims.
+- Combining sparse token-history sampling with fused generated-token
+  top-logprobs now produces a repeated A100 serving win on the richer
+  top-k/top-p + penalties + logprobs workload.
+- Producer-side LM-head experiments remain boundary checks until they become a
+  true GEMM epilogue or upstream-shaped integration.
 - Negative results stay in the repo when they change the direction.
 
 ## Current Checkpoint
@@ -61,6 +64,7 @@ than cuBLAS/full-logits baselines by 1.32x-1.39x on the tested A100 shapes.
 | Sparse sampler vs native PyTorch path | Median ITL 9.544 ms -> 4.093 ms on A100/Qwen2.5-0.5B | `benchmarks/results/a100-vllm-sparse-penalty-sampling/` |
 | Sparse sampler vs FlashInfer path | Median ITL 4.468 ms -> 4.346 ms on the same A100 workload | `benchmarks/results/a100-vllm-flashinfer-sparse-penalty-sampling/` |
 | Fused top-logprobs selection | 8.04x-9.17x A100 microbenchmark speedup; dirty and clean A100 serving artifacts show path validation, while clean request-level total time stayed flat | `benchmarks/results/a100-fused-top-logprobs/`, `benchmarks/results/a100-vllm-top-logprobs-clean/` |
+| Combined sparse sampling + fused top-logprobs | A100 30-run serving win on top-k/top-p + penalties + logprobs: median ITL 4.406 ms -> 4.248 ms versus FlashInfer baseline, and 4.549 ms -> 4.308 ms versus native PyTorch baseline | `benchmarks/results/a100-vllm-combined-sampling-logprobs/` |
 | GEMM epilogue semantic trace | 310/320 decode-safe events; 179.67 MiB FP32 logits budget | `benchmarks/results/a100-vllm-gemm-epilogue-semantic-trace/` |
 | Standalone LM-head sparse penalties | Correct but 1.32x-1.39x slower than cuBLAS/full-logits baselines | `benchmarks/results/a100-lm-head-sparse-penalty-boundary/` |
 
@@ -96,8 +100,9 @@ See `docs/hardware-scope.md` for the full claim policy.
 - A microbenchmark speedup is not treated as an end-to-end serving result.
 - The RoPE/KV and QK fusion work is valuable case-study evidence, but its
   serving impact is Amdahl-limited in current vLLM stacks.
-- The top-logprobs hook reaches serving and is correct on the checked paths, but
-  the clean A100 request-level result was flat.
+- The standalone top-logprobs hook reached serving and was correct, but its
+  clean A100 request-level result was flat. The new positive A100 result comes
+  from combining it with sparse sampling on a richer sampling workload.
 - The GEMM epilogue semantic trace proves eligibility and budget, not latency.
 - Cross-GPU conclusions require measured artifacts on that GPU.
 
@@ -109,7 +114,8 @@ See `docs/hardware-scope.md` for the full claim policy.
 | Q/K norm + Q/K RoPE + KV write | Path validation | Useful integration proof, too small alone for a broad serving claim. |
 | FlashInfer sampling route | Production comparator | Prewarm and compare against it when available. |
 | Sparse top-k/top-p + penalties | Active positive path | Continue only through real vLLM serving A/B and upstream-shaped gates. |
-| Fused top-logprobs | Correct path, flat request time | Fold into a larger sampling/logits boundary before claiming impact. |
+| Fused top-logprobs | Correct standalone path, flat request time | Useful only when folded into a larger sampling/logits boundary. |
+| Combined sparse sampling + fused top-logprobs | Positive A100 serving A/B | First repeated combined-boundary serving win: -3.60% median ITL versus FlashInfer baseline and -5.28% versus native PyTorch baseline on the measured Qwen2.5-0.5B workload. |
 | LM-head / GEMM epilogue | Current P0 boundary | Implement producer-side semantics instead of external standalone GEMM. |
 | FP8 KV fused attention | Experimental | Keep disabled until repeated serving ITL beats BF16/FlashInfer. |
 | Speculative/tree attention | Experimental | Research branch, not a stable serving result yet. |
@@ -128,6 +134,7 @@ Full status map: `docs/experiment-status.md`
 | Top-tier kernel gaps | `docs/l20-top-tier-kernel-gaps.md` |
 | vLLM integration notes | `integrations/vllm/README.md` |
 | Artifact index | `benchmarks/results/README.md` |
+| Combined A100 sampling/logprobs A/B | `benchmarks/results/a100-vllm-combined-sampling-logprobs/README.md` |
 | Serving optimization ceiling | `benchmarks/results/l20-serving-optimization-ceiling/README.md` |
 | Logits-boundary scout artifact | `benchmarks/results/l20-vllm-logits-boundary-scout/README.md` |
 

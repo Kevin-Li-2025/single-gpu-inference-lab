@@ -33,7 +33,7 @@ class ProbeCase:
     sampling: dict[str, Any]
 
 
-def build_probe_cases() -> list[ProbeCase]:
+def build_probe_cases(logprobs: int = 5) -> list[ProbeCase]:
     """Return a one-feature-at-a-time semantics matrix."""
 
     no_penalty = {
@@ -92,7 +92,7 @@ def build_probe_cases() -> list[ProbeCase]:
                 "frequency_penalty": 0.1,
                 "presence_penalty": 0.1,
                 "repetition_penalty": 1.05,
-                "logprobs": 5,
+                "logprobs": logprobs,
             },
         ),
         ProbeCase(
@@ -100,7 +100,7 @@ def build_probe_cases() -> list[ProbeCase]:
             "Greedy decode requesting token logprobs.",
             {
                 **no_penalty,
-                "logprobs": 5,
+                "logprobs": logprobs,
             },
         ),
     ]
@@ -118,6 +118,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timeout", type=float, default=120.0)
     parser.add_argument("--non-stream", action="store_true")
     parser.add_argument("--case", action="append", dest="cases")
+    parser.add_argument("--logprobs", type=int, default=5)
     return parser.parse_args()
 
 
@@ -324,13 +325,14 @@ def main() -> int:
     args = parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     selected = set(args.cases or [])
+    case_definitions = build_probe_cases(logprobs=args.logprobs)
     cases = [
         case
-        for case in build_probe_cases()
+        for case in case_definitions
         if not selected or case.name in selected
     ]
     if selected and len(cases) != len(selected):
-        known = {case.name for case in build_probe_cases()}
+        known = {case.name for case in case_definitions}
         missing = sorted(selected - known)
         raise SystemExit(f"unknown probe case(s): {', '.join(missing)}")
 
@@ -354,7 +356,7 @@ def main() -> int:
         "stream": not args.non_stream,
         "prompt_preview": args.prompt[:200],
         "cases": summaries,
-        "case_definitions": [asdict(case) for case in build_probe_cases()],
+        "case_definitions": [asdict(case) for case in case_definitions],
     }
     (args.output_dir / "sampling_semantics_summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n",

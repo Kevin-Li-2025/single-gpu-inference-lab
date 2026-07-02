@@ -15,6 +15,7 @@ IMPORT_LINE = (
     "maybe_l20_topk_topp_sample\n"
 )
 DEFER_ENV = "VLLM_L20_TOPK_TOPP_DEFER_PENALTIES"
+ALLOW_LOGPROBS_ENV = "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS"
 
 TOPK_IMPORT_MARKER = "from vllm.triton_utils import HAS_TRITON\n"
 TOPK_IMPORT_MARKER_V010 = "from vllm.platforms import current_platform\n"
@@ -200,39 +201,45 @@ SAMPLER_TOPK_CALL_PATCHED_NO_LOGPROBS_GATE = """        random_sampled, processe
             l20_repetition_penalties=sampling_metadata.repetition_penalties,
         )
 """
-SAMPLER_TOPK_CALL_PATCHED = """        random_sampled, processed_logprobs = self.topk_topp_sampler(
+SAMPLER_TOPK_CALL_PATCHED = """        l20_allow_logprobs = (
+            sampling_metadata.max_num_logprobs is None
+            or __import__("os").environ.get(
+                "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS", "0"
+            ).lower() in {"1", "true", "yes", "on"}
+        )
+        random_sampled, processed_logprobs = self.topk_topp_sampler(
             logits,
             sampling_metadata.generators,
             sampling_metadata.top_k,
             sampling_metadata.top_p,
             l20_expanded_idx_mapping=(
                 sampling_metadata.l20_expanded_idx_mapping
-                if sampling_metadata.max_num_logprobs is None
+                if l20_allow_logprobs
                 else None
             ),
             l20_seeds=(
                 sampling_metadata.l20_seeds
-                if sampling_metadata.max_num_logprobs is None
+                if l20_allow_logprobs
                 else None
             ),
             l20_positions=(
                 sampling_metadata.l20_positions
-                if sampling_metadata.max_num_logprobs is None
+                if l20_allow_logprobs
                 else None
             ),
             l20_history_tokens=(
                 sampling_metadata.l20_history_tokens
-                if sampling_metadata.max_num_logprobs is None
+                if l20_allow_logprobs
                 else None
             ),
             l20_history_lengths=(
                 sampling_metadata.l20_history_lengths
-                if sampling_metadata.max_num_logprobs is None
+                if l20_allow_logprobs
                 else None
             ),
             l20_defer_penalties=(
                 sampling_metadata.l20_defer_penalties
-                if sampling_metadata.max_num_logprobs is None
+                if l20_allow_logprobs
                 else False
             ),
             l20_frequency_penalties=sampling_metadata.frequency_penalties,
@@ -402,10 +409,15 @@ INPUT_BATCH_METADATA_RETURN = """        return SamplingMetadata(
 INPUT_BATCH_SPARSE_HISTORY = f"""        l20_history_tokens = None
         l20_history_lengths = None
         l20_defer_penalties = False
+        l20_allow_logprobs = (
+            self.max_num_logprobs is None
+            or os.environ.get("{ALLOW_LOGPROBS_ENV}", "0").lower()
+            in {{"1", "true", "yes", "on"}}
+        )
         if (
             os.environ.get("{DEFER_ENV}", "0").lower() in {{"1", "true", "yes", "on"}}
             and not self.no_penalties
-            and self.max_num_logprobs is None
+            and l20_allow_logprobs
             and num_reqs <= 4
         ):
             l20_max_history = 256

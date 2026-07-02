@@ -77,9 +77,18 @@ def test_a100_top_logprobs_ab_runner_targets_real_logprobs_workload():
 
     assert "install_l20_top_logprobs.py" in source
     assert "sample_topk_topp_penalty_logprobs" in source
+    assert "LOGPROBS" in source
+    assert "--logprobs \"$logprobs\"" in source
     assert "VLLM_L20_TOP_LOGPROBS=1" in source
     assert "VLLM_L20_TOP_LOGPROBS_TRACE" in source
     assert "VLLM_L20_TOP_LOGPROBS_ALLOW_NON_L20=1" in source
+    assert "BASELINE_USE_FLASHINFER" in source
+    assert "vllm_native_pytorch_sampling_native_logprobs" in source
+    assert "ENABLE_SPARSE_SAMPLER" in source
+    assert "install_l20_topk_topp_sampler.py" in source
+    assert "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS=1" in source
+    assert "l20-topk-topp-trace.jsonl" in source
+    assert "opt_in_sparse_sampler_plus_fused_top_logprobs" in source
     assert "baseline-flashinfer-logprobs" in source
     assert "candidate-fused-top-logprobs" in source
     assert "l20-top-logprobs-trace.jsonl" in source

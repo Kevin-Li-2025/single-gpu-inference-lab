@@ -116,6 +116,8 @@ def sample():
     assert "l20_defer_penalties: bool" in patched_metadata
     assert "sampling_metadata.l20_expanded_idx_mapping" in patched_active_sampler
     assert "sampling_metadata.max_num_logprobs is None" in patched_active_sampler
+    assert "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS" in patched_active_sampler
+    assert "if l20_allow_logprobs" in patched_active_sampler
     assert "sampling_metadata.l20_seeds" in patched_active_sampler
     assert "sampling_metadata.l20_positions" in patched_active_sampler
     assert "sampling_metadata.l20_history_tokens" in patched_active_sampler
@@ -130,7 +132,9 @@ def sample():
     assert "self.l20_sampler_indices[:num_reqs]" in patched_gpu_input_batch
     assert "import os" in patched_gpu_input_batch
     assert "VLLM_L20_TOPK_TOPP_DEFER_PENALTIES" in patched_gpu_input_batch
-    assert "and self.max_num_logprobs is None" in patched_gpu_input_batch
+    assert "self.max_num_logprobs is None" in patched_gpu_input_batch
+    assert "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS" in patched_gpu_input_batch
+    assert "and l20_allow_logprobs" in patched_gpu_input_batch
     assert "l20_history_cpu = torch.full" in patched_gpu_input_batch
     assert "l20_defer_penalties = True" in patched_gpu_input_batch
     assert "l20_history_tokens=l20_history_tokens" in patched_gpu_input_batch
@@ -189,6 +193,7 @@ def test_l20_topk_topp_installer_patches_forward_level_penalty_guard():
 
     assert "sampling_metadata.l20_expanded_idx_mapping" in patched
     assert "sampling_metadata.max_num_logprobs is None" in patched
+    assert "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS" in patched
     assert "sampling_metadata.l20_history_tokens" in patched
     assert 'getattr(sampling_metadata, "l20_defer_penalties", False)' in patched
     assert "if not getattr" in patched
@@ -277,6 +282,7 @@ def test_l20_topk_topp_installer_upgrades_old_active_sampler_patch():
 
     assert patched_twice == patched
     assert "sampling_metadata.max_num_logprobs is None" in patched
+    assert "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS" in patched
     assert "else False" in patched
     assert "l20_defer_penalties=sampling_metadata.l20_defer_penalties" not in patched
 
@@ -348,3 +354,4 @@ import torch
     assert "self.l20_sampler_seeds_cpu[req_index] = l20_seed" in patched
     assert "l20_history_tokens=l20_history_tokens" in patched
     assert "l20_defer_penalties=l20_defer_penalties" in patched
+    assert "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS" in patched

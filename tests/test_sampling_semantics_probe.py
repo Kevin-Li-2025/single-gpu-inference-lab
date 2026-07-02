@@ -33,6 +33,14 @@ def test_probe_cases_cover_next_epilogue_boundaries():
     assert cases["greedy_token_logprobs"].sampling["logprobs"] == 5
 
 
+def test_probe_cases_allow_logprobs_override():
+    probe = load_probe()
+    cases = {case.name: case for case in probe.build_probe_cases(logprobs=20)}
+
+    assert cases["sample_topk_topp_penalty_logprobs"].sampling["logprobs"] == 20
+    assert cases["greedy_token_logprobs"].sampling["logprobs"] == 20
+
+
 def test_probe_summarize_reports_distribution():
     probe = load_probe()
 

@@ -1,0 +1,184 @@
+{
+  "artifact": "20260702-132413",
+  "baseline": {
+    "mode": "vllm_flashinfer_sampling_native_logprobs",
+    "ok_runs": 30,
+    "summary": {
+      "itl_ms": {
+        "max": 4.424735903739929,
+        "mean": 4.407874991496404,
+        "median": 4.40620444715023,
+        "min": 4.392564296722412
+      },
+      "ms_per_output_token": {
+        "max": 4.72055992577225,
+        "mean": 4.5515387099132765,
+        "median": 4.529256528864304,
+        "min": 4.482638362484674
+      },
+      "total_ms": {
+        "max": 226.58687643706799,
+        "mean": 218.47385807583728,
+        "median": 217.4043133854866,
+        "min": 215.16664139926434
+      },
+      "ttft_ms": {
+        "max": 10.805297642946243,
+        "mean": 8.314839812616507,
+        "median": 8.12909658998251,
+        "min": 7.666543126106262
+      }
+    }
+  },
+  "candidate": {
+    "mode": "opt_in_sparse_sampler_plus_fused_top_logprobs",
+    "ok_runs": 30,
+    "summary": {
+      "itl_ms": {
+        "max": 4.262747243046761,
+        "mean": 4.247128001103799,
+        "median": 4.247654229402542,
+        "min": 4.231829196214676
+      },
+      "ms_per_output_token": {
+        "max": 4.552601759011547,
+        "mean": 4.362228190433894,
+        "median": 4.336621651115516,
+        "min": 4.318357716935377
+      },
+      "total_ms": {
+        "max": 218.52488443255424,
+        "mean": 209.23833027482033,
+        "median": 208.1578392535448,
+        "min": 207.28117041289806
+      },
+      "ttft_ms": {
+        "max": 9.254172444343567,
+        "mean": 7.864248317976792,
+        "median": 7.678385823965073,
+        "min": 7.525935769081116
+      }
+    }
+  },
+  "case": {
+    "description": "Stochastic top-k/top-p sampling with penalties and token logprobs.",
+    "name": "sample_topk_topp_penalty_logprobs",
+    "sampling": {
+      "frequency_penalty": 0.1,
+      "logprobs": 5,
+      "presence_penalty": 0.1,
+      "repetition_penalty": 1.05,
+      "temperature": 0.8,
+      "top_k": 50,
+      "top_p": 0.9
+    }
+  },
+  "claim_boundary": [
+    "This is a real vLLM HTTP serving A/B for token logprobs.",
+    "The candidate enables both the opt-in sparse token-history sampler and fused top-logprobs path.",
+    "The candidate is opt-in and falls back to native vLLM when the fused logprobs gate rejects a request.",
+    "The separate trace run proves custom hook coverage but is not used for latency."
+  ],
+  "config": {
+    "enable_sparse_sampler": true,
+    "flashinfer_cuda_env": {
+      "changed": false,
+      "cuda_home": "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13",
+      "library_paths": [
+        "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/lib64",
+        "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/lib",
+        "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/lib64/stubs"
+      ],
+      "nvcc": "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/bin/nvcc",
+      "nvcc_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2026 NVIDIA Corporation\nBuilt on Tue_Jun_09_02:43:40_PM_PDT_2026\nCuda compilation tools, release 13.3, V13.3.73\nBuild cuda_13.3.r13.3/compiler.38244171_0",
+      "preloaded_libraries": [
+        "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/lib64/libcudart.so.13",
+        "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/lib64/libcurand.so.10"
+      ]
+    },
+    "gpu": "NVIDIA A100-SXM4-80GB",
+    "gpu_util_limit": 20,
+    "kv_cache_memory_bytes": null,
+    "max_tokens": 48,
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "nvcc": "Build cuda_13.3.r13.3/compiler.38244171_0",
+    "port_base": 8141,
+    "ports": {
+      "baseline": 8141,
+      "candidate": 8142,
+      "trace": 8143
+    },
+    "require_idle": true,
+    "runs": 30,
+    "sampling": {
+      "frequency_penalty": 0.1,
+      "logprobs": 5,
+      "presence_penalty": 0.1,
+      "repetition_penalty": 1.05,
+      "temperature": 0.8,
+      "top_k": 50,
+      "top_p": 0.9
+    },
+    "schema_version": 1,
+    "served_model": "qwen25-05b",
+    "torch_cuda_version": "12.8",
+    "torch_version": "2.8.0+cu128",
+    "trace_max_tokens": 12,
+    "trace_runs": 4,
+    "trace_warmup": 1,
+    "vllm_version": "0.10.2",
+    "warmup": 4
+  },
+  "delta": {
+    "itl_ms": {
+      "baseline_median": 4.40620444715023,
+      "candidate_median": 4.247654229402542,
+      "delta_percent": -3.5983400146180844,
+      "speedup": 1.0373265358206873
+    },
+    "ms_per_output_token": {
+      "baseline_median": 4.529256528864304,
+      "candidate_median": 4.336621651115516,
+      "delta_percent": -4.2531235870865975,
+      "speedup": 1.0444204943955016
+    },
+    "total_ms": {
+      "baseline_median": 217.4043133854866,
+      "candidate_median": 208.1578392535448,
+      "delta_percent": -4.2531235870865975,
+      "speedup": 1.0444204943955016
+    },
+    "ttft_ms": {
+      "baseline_median": 8.12909658998251,
+      "candidate_median": 7.678385823965073,
+      "delta_percent": -5.544413958284714,
+      "speedup": 1.0586986348889529
+    }
+  },
+  "schema_version": 1,
+  "sparse_sampler_trace_proof": {
+    "eligible_events": 60,
+    "eligible_fraction": 0.967741935483871,
+    "fallback_events": 2,
+    "logits_shape_counts": {
+      "1x151936": 60,
+      "256x151936": 2
+    },
+    "reason_counts": {
+      "outside_l20_profitability_gate": 2
+    },
+    "total_events": 62,
+    "trace": "/root/sgi-a100-combined-full/20260702-132413/candidate-trace/l20-topk-topp-trace.jsonl"
+  },
+  "trace_proof": {
+    "eligible_events": 60,
+    "eligible_fraction": 1.0,
+    "fallback_events": 0,
+    "logits_shape_counts": {
+      "1x151936": 60
+    },
+    "reason_counts": {},
+    "total_events": 60,
+    "trace": "/root/sgi-a100-combined-full/20260702-132413/candidate-trace/l20-top-logprobs-trace.jsonl"
+  }
+}

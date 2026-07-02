@@ -17,6 +17,7 @@ port_base=${PORT_BASE:-8031}
 runs=${RUNS:-20}
 warmup=${WARMUP:-3}
 max_tokens=${MAX_TOKENS:-48}
+logprobs=${LOGPROBS:-5}
 trace_runs=${TRACE_RUNS:-3}
 trace_warmup=${TRACE_WARMUP:-1}
 trace_max_tokens=${TRACE_MAX_TOKENS:-16}
@@ -27,6 +28,8 @@ kv_cache_memory_bytes=${KV_CACHE_MEMORY_BYTES:-}
 require_idle=${REQUIRE_IDLE:-1}
 gpu_util_limit=${GPU_UTIL_LIMIT:-20}
 keep_model_cache=${KEEP_MODEL_CACHE:-0}
+enable_sparse_sampler=${ENABLE_SPARSE_SAMPLER:-0}
+baseline_use_flashinfer=${BASELINE_USE_FLASHINFER:-1}
 if [[ -n "${HF_HOME:-}" ]]; then
   hf_home=$HF_HOME
   cleanup_hf_home=0
@@ -153,15 +156,33 @@ start_server() {
   local pid_file="$run_dir/server.pid"
   rm -f "$log" "$pid_file"
 
-  local -a env_args=("VLLM_USE_FLASHINFER_SAMPLER=1")
+  local -a env_args=()
+  if [[ "$mode" == "baseline" && "$baseline_use_flashinfer" != "1" ]]; then
+    env_args+=("VLLM_USE_FLASHINFER_SAMPLER=0")
+  else
+    env_args+=("VLLM_USE_FLASHINFER_SAMPLER=1")
+  fi
   if [[ "$mode" == "candidate" || "$mode" == "trace" ]]; then
     env_args+=(
       "VLLM_L20_TOP_LOGPROBS=1"
       "VLLM_L20_TOP_LOGPROBS_ALLOW_NON_L20=1"
     )
+    if [[ "$enable_sparse_sampler" == "1" ]]; then
+      env_args+=(
+        "VLLM_L20_TOPK_TOPP_SAMPLER=1"
+        "VLLM_L20_TOPK_TOPP_ALLOW_NON_L20=1"
+        "VLLM_L20_TOPK_TOPP_DEFER_PENALTIES=1"
+        "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS=1"
+      )
+    fi
   fi
   if [[ -n "$trace_path" ]]; then
     env_args+=("VLLM_L20_TOP_LOGPROBS_TRACE=$trace_path")
+    if [[ "$enable_sparse_sampler" == "1" ]]; then
+      env_args+=(
+        "VLLM_L20_TOPK_TOPP_SAMPLER_TRACE=$run_dir/l20-topk-topp-trace.jsonl"
+      )
+    fi
   fi
   local -a server_args=(
     --model "$model"
@@ -200,6 +221,7 @@ run_probe() {
     --warmup "$probe_warmup" \
     --runs "$probe_runs" \
     --max-tokens "$probe_tokens" \
+    --logprobs "$logprobs" \
     --timeout 120
 }
 
@@ -212,6 +234,9 @@ inspect_path() {
 }
 
 check_gpu_idle
+if [[ "$enable_sparse_sampler" == "1" ]]; then
+  "$python_bin" "$repo_root/integrations/vllm/install_l20_topk_topp_sampler.py" >/dev/null
+fi
 "$python_bin" "$repo_root/integrations/vllm/install_l20_top_logprobs.py" >/dev/null
 "$python_bin" "$repo_root/scripts/prewarm_flashinfer_sampling.py" \
   --batch 4 \
@@ -260,11 +285,14 @@ config = {
     "runs": int(${runs@Q}),
     "warmup": int(${warmup@Q}),
     "max_tokens": int(${max_tokens@Q}),
+    "logprobs": int(${logprobs@Q}),
     "trace_runs": int(${trace_runs@Q}),
     "trace_warmup": int(${trace_warmup@Q}),
     "trace_max_tokens": int(${trace_max_tokens@Q}),
     "kv_cache_memory_bytes": ${kv_cache_memory_bytes@Q} or None,
     "port_base": int(${port_base@Q}),
+    "enable_sparse_sampler": ${enable_sparse_sampler@Q} == "1",
+    "baseline_use_flashinfer": ${baseline_use_flashinfer@Q} == "1",
     "ports": {
         "baseline": int(${port_base@Q}),
         "candidate": int(${port_base@Q}) + 1,
@@ -280,7 +308,7 @@ config = {
         "frequency_penalty": 0.1,
         "presence_penalty": 0.1,
         "repetition_penalty": 1.05,
-        "logprobs": 5,
+        "logprobs": int(${logprobs@Q}),
     },
 }
 with open(sys.argv[1], "w", encoding="utf-8") as handle:
@@ -392,20 +420,37 @@ summary = {
         "sampling": baseline.get("sampling"),
     },
     "baseline": {
-        "mode": "vllm_flashinfer_sampling_native_logprobs",
+        "mode": (
+            "vllm_flashinfer_sampling_native_logprobs"
+            if (root / "run-config.json").exists()
+            and load(root / "run-config.json").get("baseline_use_flashinfer", True)
+            else "vllm_native_pytorch_sampling_native_logprobs"
+        ),
         "ok_runs": baseline.get("ok_runs"),
         "summary": {metric: baseline.get(metric) for metric in metrics},
     },
     "candidate": {
-        "mode": "opt_in_fused_top_logprobs",
+        "mode": (
+            "opt_in_sparse_sampler_plus_fused_top_logprobs"
+            if (root / "candidate-trace" / "l20-topk-topp-trace.jsonl").exists()
+            else "opt_in_fused_top_logprobs"
+        ),
         "ok_runs": candidate.get("ok_runs"),
         "summary": {metric: candidate.get(metric) for metric in metrics},
     },
     "delta": delta,
     "trace_proof": summarize_trace(root / "candidate-trace" / "l20-top-logprobs-trace.jsonl"),
+    "sparse_sampler_trace_proof": summarize_trace(
+        root / "candidate-trace" / "l20-topk-topp-trace.jsonl"
+    ),
     "claim_boundary": [
         "This is a real vLLM HTTP serving A/B for token logprobs.",
-        "Both paths keep FlashInfer top-k/top-p sampling enabled; the candidate only changes top-logprobs gathering.",
+        (
+            "The candidate enables both the opt-in sparse token-history sampler "
+            "and fused top-logprobs path."
+            if (root / "candidate-trace" / "l20-topk-topp-trace.jsonl").exists()
+            else "Both paths keep FlashInfer top-k/top-p sampling enabled; the candidate only changes top-logprobs gathering."
+        ),
         "The candidate is opt-in and falls back to native vLLM when the fused logprobs gate rejects a request.",
         "The separate trace run proves custom hook coverage but is not used for latency.",
     ],
@@ -434,15 +479,29 @@ for metric, label in [
         f"{row['candidate_median']:.3f} ms | {row['delta_percent']:+.2f}% |"
     )
 trace = summary["trace_proof"] or {}
+sparse_trace = summary.get("sparse_sampler_trace_proof") or {}
 lines.extend([
     "",
-    "## Path Proof",
+    "## Top-Logprobs Path Proof",
     "",
     "| Trace metric | Value |",
     "| --- | ---: |",
     f"| Total events | {trace.get('total_events', 0)} |",
     f"| Eligible fused events | {trace.get('eligible_events', 0)} |",
     f"| Eligible fraction | {100.0 * trace.get('eligible_fraction', 0.0):.2f}% |",
+])
+if sparse_trace:
+    lines.extend([
+        "",
+        "## Sparse Sampler Path Proof",
+        "",
+        "| Trace metric | Value |",
+        "| --- | ---: |",
+        f"| Total sampler events | {sparse_trace.get('total_events', 0)} |",
+        f"| Eligible sparse-sampler events | {sparse_trace.get('eligible_events', 0)} |",
+        f"| Eligible fraction | {100.0 * sparse_trace.get('eligible_fraction', 0.0):.2f}% |",
+    ])
+lines.extend([
     "",
     "## Claim Boundary",
     "",

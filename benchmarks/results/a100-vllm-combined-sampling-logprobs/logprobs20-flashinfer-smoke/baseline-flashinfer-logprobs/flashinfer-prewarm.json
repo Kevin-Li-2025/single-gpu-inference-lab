@@ -1,0 +1,25 @@
+{
+  "flashinfer_cuda_env": {
+    "changed": false,
+    "cuda_home": "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13",
+    "library_paths": [
+      "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/lib64",
+      "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/lib",
+      "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/lib64/stubs"
+    ],
+    "nvcc": "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/bin/nvcc",
+    "nvcc_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2026 NVIDIA Corporation\nBuilt on Tue_Jun_09_02:43:40_PM_PDT_2026\nCuda compilation tools, release 13.3, V13.3.73\nBuild cuda_13.3.r13.3/compiler.38244171_0",
+    "preloaded_libraries": [
+      "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/lib64/libcudart.so.13",
+      "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/lib64/libcurand.so.10"
+    ]
+  },
+  "flashinfer_version": "0.6.14",
+  "hardware": "NVIDIA A100-SXM4-80GB",
+  "output_dtype": "torch.int32",
+  "output_shape": [
+    4
+  ],
+  "schema_version": 1,
+  "status": "ok"
+}
