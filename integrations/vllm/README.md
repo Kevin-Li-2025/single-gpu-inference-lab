@@ -56,6 +56,11 @@ VLLM_L20_GEMM_EPILOGUE_TRACE_LIMIT=4096 \
 By default this hook returns `None` and falls back to vLLM's existing
 `compute_logits` plus sampler path. `VLLM_L20_GEMM_EPILOGUE_ENABLE=1` is reserved
 for explicit experiments where a future epilogue returns a `SamplerOutput`.
+Trace events include `metadata.semantic_candidate`, which classifies the current
+request against the next producer-side target. The current P0 target is
+`fused_topk_topp_sparse_penalty_lm_head_epilogue`: top-k/top-p decode with
+sparse token-history penalties and an available history source. This is still a
+shadow contract, not a serving speed claim.
 
 The upstream-shaped proposal is in `docs/logits-boundary-rfc.md`. The trace
 events include `metadata.shadow_epilogue`, which records whether the request

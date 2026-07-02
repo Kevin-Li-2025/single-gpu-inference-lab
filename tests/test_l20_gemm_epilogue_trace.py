@@ -23,6 +23,12 @@ class Tensor:
     device = Device()
 
 
+class WeightTensor:
+    shape = (151_936, 1024)
+    dtype = "torch.float16"
+    device = Device()
+
+
 class InputBatch:
     num_reqs = 1
     num_draft_tokens = 0
@@ -40,6 +46,22 @@ class InputBatch:
     has_allowed_token_ids = set()
     bad_words_token_ids = {}
     generators = {}
+
+
+class SparsePenaltyInputBatch(InputBatch):
+    temperature_cpu = np.array([0.8], dtype=np.float32)
+    top_k_cpu = np.array([50], dtype=np.int32)
+    top_p_cpu = np.array([0.9], dtype=np.float32)
+    frequency_penalties_cpu = np.array([0.1], dtype=np.float32)
+    presence_penalties_cpu = np.array([0.2], dtype=np.float32)
+    repetition_penalties_cpu = np.array([1.1], dtype=np.float32)
+    token_ids_cpu = np.arange(128, dtype=np.int64).reshape(1, 128)
+    num_tokens_no_spec = np.array([128], dtype=np.int32)
+
+
+class MissingHistorySparsePenaltyInputBatch(SparsePenaltyInputBatch):
+    token_ids_cpu = None
+    num_tokens_no_spec = None
 
 
 class GreedyInputBatch(InputBatch):
@@ -78,6 +100,10 @@ class LogitsProcessor:
 
 class LmHead:
     bias = "bias"
+
+
+class WeightedLmHead(LmHead):
+    weight = WeightTensor()
 
 
 class Model:
@@ -151,8 +177,74 @@ def test_gemm_epilogue_trace_rejects_unsupported_semantics(tmp_path, monkeypatch
     event = read_event(trace)
     assert event["eligible"] is False
     assert "token_logprobs" in event["reasons"]
-    assert "penalties" in event["reasons"]
     assert event["metadata"]["api"]["api_called"] is False
+    assert event["metadata"]["semantic_candidate"]["target"] == "unsupported_semantics"
+    assert "token_logprobs" in event["metadata"]["semantic_candidate"]["reasons"]
+    assert "sparse_penalties" in event["metadata"]["semantic_candidate"]["features"]
+
+
+def test_gemm_epilogue_trace_marks_sparse_penalty_p0_candidate(tmp_path, monkeypatch):
+    module = load_helper()
+    module._TRACE_COUNT = 0
+    trace = tmp_path / "gemm.jsonl"
+    logits_processor = LogitsProcessor()
+    runner = Runner(logits_processor)
+    runner.model.lm_head = WeightedLmHead()
+    monkeypatch.setenv("VLLM_L20_GEMM_EPILOGUE_TRACE", str(trace))
+    monkeypatch.setenv("VLLM_L20_LOGITS_BOUNDARY_ALLOW_NON_L20", "1")
+
+    result = module.maybe_try_l20_gemm_epilogue(
+        runner,
+        SparsePenaltyInputBatch(),
+        None,
+        Tensor(),
+        SchedulerOutput(),
+        None,
+    )
+
+    assert result is None
+    event = read_event(trace)
+    semantic = event["metadata"]["semantic_candidate"]
+    assert event["eligible"] is True
+    assert event["metadata"]["api"]["api_called"] is True
+    assert semantic["target"] == "fused_topk_topp_sparse_penalty_lm_head_epilogue"
+    assert semantic["priority"] == "p0"
+    assert semantic["eligible"] is True
+    assert semantic["features"] == ["sparse_penalties", "topk_topp"]
+    assert semantic["estimated_logits_bytes_fp32"] == 1 * 151_936 * 4
+    assert round(semantic["estimated_logits_mib_fp32"], 3) == 0.58
+    assert semantic["history"]["source"] == "input_batch_token_ids_cpu"
+
+
+def test_gemm_epilogue_trace_requires_history_for_sparse_penalty_candidate(
+    tmp_path, monkeypatch
+):
+    module = load_helper()
+    module._TRACE_COUNT = 0
+    trace = tmp_path / "gemm.jsonl"
+    logits_processor = LogitsProcessor()
+    runner = Runner(logits_processor)
+    runner.model.lm_head = WeightedLmHead()
+    monkeypatch.setenv("VLLM_L20_GEMM_EPILOGUE_TRACE", str(trace))
+    monkeypatch.setenv("VLLM_L20_LOGITS_BOUNDARY_ALLOW_NON_L20", "1")
+
+    result = module.maybe_try_l20_gemm_epilogue(
+        runner,
+        MissingHistorySparsePenaltyInputBatch(),
+        None,
+        Tensor(),
+        SchedulerOutput(),
+        None,
+    )
+
+    assert result is None
+    event = read_event(trace)
+    semantic = event["metadata"]["semantic_candidate"]
+    assert event["eligible"] is True
+    assert semantic["target"] == "fused_topk_topp_sparse_penalty_lm_head_epilogue"
+    assert semantic["eligible"] is False
+    assert semantic["reasons"] == ["missing_sparse_history"]
+    assert semantic["history"]["available"] is False
 
 
 def test_gemm_epilogue_enable_can_surface_non_none_output(tmp_path, monkeypatch):

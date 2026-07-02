@@ -180,6 +180,159 @@ def _sampling_reasons(input_batch: Any) -> list[str]:
     return sorted(set(reasons))
 
 
+def _sampling_hard_reasons(input_batch: Any) -> list[str]:
+    """Semantic blockers for shadow tracing.
+
+    Sparse penalties are intentionally not hard blockers here. They are the
+    current P0 producer-side epilogue target, so the trace should classify them
+    rather than hide the opportunity behind a generic fallback reason.
+    """
+
+    return [
+        reason
+        for reason in _sampling_reasons(input_batch)
+        if reason != "penalties"
+    ]
+
+
+def _topk_topp_active(input_batch: Any, vocab_size: int) -> bool:
+    top_k_min, top_k_max = _array_minmax(_active_values(input_batch, "top_k_cpu"), -1.0)
+    top_p_min, top_p_max = _array_minmax(_active_values(input_batch, "top_p_cpu"), 1.0)
+    top_k = int(top_k_max)
+    top_k_active = (
+        top_k_min == top_k_max
+        and top_k not in {-1, 0, 1}
+        and (vocab_size <= 0 or top_k < vocab_size)
+    )
+    top_p_active = top_p_min == top_p_max and abs(float(top_p_max) - 1.0) > 1e-6
+    return bool(top_k_active or top_p_active)
+
+
+def _penalties_active(input_batch: Any) -> bool:
+    return any(
+        (
+            _array_non_default(_active_values(input_batch, "frequency_penalties_cpu"), 0.0),
+            _array_non_default(_active_values(input_batch, "presence_penalties_cpu"), 0.0),
+            _array_non_default(_active_values(input_batch, "repetition_penalties_cpu"), 1.0),
+        )
+    )
+
+
+def _history_source_metadata(input_batch: Any) -> dict[str, Any]:
+    history_tokens = getattr(input_batch, "l20_history_tokens", None)
+    history_lengths = getattr(input_batch, "l20_history_lengths", None)
+    if history_tokens is not None and history_lengths is not None:
+        return {
+            "available": True,
+            "source": "l20_history_tensors",
+            "tokens_shape": _shape(history_tokens),
+            "lengths_shape": _shape(history_lengths),
+            "tokens_device": str(getattr(history_tokens, "device", None)),
+        }
+    token_ids_cpu = getattr(input_batch, "token_ids_cpu", None)
+    num_tokens_no_spec = getattr(input_batch, "num_tokens_no_spec", None)
+    if token_ids_cpu is not None and num_tokens_no_spec is not None:
+        return {
+            "available": True,
+            "source": "input_batch_token_ids_cpu",
+            "tokens_shape": _shape(token_ids_cpu),
+            "lengths_shape": _shape(num_tokens_no_spec),
+            "tokens_device": "cpu",
+        }
+    return {
+        "available": False,
+        "source": None,
+        "tokens_shape": None,
+        "lengths_shape": None,
+        "tokens_device": None,
+    }
+
+
+def _dtype_nbytes(dtype: str | None) -> int:
+    if dtype is None:
+        return 0
+    text = dtype.lower()
+    if "float64" in text or "int64" in text:
+        return 8
+    if "float32" in text or "int32" in text:
+        return 4
+    if "float16" in text or "bfloat16" in text or "int16" in text:
+        return 2
+    if "int8" in text or "uint8" in text or "bool" in text:
+        return 1
+    return 0
+
+
+def _semantic_candidate(
+    input_batch: Any,
+    hidden_states: Any,
+    lm_head: Any | None,
+) -> dict[str, Any]:
+    hidden_shape = _shape(hidden_states) or []
+    batch = int(hidden_shape[0]) if len(hidden_shape) == 2 else _active_num_reqs(input_batch)
+    weight = _lm_head_weight(lm_head) if lm_head is not None else None
+    weight_shape = _shape(weight)
+    vocab_size = _vocab_size(input_batch, weight) if weight is not None else 0
+    hidden_size = int(hidden_shape[1]) if len(hidden_shape) == 2 else 0
+    logits_bytes = batch * vocab_size * 4 if batch > 0 and vocab_size > 0 else 0
+    hidden_bytes = batch * hidden_size * _dtype_nbytes(_dtype(hidden_states))
+    features: list[str] = []
+    if _topk_topp_active(input_batch, vocab_size):
+        features.append("topk_topp")
+    if _penalties_active(input_batch):
+        features.append("sparse_penalties")
+    temperature_min, temperature_max = _array_minmax(
+        _active_values(input_batch, "temperature_cpu"),
+        0.0,
+    )
+    if temperature_min == temperature_max and abs(float(temperature_max)) <= 1e-6:
+        features.append("greedy")
+    elif "topk_topp" not in features:
+        features.append("full_vocab_sampling")
+
+    hard_reasons = _sampling_hard_reasons(input_batch)
+    history = _history_source_metadata(input_batch)
+    target = "unsupported_semantics"
+    priority = "defer"
+    candidate_reasons = list(hard_reasons)
+    if not candidate_reasons:
+        if "topk_topp" in features and "sparse_penalties" in features:
+            target = "fused_topk_topp_sparse_penalty_lm_head_epilogue"
+            priority = "p0"
+            if not history["available"]:
+                candidate_reasons.append("missing_sparse_history")
+        elif "topk_topp" in features:
+            target = "fused_topk_topp_lm_head_epilogue"
+            priority = "p1"
+        elif "sparse_penalties" in features:
+            target = "fused_sparse_penalty_greedy_lm_head_epilogue"
+            priority = "p1"
+            if not history["available"]:
+                candidate_reasons.append("missing_sparse_history")
+        elif "full_vocab_sampling" in features:
+            target = "gumbel_max_lm_head_epilogue"
+            priority = "p2"
+        else:
+            target = "greedy_argmax_control"
+            priority = "control"
+
+    return {
+        "target": target,
+        "priority": priority,
+        "eligible": not candidate_reasons and priority != "control",
+        "reasons": sorted(set(candidate_reasons)),
+        "features": sorted(set(features)),
+        "batch": batch,
+        "vocab_size": vocab_size,
+        "hidden_size": hidden_size,
+        "weight_shape": weight_shape,
+        "estimated_logits_bytes_fp32": logits_bytes,
+        "estimated_logits_mib_fp32": logits_bytes / 1048576 if logits_bytes else 0.0,
+        "hidden_bytes": hidden_bytes,
+        "history": history,
+    }
+
+
 def _greedy_epilogue_reasons(input_batch: Any, hidden_states: Any) -> list[str]:
     reasons: list[str] = []
     hidden_shape = _shape(hidden_states)
@@ -408,6 +561,7 @@ def _base_event(
     reasons: list[str],
     api: dict[str, Any],
     epilogue: dict[str, Any],
+    semantic_candidate: dict[str, Any],
 ) -> dict[str, Any]:
     return {
         "event": "l20_gemm_epilogue_boundary",
@@ -424,6 +578,7 @@ def _base_event(
             ),
             "api": api,
             "epilogue": epilogue,
+            "semantic_candidate": semantic_candidate,
             "mutates_outputs": False,
         },
     }
@@ -459,7 +614,10 @@ def maybe_try_l20_gemm_epilogue(
         reasons.append(device_reason)
     expected_reqs = _active_num_reqs(input_batch)
     reasons.extend(_scheduled_reasons(scheduler_output, expected_reqs))
-    reasons.extend(_sampling_reasons(input_batch))
+    if _env_flag(ENABLE_ENV):
+        reasons.extend(_sampling_reasons(input_batch))
+    else:
+        reasons.extend(_sampling_hard_reasons(input_batch))
     if _env_flag(ENABLE_ENV):
         reasons.extend(_greedy_epilogue_reasons(input_batch, sample_hidden_states))
 
@@ -484,6 +642,7 @@ def maybe_try_l20_gemm_epilogue(
         "returned_output": False,
         "fallback_to_compute_logits": True,
     }
+    semantic_candidate = _semantic_candidate(input_batch, sample_hidden_states, lm_head)
     if logits_processor is None:
         reasons.append("missing_logits_processor")
     if lm_head is None:
@@ -527,6 +686,7 @@ def maybe_try_l20_gemm_epilogue(
         reasons,
         api,
         epilogue,
+        semantic_candidate,
     )
     if output is not None and _env_flag(ENABLE_ENV):
         event["metadata"]["mutates_outputs"] = True
