@@ -1,0 +1,343 @@
+{
+  "baseline": "vLLM FlashInfer top-k/top-p sampling with native token logprobs path",
+  "candidate": "opt-in sparse token-history sampler plus fused generated-token top-logprobs with no-clone borrowed raw logits when gate-safe",
+  "claim_boundary": [
+    "This is a paired A100 vLLM HTTP serving A/B matrix, not a microbenchmark.",
+    "The candidate path is proven by trace coverage: top-logprobs 64/64 borrowed raw-logits events and sparse sampler 64/66 events for every row.",
+    "Positive wins are strongest on 0.5B/0.6B and logprobs-heavy settings; 1.5B/1.7B logprobs=5 is flat or negative.",
+    "The result supports a narrow sampling/logprobs-boundary claim, not a broad model-inference speedup claim."
+  ],
+  "created_utc": "2026-07-02T16:13:03Z",
+  "hardware": "NVIDIA A100-SXM4-80GB",
+  "name": "a100-vllm-combined-sampling-logprobs-matrix",
+  "remote_artifacts": [
+    "/root/sgi-a100-cached-qwen25-05b/20260702-154207",
+    "/root/sgi-a100-cached-remaining-matrix/20260702-155025"
+  ],
+  "rows": [
+    {
+      "artifact": "qwen25-05b-logprobs5",
+      "baseline_mode": "vllm_flashinfer_sampling_native_logprobs",
+      "candidate_mode": "opt_in_sparse_sampler_plus_fused_top_logprobs",
+      "itl_ms": {
+        "baseline_median": 4.396367818117142,
+        "candidate_median": 4.238908179104328,
+        "delta_percent": -3.5815847428400507,
+        "speedup": 1.0371462726626186
+      },
+      "logprobs": 5,
+      "max_tokens": 48,
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "remote_root": "/root/sgi-a100-cached-qwen25-05b/20260702-154207",
+      "runs": 30,
+      "total_ms": {
+        "baseline_median": 215.11423029005527,
+        "candidate_median": 208.18509068340063,
+        "delta_percent": -3.22114422523863,
+        "speedup": 1.0332835535143685
+      },
+      "trace_proof": {
+        "raw_logits_source_counts": {
+          "borrowed": 64
+        },
+        "sparse_sampler_eligible_events": 64,
+        "sparse_sampler_total_events": 66,
+        "top_logprobs_eligible_events": 64,
+        "top_logprobs_total_events": 64
+      },
+      "ttft_ms": {
+        "baseline_median": 7.7164750546216965,
+        "candidate_median": 7.7391862869262695,
+        "delta_percent": 0.29432133381900094,
+        "speedup": 0.9970654237457833
+      },
+      "warmup": 4
+    },
+    {
+      "artifact": "qwen25-05b-logprobs20",
+      "baseline_mode": "vllm_flashinfer_sampling_native_logprobs",
+      "candidate_mode": "opt_in_sparse_sampler_plus_fused_top_logprobs",
+      "itl_ms": {
+        "baseline_median": 4.486444406211376,
+        "candidate_median": 4.254225641489029,
+        "delta_percent": -5.17600896604995,
+        "speedup": 1.0545854367614285
+      },
+      "logprobs": 20,
+      "max_tokens": 48,
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "remote_root": "/root/sgi-a100-cached-qwen25-05b/20260702-154207",
+      "runs": 30,
+      "total_ms": {
+        "baseline_median": 219.4690816104412,
+        "candidate_median": 208.86950474232435,
+        "delta_percent": -4.829644699990663,
+        "speedup": 1.0507473643947842
+      },
+      "trace_proof": {
+        "raw_logits_source_counts": {
+          "borrowed": 64
+        },
+        "sparse_sampler_eligible_events": 64,
+        "sparse_sampler_total_events": 66,
+        "top_logprobs_eligible_events": 64,
+        "top_logprobs_total_events": 64
+      },
+      "ttft_ms": {
+        "baseline_median": 7.988302037119865,
+        "candidate_median": 7.823812775313854,
+        "delta_percent": -2.059126721068709,
+        "speedup": 1.0210241817550922
+      },
+      "warmup": 4
+    },
+    {
+      "artifact": "qwen25-coder-1p5b-logprobs5",
+      "baseline_mode": "vllm_flashinfer_sampling_native_logprobs",
+      "candidate_mode": "opt_in_sparse_sampler_plus_fused_top_logprobs",
+      "itl_ms": {
+        "baseline_median": 4.995360039174557,
+        "candidate_median": 5.03171980381012,
+        "delta_percent": 0.7278707510654439,
+        "speedup": 0.992773889236036
+      },
+      "logprobs": 5,
+      "max_tokens": 48,
+      "model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+      "remote_root": "/root/sgi-a100-cached-remaining-matrix/20260702-155025",
+      "runs": 30,
+      "total_ms": {
+        "baseline_median": 244.27777249366045,
+        "candidate_median": 245.93391362577677,
+        "delta_percent": 0.6779745513519034,
+        "speedup": 0.9932659099035996
+      },
+      "trace_proof": {
+        "raw_logits_source_counts": {
+          "borrowed": 64
+        },
+        "sparse_sampler_eligible_events": 64,
+        "sparse_sampler_total_events": 66,
+        "top_logprobs_eligible_events": 64,
+        "top_logprobs_total_events": 64
+      },
+      "ttft_ms": {
+        "baseline_median": 8.80237203091383,
+        "candidate_median": 8.901018649339676,
+        "delta_percent": 1.1206822215580108,
+        "speedup": 0.9889173787504463
+      },
+      "warmup": 4
+    },
+    {
+      "artifact": "qwen25-coder-1p5b-logprobs20",
+      "baseline_mode": "vllm_flashinfer_sampling_native_logprobs",
+      "candidate_mode": "opt_in_sparse_sampler_plus_fused_top_logprobs",
+      "itl_ms": {
+        "baseline_median": 5.034990608692169,
+        "candidate_median": 4.951932467520237,
+        "delta_percent": -1.649618591711861,
+        "speedup": 1.0167728743711089
+      },
+      "logprobs": 20,
+      "max_tokens": 48,
+      "model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+      "remote_root": "/root/sgi-a100-cached-remaining-matrix/20260702-155025",
+      "runs": 30,
+      "total_ms": {
+        "baseline_median": 246.95784412324429,
+        "candidate_median": 242.67280846834183,
+        "delta_percent": -1.7351283860268927,
+        "speedup": 1.0176576670536266
+      },
+      "trace_proof": {
+        "raw_logits_source_counts": {
+          "borrowed": 64
+        },
+        "sparse_sampler_eligible_events": 64,
+        "sparse_sampler_total_events": 66,
+        "top_logprobs_eligible_events": 64,
+        "top_logprobs_total_events": 64
+      },
+      "ttft_ms": {
+        "baseline_median": 9.010883048176765,
+        "candidate_median": 9.008347988128662,
+        "delta_percent": -0.028133314288395616,
+        "speedup": 1.0002814123134947
+      },
+      "warmup": 4
+    },
+    {
+      "artifact": "qwen3-0p6b-logprobs5",
+      "baseline_mode": "vllm_flashinfer_sampling_native_logprobs",
+      "candidate_mode": "opt_in_sparse_sampler_plus_fused_top_logprobs",
+      "itl_ms": {
+        "baseline_median": 4.976870492100716,
+        "candidate_median": 4.753530956804752,
+        "delta_percent": -4.487549669022885,
+        "speedup": 1.0469839235981517
+      },
+      "logprobs": 5,
+      "max_tokens": 48,
+      "model": "Qwen/Qwen3-0.6B",
+      "remote_root": "/root/sgi-a100-cached-remaining-matrix/20260702-155025",
+      "runs": 30,
+      "total_ms": {
+        "baseline_median": 243.99629421532154,
+        "candidate_median": 232.40883648395538,
+        "delta_percent": -4.749030213196792,
+        "speedup": 1.0498580772859991
+      },
+      "trace_proof": {
+        "raw_logits_source_counts": {
+          "borrowed": 64
+        },
+        "sparse_sampler_eligible_events": 64,
+        "sparse_sampler_total_events": 66,
+        "top_logprobs_eligible_events": 64,
+        "top_logprobs_total_events": 64
+      },
+      "ttft_ms": {
+        "baseline_median": 8.736110292375088,
+        "candidate_median": 8.201631717383862,
+        "delta_percent": -6.118038315721829,
+        "speedup": 1.0651673463779612
+      },
+      "warmup": 4
+    },
+    {
+      "artifact": "qwen3-0p6b-logprobs20",
+      "baseline_mode": "vllm_flashinfer_sampling_native_logprobs",
+      "candidate_mode": "opt_in_sparse_sampler_plus_fused_top_logprobs",
+      "itl_ms": {
+        "baseline_median": 5.053210072219372,
+        "candidate_median": 4.845445044338703,
+        "delta_percent": -4.111545431742128,
+        "speedup": 1.042878420037684
+      },
+      "logprobs": 20,
+      "max_tokens": 48,
+      "model": "Qwen/Qwen3-0.6B",
+      "remote_root": "/root/sgi-a100-cached-remaining-matrix/20260702-155025",
+      "runs": 30,
+      "total_ms": {
+        "baseline_median": 246.87938392162323,
+        "candidate_median": 237.18269728124142,
+        "delta_percent": -3.9277020569122203,
+        "speedup": 1.0408827741295306
+      },
+      "trace_proof": {
+        "raw_logits_source_counts": {
+          "borrowed": 64
+        },
+        "sparse_sampler_eligible_events": 64,
+        "sparse_sampler_total_events": 66,
+        "top_logprobs_eligible_events": 64,
+        "top_logprobs_total_events": 64
+      },
+      "ttft_ms": {
+        "baseline_median": 8.597848005592823,
+        "candidate_median": 8.38864129036665,
+        "delta_percent": -2.4332450991234817,
+        "speedup": 1.02493928491929
+      },
+      "warmup": 4
+    },
+    {
+      "artifact": "qwen3-1p7b-logprobs5",
+      "baseline_mode": "vllm_flashinfer_sampling_native_logprobs",
+      "candidate_mode": "opt_in_sparse_sampler_plus_fused_top_logprobs",
+      "itl_ms": {
+        "baseline_median": 4.960283637046814,
+        "candidate_median": 5.007046274840832,
+        "delta_percent": 0.942741206264138,
+        "speedup": 0.9906606339891467
+      },
+      "logprobs": 5,
+      "max_tokens": 48,
+      "model": "Qwen/Qwen3-1.7B",
+      "remote_root": "/root/sgi-a100-cached-remaining-matrix/20260702-155025",
+      "runs": 30,
+      "total_ms": {
+        "baseline_median": 242.90576204657555,
+        "candidate_median": 245.04766799509525,
+        "delta_percent": 0.8817847425574905,
+        "speedup": 0.9912592273738243
+      },
+      "trace_proof": {
+        "raw_logits_source_counts": {
+          "borrowed": 64
+        },
+        "sparse_sampler_eligible_events": 64,
+        "sparse_sampler_total_events": 66,
+        "top_logprobs_eligible_events": 64,
+        "top_logprobs_total_events": 64
+      },
+      "ttft_ms": {
+        "baseline_median": 8.88595636934042,
+        "candidate_median": 9.21787228435278,
+        "delta_percent": 3.7352863464149197,
+        "speedup": 0.963992133458414
+      },
+      "warmup": 4
+    },
+    {
+      "artifact": "qwen3-1p7b-logprobs20",
+      "baseline_mode": "vllm_flashinfer_sampling_native_logprobs",
+      "candidate_mode": "opt_in_sparse_sampler_plus_fused_top_logprobs",
+      "itl_ms": {
+        "baseline_median": 5.026840604841709,
+        "candidate_median": 4.9265306442976,
+        "delta_percent": -1.9954871942327683,
+        "speedup": 1.0203611766142604
+      },
+      "logprobs": 20,
+      "max_tokens": 48,
+      "model": "Qwen/Qwen3-1.7B",
+      "remote_root": "/root/sgi-a100-cached-remaining-matrix/20260702-155025",
+      "runs": 30,
+      "total_ms": {
+        "baseline_median": 246.69083021581173,
+        "candidate_median": 242.07769334316254,
+        "delta_percent": -1.8700074374931153,
+        "speedup": 1.019056431052942
+      },
+      "trace_proof": {
+        "raw_logits_source_counts": {
+          "borrowed": 64
+        },
+        "sparse_sampler_eligible_events": 64,
+        "sparse_sampler_total_events": 66,
+        "top_logprobs_eligible_events": 64,
+        "top_logprobs_total_events": 64
+      },
+      "ttft_ms": {
+        "baseline_median": 9.261739440262318,
+        "candidate_median": 9.548763744533062,
+        "delta_percent": 3.099032380710281,
+        "speedup": 0.9699412078935272
+      },
+      "warmup": 4
+    }
+  ],
+  "schema_version": 1,
+  "stack": {
+    "cuda": "12.8",
+    "flashinfer_sampling": "enabled for baseline top-k/top-p",
+    "torch": "2.8.0+cu128",
+    "vllm": "0.10.2"
+  },
+  "workload": {
+    "api": "vLLM OpenAI-compatible /v1/completions HTTP serving",
+    "case": "top-k/top-p + frequency/presence/repetition penalties + generated-token logprobs",
+    "frequency_penalty": 0.1,
+    "max_tokens": 48,
+    "presence_penalty": 0.1,
+    "repetition_penalty": 1.05,
+    "runs": 30,
+    "top_k": 50,
+    "top_p": 0.9,
+    "trace_runs": 3,
+    "warmup": 4
+  }
+}
