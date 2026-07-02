@@ -35,13 +35,26 @@ else
   cleanup_hf_home=1
 fi
 
-export CUDA_HOME=${CUDA_HOME:-/usr/local/cuda-13.0}
-python_dir=$(cd "$(dirname "$python_bin")" && pwd)
-export PATH="$python_dir:$CUDA_HOME/bin:$PATH"
-export LD_LIBRARY_PATH="$CUDA_HOME/compat:$CUDA_HOME/lib64:${LD_LIBRARY_PATH:-}"
 export PYTHONPATH="$repo_root/src:${PYTHONPATH:-}"
 export HF_HOME="$hf_home"
 export VLLM_NO_USAGE_STATS=1
+python_dir=$(cd "$(dirname "$python_bin")" && pwd)
+
+flashinfer_env_exports=$("$python_bin" - <<'PY'
+import os
+import shlex
+
+from l20_stack.flashinfer_env import configure_flashinfer_cuda13_env
+
+env = configure_flashinfer_cuda13_env(required=True)
+assert env is not None
+for name in ("CUDA_HOME", "CUDACXX", "PATH", "LD_LIBRARY_PATH", "LIBRARY_PATH"):
+    value = os.environ.get(name)
+    if value is not None:
+        print(f"export {name}={shlex.quote(value)}")
+PY
+)
+eval "$flashinfer_env_exports"
 
 check_gpu_idle() {
   if [[ "$require_idle" != "1" ]]; then
@@ -51,7 +64,7 @@ check_gpu_idle() {
     echo "nvidia-smi is required for REQUIRE_IDLE=1" >&2
     exit 3
   fi
-  local util
+  local util apps
   util=$(nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits | head -1)
   util=${util// /}
   if [[ "${util:-100}" -gt "$gpu_util_limit" ]]; then
@@ -59,6 +72,30 @@ check_gpu_idle() {
     nvidia-smi --query-compute-apps=pid,process_name,used_memory \
       --format=csv,noheader 2>/dev/null || true
     exit 4
+  fi
+  apps=$(nvidia-smi --query-compute-apps=pid,process_name,used_memory \
+    --format=csv,noheader 2>/dev/null | sed '/^[[:space:]]*$/d' || true)
+  if [[ -n "$apps" ]]; then
+    echo "GPU has active compute apps; refusing to record a clean serving benchmark." >&2
+    echo "$apps" >&2
+    exit 4
+  fi
+}
+
+check_port_free() {
+  local port=$1
+  if ! "$python_bin" - "$port" <<'PY'
+import socket
+import sys
+
+port = int(sys.argv[1])
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    sock.settimeout(0.25)
+    sys.exit(1 if sock.connect_ex(("127.0.0.1", port)) == 0 else 0)
+PY
+  then
+    echo "Port $port is already serving something; refusing to use it for vLLM." >&2
+    exit 7
   fi
 }
 
@@ -110,6 +147,7 @@ start_server() {
   local port=$2
   local run_dir=$3
   local trace_path=${4:-}
+  check_port_free "$port"
   mkdir -p "$run_dir"
   local log="$run_dir/server.log"
   local pid_file="$run_dir/server.pid"
@@ -204,6 +242,12 @@ try:
     nvcc = subprocess.check_output(["nvcc", "--version"], text=True).splitlines()[-1]
 except Exception:
     nvcc = "unknown"
+try:
+    from l20_stack.flashinfer_env import configure_flashinfer_cuda13_env
+    flashinfer_cuda_env = configure_flashinfer_cuda13_env(required=False)
+    flashinfer_cuda_env = None if flashinfer_cuda_env is None else flashinfer_cuda_env.to_dict()
+except Exception as error:
+    flashinfer_cuda_env = {"error": f"{type(error).__name__}: {error}"}
 config = {
     "schema_version": 1,
     "model": ${model@Q},
@@ -220,6 +264,15 @@ config = {
     "trace_warmup": int(${trace_warmup@Q}),
     "trace_max_tokens": int(${trace_max_tokens@Q}),
     "kv_cache_memory_bytes": ${kv_cache_memory_bytes@Q} or None,
+    "port_base": int(${port_base@Q}),
+    "ports": {
+        "baseline": int(${port_base@Q}),
+        "candidate": int(${port_base@Q}) + 1,
+        "trace": int(${port_base@Q}) + 2,
+    },
+    "require_idle": ${require_idle@Q} == "1",
+    "gpu_util_limit": int(${gpu_util_limit@Q}),
+    "flashinfer_cuda_env": flashinfer_cuda_env,
     "sampling": {
         "temperature": 0.8,
         "top_k": 50,

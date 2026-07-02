@@ -1,0 +1,169 @@
+{
+  "artifact": "20260702-111144",
+  "baseline": {
+    "mode": "vllm_flashinfer_sampling_native_logprobs",
+    "ok_runs": 30,
+    "summary": {
+      "itl_ms": {
+        "max": 4.443520680069923,
+        "mean": 4.406076452384393,
+        "median": 4.403792321681976,
+        "min": 4.380263388156891
+      },
+      "ms_per_output_token": {
+        "max": 4.70023525311895,
+        "mean": 4.53592672733734,
+        "median": 4.518378894620886,
+        "min": 4.459106091720362
+      },
+      "total_ms": {
+        "max": 220.79974971711636,
+        "mean": 216.79303739219904,
+        "median": 216.27585496753454,
+        "min": 214.0370924025774
+      },
+      "ttft_ms": {
+        "max": 10.560372844338417,
+        "mean": 8.373521144191423,
+        "median": 8.44916794449091,
+        "min": 7.494477555155754
+      }
+    }
+  },
+  "candidate": {
+    "mode": "opt_in_fused_top_logprobs",
+    "ok_runs": 30,
+    "summary": {
+      "itl_ms": {
+        "max": 4.448831081390381,
+        "mean": 4.373726341873407,
+        "median": 4.368026740849018,
+        "min": 4.314444959163666
+      },
+      "ms_per_output_token": {
+        "max": 4.788616866183777,
+        "mean": 4.571134237491806,
+        "median": 4.563006475412597,
+        "min": 4.4244892584780855
+      },
+      "total_ms": {
+        "max": 229.85360957682133,
+        "mean": 218.0215715120236,
+        "median": 216.75428189337254,
+        "min": 212.3754844069481
+      },
+      "ttft_ms": {
+        "max": 16.436245292425156,
+        "mean": 9.221127318839232,
+        "median": 8.85976105928421,
+        "min": 7.638080045580864
+      }
+    }
+  },
+  "case": {
+    "description": "Stochastic top-k/top-p sampling with penalties and token logprobs.",
+    "name": "sample_topk_topp_penalty_logprobs",
+    "sampling": {
+      "frequency_penalty": 0.1,
+      "logprobs": 5,
+      "presence_penalty": 0.1,
+      "repetition_penalty": 1.05,
+      "temperature": 0.8,
+      "top_k": 50,
+      "top_p": 0.9
+    }
+  },
+  "claim_boundary": [
+    "This is a real vLLM HTTP serving A/B for token logprobs.",
+    "Both paths keep FlashInfer top-k/top-p sampling enabled; the candidate only changes top-logprobs gathering.",
+    "The candidate is opt-in and falls back to native vLLM when the fused logprobs gate rejects a request.",
+    "The separate trace run proves custom hook coverage but is not used for latency."
+  ],
+  "config": {
+    "flashinfer_cuda_env": {
+      "changed": false,
+      "cuda_home": "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13",
+      "library_paths": [
+        "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/lib64",
+        "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/lib",
+        "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/lib64/stubs"
+      ],
+      "nvcc": "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/bin/nvcc",
+      "nvcc_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2026 NVIDIA Corporation\nBuilt on Tue_Jun_09_02:43:40_PM_PDT_2026\nCuda compilation tools, release 13.3, V13.3.73\nBuild cuda_13.3.r13.3/compiler.38244171_0",
+      "preloaded_libraries": [
+        "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/lib64/libcudart.so.13",
+        "/root/venvs/single-gpu-infer-vllm-0102/lib/python3.12/site-packages/nvidia/cu13/lib64/libcurand.so.10"
+      ]
+    },
+    "gpu": "NVIDIA A100-SXM4-80GB",
+    "gpu_util_limit": 20,
+    "kv_cache_memory_bytes": null,
+    "max_tokens": 48,
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "nvcc": "Build cuda_13.3.r13.3/compiler.38244171_0",
+    "port_base": 18191,
+    "ports": {
+      "baseline": 18191,
+      "candidate": 18192,
+      "trace": 18193
+    },
+    "require_idle": true,
+    "runs": 30,
+    "sampling": {
+      "frequency_penalty": 0.1,
+      "logprobs": 5,
+      "presence_penalty": 0.1,
+      "repetition_penalty": 1.05,
+      "temperature": 0.8,
+      "top_k": 50,
+      "top_p": 0.9
+    },
+    "schema_version": 1,
+    "served_model": "qwen25-05b",
+    "torch_cuda_version": "12.8",
+    "torch_version": "2.8.0+cu128",
+    "trace_max_tokens": 16,
+    "trace_runs": 4,
+    "trace_warmup": 1,
+    "vllm_version": "0.10.2",
+    "warmup": 4
+  },
+  "delta": {
+    "itl_ms": {
+      "baseline_median": 4.403792321681976,
+      "candidate_median": 4.368026740849018,
+      "delta_percent": -0.8121541212755914,
+      "speedup": 1.0081880407229389
+    },
+    "ms_per_output_token": {
+      "baseline_median": 4.518378894620886,
+      "candidate_median": 4.563006475412597,
+      "delta_percent": 0.9876900948886755,
+      "speedup": 0.9902196981239928
+    },
+    "total_ms": {
+      "baseline_median": 216.27585496753454,
+      "candidate_median": 216.75428189337254,
+      "delta_percent": 0.22121143662098153,
+      "speedup": 0.9977927682827814
+    },
+    "ttft_ms": {
+      "baseline_median": 8.44916794449091,
+      "candidate_median": 8.85976105928421,
+      "delta_percent": 4.859568628423568,
+      "speedup": 0.9536564121711796
+    }
+  },
+  "schema_version": 1,
+  "trace_proof": {
+    "eligible_events": 80,
+    "eligible_fraction": 1.0,
+    "fallback_events": 0,
+    "logits_shape_counts": {
+      "1x151936": 80
+    },
+    "reason_counts": {},
+    "total_events": 80,
+    "trace": "/root/sgi-toplogprobs-clean/20260702-111144/candidate-trace/l20-top-logprobs-trace.jsonl"
+  }
+}

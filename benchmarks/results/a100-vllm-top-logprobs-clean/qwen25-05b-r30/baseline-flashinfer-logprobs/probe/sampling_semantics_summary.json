@@ -1,0 +1,140 @@
+{
+  "case_definitions": [
+    {
+      "description": "Greedy decode with penalties disabled; this is the current narrow epilogue control.",
+      "name": "greedy_no_penalty",
+      "sampling": {
+        "frequency_penalty": 0.0,
+        "presence_penalty": 0.0,
+        "repetition_penalty": 1.0,
+        "temperature": 0.0,
+        "top_k": -1,
+        "top_p": 1.0
+      }
+    },
+    {
+      "description": "Greedy decode with vLLM-style repetition penalty active.",
+      "name": "greedy_default_repetition",
+      "sampling": {
+        "frequency_penalty": 0.0,
+        "presence_penalty": 0.0,
+        "repetition_penalty": 1.05,
+        "temperature": 0.0,
+        "top_k": -1,
+        "top_p": 1.0
+      }
+    },
+    {
+      "description": "Stochastic top-k/top-p sampling without penalties.",
+      "name": "sample_topk_topp",
+      "sampling": {
+        "frequency_penalty": 0.0,
+        "presence_penalty": 0.0,
+        "repetition_penalty": 1.0,
+        "temperature": 0.8,
+        "top_k": 50,
+        "top_p": 0.9
+      }
+    },
+    {
+      "description": "Stochastic top-k/top-p sampling with repetition/presence/frequency penalties.",
+      "name": "sample_topk_topp_penalty",
+      "sampling": {
+        "frequency_penalty": 0.1,
+        "presence_penalty": 0.1,
+        "repetition_penalty": 1.05,
+        "temperature": 0.8,
+        "top_k": 50,
+        "top_p": 0.9
+      }
+    },
+    {
+      "description": "Stochastic top-k/top-p sampling with penalties and token logprobs.",
+      "name": "sample_topk_topp_penalty_logprobs",
+      "sampling": {
+        "frequency_penalty": 0.1,
+        "logprobs": 5,
+        "presence_penalty": 0.1,
+        "repetition_penalty": 1.05,
+        "temperature": 0.8,
+        "top_k": 50,
+        "top_p": 0.9
+      }
+    },
+    {
+      "description": "Greedy decode requesting token logprobs.",
+      "name": "greedy_token_logprobs",
+      "sampling": {
+        "frequency_penalty": 0.0,
+        "logprobs": 5,
+        "presence_penalty": 0.0,
+        "repetition_penalty": 1.0,
+        "temperature": 0.0,
+        "top_k": -1,
+        "top_p": 1.0
+      }
+    }
+  ],
+  "cases": [
+    {
+      "case": "sample_topk_topp_penalty_logprobs",
+      "completion_tokens": {
+        "max": 48.0,
+        "mean": 47.8,
+        "median": 48.0,
+        "min": 46.0
+      },
+      "description": "Stochastic top-k/top-p sampling with penalties and token logprobs.",
+      "errors": [],
+      "itl_ms": {
+        "max": 4.443520680069923,
+        "mean": 4.406076452384393,
+        "median": 4.403792321681976,
+        "min": 4.380263388156891
+      },
+      "ms_per_output_token": {
+        "max": 4.70023525311895,
+        "mean": 4.53592672733734,
+        "median": 4.518378894620886,
+        "min": 4.459106091720362
+      },
+      "ok_runs": 30,
+      "output_chunks": {
+        "max": 48.0,
+        "mean": 47.8,
+        "median": 48.0,
+        "min": 46.0
+      },
+      "runs": 30,
+      "sampling": {
+        "frequency_penalty": 0.1,
+        "logprobs": 5,
+        "presence_penalty": 0.1,
+        "repetition_penalty": 1.05,
+        "temperature": 0.8,
+        "top_k": 50,
+        "top_p": 0.9
+      },
+      "stream": true,
+      "total_ms": {
+        "max": 220.79974971711636,
+        "mean": 216.79303739219904,
+        "median": 216.27585496753454,
+        "min": 214.0370924025774
+      },
+      "ttft_ms": {
+        "max": 10.560372844338417,
+        "mean": 8.373521144191423,
+        "median": 8.44916794449091,
+        "min": 7.494477555155754
+      },
+      "warmup": 4
+    }
+  ],
+  "max_tokens": 48,
+  "model": "qwen25-05b",
+  "prompt_preview": "List practical reasons batch-one LLM decode can be slow on a PCIe GPU. Use numbered points and keep each point concise.",
+  "schema_version": 1,
+  "stream": true,
+  "url": "http://127.0.0.1:18191/v1/completions"
+}

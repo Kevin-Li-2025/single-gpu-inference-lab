@@ -70,6 +70,10 @@ def test_a100_top_logprobs_ab_runner_targets_real_logprobs_workload():
         "benchmarks/results/a100-vllm-top-logprobs-smoke/"
         "dirty-qwen25-05b-r2/README.md"
     ).read_text()
+    clean = Path(
+        "benchmarks/results/a100-vllm-top-logprobs-clean/"
+        "qwen25-05b-r30/README.md"
+    ).read_text()
 
     assert "install_l20_top_logprobs.py" in source
     assert "sample_topk_topp_penalty_logprobs" in source
@@ -79,9 +83,21 @@ def test_a100_top_logprobs_ab_runner_targets_real_logprobs_workload():
     assert "baseline-flashinfer-logprobs" in source
     assert "candidate-fused-top-logprobs" in source
     assert "l20-top-logprobs-trace.jsonl" in source
+    assert "configure_flashinfer_cuda13_env(required=True)" in source
+    assert "check_port_free" in source
+    assert "Port $port is already serving something" in source
+    assert "GPU has active compute apps" in source
+    assert "flashinfer_cuda_env" in source
+    assert '"ports"' in source
     assert "Both paths keep FlashInfer top-k/top-p sampling enabled" in source
-    assert "dirty A100 smoke" in readme
+    assert "dirty and clean A100" in readme
+    assert "a100-vllm-top-logprobs-clean" in readme
     assert "a100-vllm-top-logprobs-smoke" in status
+    assert "a100-vllm-top-logprobs-clean" in status
     assert "a100-vllm-top-logprobs-smoke" in results
+    assert "a100-vllm-top-logprobs-clean" in results
     assert "Total events | 8" in smoke
     assert "Eligible fused events | 8" in smoke
+    assert "Total events | 80" in clean
+    assert "Eligible fused events | 80" in clean
+    assert "not a serving win" in clean

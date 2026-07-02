@@ -38,8 +38,9 @@ speedups, integration behavior, and end-to-end token latency.
 - A dedicated fused top-logprobs primitive avoids full-vocab log-softmax
   materialization and shows 8.04x-9.17x A100 microbenchmark speedup versus
   PyTorch top-logprob baselines; the opt-in vLLM hook now reaches real serving
-  with 8/8 trace hits in a dirty A100 smoke, but still needs a clean repeated
-  A/B before any serving-win claim.
+  with 100% trace coverage. A clean A100 A/B shows only a small median ITL
+  improvement, 4.404 ms -> 4.368 ms, while total request time is flat; this is
+  path proof, not a serving-win claim.
 - Every public claim is tied to hardware, model, command, and a checked-in
   artifact.
 
@@ -129,15 +130,17 @@ logprobs without materializing a full `[batch, vocab]` log-softmax tensor:
 | batch 4, vocab 151936, top 5 | 0.0214 ms | 0.1965 ms | 0.1936 ms | 9.17x |
 
 This started as an A100 microbenchmark result. The boundary is now wired into an
-opt-in vLLM generated-token `logprobs` hook and has a dirty A100 path-proof
-smoke: 8/8 traced events hit the fused path, with baseline and candidate both
-keeping FlashInfer top-k/top-p sampling enabled. The latency signal in that
-smoke was ITL 13.376 ms -> 12.485 ms, but the GPU was not idle, so it is not a
-clean serving-win claim.
+opt-in vLLM generated-token `logprobs` hook and has both dirty and clean A100
+path-proof serving artifacts. In the clean 30-run A/B, baseline and candidate
+both kept FlashInfer top-k/top-p sampling enabled, 80/80 traced events hit the
+fused path, and median ITL moved 4.404 ms -> 4.368 ms. Total request time was
+effectively flat, 216.276 ms -> 216.754 ms, so this remains a correctness and
+integration proof rather than a serving-win claim.
 
 Artifact:
 `benchmarks/results/a100-fused-top-logprobs/`;
-`benchmarks/results/a100-vllm-top-logprobs-smoke/dirty-qwen25-05b-r2/`
+`benchmarks/results/a100-vllm-top-logprobs-smoke/dirty-qwen25-05b-r2/`;
+`benchmarks/results/a100-vllm-top-logprobs-clean/qwen25-05b-r30/`
 
 ## Boundary Diagram
 
@@ -179,7 +182,7 @@ See `docs/hardware-scope.md` for the exact claim policy.
 | Sampling semantics boundary | Active P0 | Top-k/top-p, penalties, and logprobs are the next target. |
 | Fused top-k/top-p + dense penalties | Positive micro result | Carry forward to sparse vLLM token-history integration. |
 | Sparse top-k/top-p + penalties | Positive A100 serving A/B | Real vLLM path wins versus native PyTorch sampler and shows a smaller low-single-digit win versus FlashInfer on A100; logprobs requests are gated out after a negative smoke and need a dedicated fused logprob path. |
-| Fused top-logprobs selection | Positive A100 micro result + dirty serving path proof | Avoids full log-softmax materialization and shows 8.04x-9.17x micro speedups; opt-in vLLM hook reaches serving with 8/8 trace hits in a dirty A100 smoke. Clean repeated ITL is still pending. |
+| Fused top-logprobs selection | Positive A100 micro result + clean serving path proof | Avoids full log-softmax materialization and shows 8.04x-9.17x micro speedups; opt-in vLLM hook reaches serving with 80/80 clean trace hits. Clean ITL improves 4.404 ms -> 4.368 ms, but total time is flat, so the next win must fuse a larger sampling/logits boundary. |
 | FP8 KV fused attention | Experimental | Keep disabled until repeated serving ITL beats BF16/FlashInfer. |
 | Speculative/tree attention | Experimental | Useful research branch; no stable serving win yet. |
 | Kernel-coding QLoRA | Negative so far | Training stack is healthy, but held-out KernelBench `fast_0` remains zero. |

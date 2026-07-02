@@ -1,0 +1,55 @@
+{
+  "cpu_fallback_suspected": false,
+  "line_count": 112,
+  "log": "/root/sgi-toplogprobs-clean/20260702-111144/baseline-flashinfer-logprobs/server.log",
+  "match_counts": {
+    "cpu": 1,
+    "cuda13": 0,
+    "fallback": 0,
+    "flashinfer": 1,
+    "sampling": 5
+  },
+  "matches": {
+    "cpu": [
+      {
+        "line": 62,
+        "text": "\u001b[1;36m(APIServer pid=23769)\u001b[0;0m INFO 07-02 11:12:37 [async_llm.py:180] Torch profiler disabled. AsyncLLM CPU traces will not be collected."
+      }
+    ],
+    "cuda13": [],
+    "fallback": [],
+    "flashinfer": [
+      {
+        "line": 19,
+        "text": "\u001b[1;36m(EngineCore_DP0 pid=24282)\u001b[0;0m INFO 07-02 11:12:24 [topk_topp_sampler.py:58] Using FlashInfer for top-p & top-k sampling."
+      }
+    ],
+    "sampling": [
+      {
+        "line": 19,
+        "text": "\u001b[1;36m(EngineCore_DP0 pid=24282)\u001b[0;0m INFO 07-02 11:12:24 [topk_topp_sampler.py:58] Using FlashInfer for top-p & top-k sampling."
+      },
+      {
+        "line": 64,
+        "text": "\u001b[1;36m(APIServer pid=23769)\u001b[0;0m WARNING 07-02 11:12:37 [__init__.py:1695] Default sampling parameters have been overridden by the model's Hugging Face generation config recommended from the model creator. If this is not intended, please relaunch vLLM instance with `--generation-config vllm`."
+      },
+      {
+        "line": 65,
+        "text": "\u001b[1;36m(APIServer pid=23769)\u001b[0;0m INFO 07-02 11:12:37 [serving_responses.py:130] Using default chat sampling params from model: {'repetition_penalty': 1.1, 'temperature': 0.7, 'top_k': 20, 'top_p': 0.8}"
+      },
+      {
+        "line": 66,
+        "text": "\u001b[1;36m(APIServer pid=23769)\u001b[0;0m INFO 07-02 11:12:37 [serving_chat.py:137] Using default chat sampling params from model: {'repetition_penalty': 1.1, 'temperature': 0.7, 'top_k': 20, 'top_p': 0.8}"
+      },
+      {
+        "line": 67,
+        "text": "\u001b[1;36m(APIServer pid=23769)\u001b[0;0m INFO 07-02 11:12:37 [serving_completion.py:76] Using default completion sampling params from model: {'repetition_penalty': 1.1, 'temperature': 0.7, 'top_k': 20, 'top_p': 0.8}"
+      }
+    ]
+  },
+  "notes": [
+    "This is log evidence only. Absence of CPU/fallback strings does not prove that no CPU synchronization happened inside lower-level kernels.",
+    "Use paired stochastic serving latency and FlashInfer prewarm status as the primary service-level signal."
+  ],
+  "schema_version": 1
+}
