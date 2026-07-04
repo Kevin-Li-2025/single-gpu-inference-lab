@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Sequence
 
+from l20_stack.artifacts import inspect_artifact_index
 from l20_stack.experiment import ExperimentConfig
 from l20_stack.memory import estimate_training_memory
 from l20_stack.operators import OperatorTarget, l20_operator_summary, plan_operators
@@ -23,6 +24,25 @@ def build_parser() -> argparse.ArgumentParser:
         "operator-plan", help="rank L20 operator optimization targets"
     )
     operator_plan.add_argument("--config", required=True, help="path to operator target JSON")
+
+    artifact_index = subparsers.add_parser(
+        "artifact-index", help="validate the checked-in benchmark artifact index"
+    )
+    artifact_index.add_argument(
+        "--index",
+        default="benchmarks/results/README.md",
+        help="path to the benchmark result index README",
+    )
+    artifact_index.add_argument(
+        "--result-root",
+        default="benchmarks/results",
+        help="directory that contains checked-in benchmark result artifacts",
+    )
+    artifact_index.add_argument(
+        "--strict-warnings",
+        action="store_true",
+        help="return a non-zero exit code when artifact warnings are present",
+    )
 
     return parser
 
@@ -71,6 +91,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 sort_keys=True,
             )
         )
+        return 0
+
+    if args.command == "artifact-index":
+        report = inspect_artifact_index(args.index, result_root=args.result_root)
+        print(report.to_json())
+        if report.errors or (args.strict_warnings and report.warnings):
+            return 1
         return 0
 
     parser.error("unknown command: " + str(args.command))

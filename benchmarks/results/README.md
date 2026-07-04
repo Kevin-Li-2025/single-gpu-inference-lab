@@ -5,6 +5,12 @@ summaries, and short Markdown notes. Large raw artifacts such as `server.log`,
 `.nsys-rep`, SQLite exports, downloaded models, and checkpoints should stay out
 of git.
 
+Validate this index before publishing new evidence:
+
+```bash
+PYTHONPATH=src single-gpu-infer artifact-index
+```
+
 ## Curated Evidence
 
 | Result directory | Status | Why it matters |
