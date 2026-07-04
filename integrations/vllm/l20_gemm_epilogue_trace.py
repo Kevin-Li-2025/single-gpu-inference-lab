@@ -427,6 +427,58 @@ def _make_sampler_output(sampled_token_ids: Any) -> Any:
     )
 
 
+def _argmax_correctness_check(
+    sample_hidden_states: Any,
+    weight: Any,
+    sampled_token_ids: Any,
+    vocab_size: int,
+) -> dict[str, Any]:
+    details: dict[str, Any] = {
+        "checked": False,
+        "matches_baseline_argmax": False,
+    }
+    try:
+        import torch
+    except Exception as exc:  # pragma: no cover - depends on runtime install.
+        details["reason"] = f"torch_unavailable:{type(exc).__name__}"
+        return details
+    if sample_hidden_states is None or weight is None or sampled_token_ids is None:
+        details["reason"] = "missing_tensor"
+        return details
+    hidden_shape = _shape(sample_hidden_states)
+    weight_shape = _shape(weight)
+    if hidden_shape is None or weight_shape is None:
+        details["reason"] = "missing_shape"
+        return details
+    if len(hidden_shape) != 2 or len(weight_shape) != 2:
+        details["reason"] = "bad_rank"
+        return details
+    if int(weight_shape[1]) != int(hidden_shape[1]):
+        details["reason"] = "hidden_mismatch"
+        return details
+    if vocab_size <= 0 or vocab_size > int(weight_shape[0]):
+        details["reason"] = "bad_vocab_size"
+        return details
+
+    with torch.no_grad():
+        logits = torch.matmul(
+            sample_hidden_states.float(),
+            weight[:vocab_size, :].float().transpose(0, 1),
+        )
+        expected = torch.argmax(logits, dim=-1).to(torch.int64).reshape(-1)
+        actual = sampled_token_ids.to(torch.int64).reshape(-1)
+        matches = bool(torch.equal(actual.cpu(), expected.cpu()))
+    details.update(
+        {
+            "checked": True,
+            "matches_baseline_argmax": matches,
+            "expected_tokens": [int(value) for value in expected.cpu().tolist()],
+            "actual_tokens": [int(value) for value in actual.cpu().tolist()],
+        }
+    )
+    return details
+
+
 def _try_lm_head_greedy_sampler_output(
     model_runner: Any,
     input_batch: Any,
@@ -524,6 +576,12 @@ def _try_lm_head_greedy_sampler_output(
         )
         sampled = workspace["tokens"].to(torch.int32).unsqueeze(-1)
         output = _make_sampler_output(sampled)
+        correctness = _argmax_correctness_check(
+            sample_hidden_states,
+            weight,
+            sampled,
+            real_vocab,
+        )
     except Exception as exc:  # pragma: no cover - runtime kernel path.
         return None, f"candidate_failed:{type(exc).__name__}:{str(exc)[:160]}", details
 
@@ -534,6 +592,7 @@ def _try_lm_head_greedy_sampler_output(
             "vocab_size": real_vocab,
             "hidden_size": hidden_size,
             "policy": config.to_dict(),
+            "correctness": correctness,
         }
     )
     return output, None, details

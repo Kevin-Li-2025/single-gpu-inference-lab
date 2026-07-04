@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 
 def load_helper():
@@ -337,3 +338,49 @@ def test_gemm_epilogue_enable_rejects_non_greedy_candidate(tmp_path, monkeypatch
     assert "top_p" in event["reasons"]
     assert event["metadata"]["api"]["api_called"] is False
     assert event["metadata"]["epilogue"]["attempted"] is False
+
+
+def test_gemm_epilogue_argmax_correctness_check_matches_torch_baseline():
+    torch = pytest.importorskip("torch")
+    module = load_helper()
+    hidden = torch.tensor([[1.0, -2.0, 0.5]], dtype=torch.float16)
+    weight = torch.tensor(
+        [
+            [0.0, 0.0, 0.0],
+            [2.0, -1.0, 0.0],
+            [-1.0, 3.0, 1.0],
+            [0.0, 0.0, 4.0],
+        ],
+        dtype=torch.float16,
+    )
+    sampled = torch.tensor([[1]], dtype=torch.int32)
+
+    details = module._argmax_correctness_check(hidden, weight, sampled, vocab_size=4)
+
+    assert details["checked"] is True
+    assert details["matches_baseline_argmax"] is True
+    assert details["expected_tokens"] == [1]
+    assert details["actual_tokens"] == [1]
+
+
+def test_gemm_epilogue_argmax_correctness_check_reports_mismatch():
+    torch = pytest.importorskip("torch")
+    module = load_helper()
+    hidden = torch.tensor([[1.0, -2.0, 0.5]], dtype=torch.float16)
+    weight = torch.tensor(
+        [
+            [0.0, 0.0, 0.0],
+            [2.0, -1.0, 0.0],
+            [-1.0, 3.0, 1.0],
+            [0.0, 0.0, 4.0],
+        ],
+        dtype=torch.float16,
+    )
+    sampled = torch.tensor([[3]], dtype=torch.int32)
+
+    details = module._argmax_correctness_check(hidden, weight, sampled, vocab_size=4)
+
+    assert details["checked"] is True
+    assert details["matches_baseline_argmax"] is False
+    assert details["expected_tokens"] == [1]
+    assert details["actual_tokens"] == [3]
