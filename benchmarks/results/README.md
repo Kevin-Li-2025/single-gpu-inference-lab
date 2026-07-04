@@ -38,6 +38,7 @@ PYTHONPATH=src single-gpu-infer artifact-index
 | `l20-serving-optimization-ceiling/` | Active analysis | Converts NSYS family summaries into Amdahl ceilings and explains why small standalone kernels are no longer the best target. |
 | `l20-vllm-sampling-winner/` | Confirmed route | Shows FlashInfer sampling beating torch/native in most paired multi-model serving shapes. |
 | `l20-vllm-sampling-winner-v2/` | Confirmed follow-up | Separates c1 short-output noise from c2/c4/c8 and c1 long-output wins on Qwen3-0.6B. |
+| `l20-residual-rmsnorm-v3/` | L20 RMSNorm boundary | Adds a 24-shape L20 RMSNorm/residual-RMSNorm matrix with cache flush: all providers are correct, fused residual RMSNorm often wins on decode/medium shapes, and large prefill shapes mostly collapse to parity or small wins. |
 | `nsys/qk-norm-rope-kv/` | Path proof | Shows the custom Q/K/RoPE/KV path is live under vLLM O2 and how small its GPU-time fraction is. |
 | `nsys/sampling/` | Path proof | Shows production sampling path and CPU/GPU synchronization evidence. |
 | `l20-qk-norm-rope-serving/` | Low-single-digit signal | vLLM native QK norm/RoPE fusion serving matrix. |
