@@ -22,6 +22,14 @@ PYTHONPATH=src python scripts/benchmark_rmsnorm.py \
   --output /tmp/single-gpu-inference-lab/l20-rmsnorm-full-matrix-cacheflush64.json
 ```
 
+Generate the compact summary:
+
+```bash
+PYTHONPATH=src single-gpu-infer rmsnorm-summary \
+  benchmarks/results/l20-residual-rmsnorm-v3/full-matrix-cacheflush64.json \
+  --output benchmarks/results/l20-residual-rmsnorm-v3/summary.json
+```
+
 Environment:
 
 - GPU: NVIDIA L20, compute capability 8.9
