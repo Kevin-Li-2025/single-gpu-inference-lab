@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-04",
+  "hardware": "NVIDIA L20",
+  "status": "passed",
+  "scope": "single real vLLM OpenAI server smoke; correctness/path proof only",
+  "model_family": "Qwen2.5-0.5B",
+  "served_model_name": "qwen-smoke",
+  "vllm_fingerprint": "vllm-0.23.1rc1.dev521+gbb1ae10f0.d20260627-nohash",
+  "server_ready": true,
+  "endpoint": "/v1/completions",
+  "request": {
+    "prompt": "Hello",
+    "max_tokens": 8,
+    "temperature": 0,
+    "top_p": 1
+  },
+  "completion": {
+    "finish_reason": "length",
+    "completion_tokens": 8,
+    "prompt_tokens": 1,
+    "total_tokens": 9,
+    "text": ", I'm trying to create a function"
+  },
+  "trace": {
+    "events": 8,
+    "good_gemm_epilogue_events": 8,
+    "all_gemm_epilogue_events_ok": true,
+    "bad_events": 0,
+    "required_event_checks": [
+      "eligible",
+      "mutates_outputs",
+      "api_called",
+      "returned_output",
+      "uses_full_logits_false",
+      "fallback_to_compute_logits_false",
+      "correctness_checked",
+      "matches_baseline_argmax"
+    ],
+    "hidden_shape": [
+      1,
+      896
+    ],
+    "hidden_dtype": "torch.float16",
+    "vocab_size": 151936,
+    "epilogue_mode": "greedy_argmax",
+    "epilogue_strategy": "two_stage_lm_head_gumbel_max",
+    "uses_full_logits": false,
+    "fallback_to_compute_logits": false,
+    "expected_actual_token_pairs": [
+      {
+        "expected": [
+          11
+        ],
+        "actual": [
+          11
+        ]
+      },
+      {
+        "expected": [
+          358
+        ],
+        "actual": [
+          358
+        ]
+      },
+      {
+        "expected": [
+          2776
+        ],
+        "actual": [
+          2776
+        ]
+      },
+      {
+        "expected": [
+          4460
+        ],
+        "actual": [
+          4460
+        ]
+      },
+      {
+        "expected": [
+          311
+        ],
+        "actual": [
+          311
+        ]
+      },
+      {
+        "expected": [
+          1855
+        ],
+        "actual": [
+          1855
+        ]
+      },
+      {
+        "expected": [
+          264
+        ],
+        "actual": [
+          264
+        ]
+      },
+      {
+        "expected": [
+          729
+        ],
+        "actual": [
+          729
+        ]
+      }
+    ]
+  },
+  "runner": {
+    "script": "scripts/smoke_vllm_l20_gemm_epilogue_server.py",
+    "install_patch": "integrations/vllm/install_l20_gemm_epilogue_trace.py",
+    "important_env": {
+      "VLLM_L20_GEMM_EPILOGUE_ENABLE": "1",
+      "VLLM_USE_FLASHINFER_SAMPLER": "0",
+      "VLLM_L20_FLASHSAMPLING_CANDIDATE": "0",
+      "HF_HUB_OFFLINE": "1",
+      "TRANSFORMERS_OFFLINE": "1"
+    }
+  },
+  "non_claims": [
+    "No latency or throughput claim.",
+    "No broad workload coverage claim.",
+    "Raw server.log and JSONL trace are intentionally not checked in."
+  ]
+}

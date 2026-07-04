@@ -188,6 +188,20 @@ PYTHONPATH=src python scripts/summarize_l20_gemm_epilogue_trace.py \
   --output /tmp/gemm-epilogue-semantic-summary.json
 ```
 
+L20 vLLM server smoke for the GEMM epilogue path:
+
+```bash
+PYTHONPATH=src python scripts/smoke_vllm_l20_gemm_epilogue_server.py \
+  --python /home/hhai/venvs/vllm-l20/bin/python \
+  --vllm-source /home/hhai/vllm-l20-rfc \
+  --model /home/hhai/.cache/huggingface/hub/models--Qwen--Qwen2.5-0.5B/snapshots/060db6499f32faf8b98477b0a26969ef7d8b9987 \
+  --output-dir /tmp/single-gpu-inference-lab/vllm-gemm-smoke
+```
+
+This smoke starts an OpenAI-compatible vLLM server, sends one
+`/v1/completions` request, and requires every GEMM epilogue trace event to
+return a sampled token without full logits and match the baseline argmax.
+
 RMSNorm benchmark summary:
 
 ```bash
