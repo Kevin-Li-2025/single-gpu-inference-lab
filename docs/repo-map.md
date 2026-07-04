@@ -36,13 +36,17 @@ This file is the fastest way to orient in the repo.
 
 ## Current Active Line
 
-The active line is the sampling/logits boundary:
+The active line is the producer-side sampling/logits boundary:
 
 ```text
 serving semantics probe
 -> fused top-k/top-p + dense penalties
 -> sparse token-history prototype
 -> real vLLM serving ITL A/B
+-> fused top-logprobs path proof
+-> combined sparse-sampling + top-logprobs serving matrix
+-> standalone LM-head sparse-penalty negative proof
+-> true GEMM epilogue / upstream LM-head boundary
 ```
 
 Relevant files:
@@ -51,11 +55,19 @@ Relevant files:
 - `scripts/plan_sampler_semantics_targets.py`
 - `scripts/benchmark_l20_topk_topp_penalty_sampling.py`
 - `scripts/benchmark_l20_sparse_topk_topp_penalty_sampling.py`
+- `scripts/summarize_l20_gemm_epilogue_trace.py`
+- `scripts/scout_vllm_gemm_epilogue_boundary.py`
 - `src/l20_stack/epilogue/sampler_epilogue.py`
 - `src/l20_stack/ops/triton_sampling.py`
+- `integrations/vllm/l20_gemm_epilogue_trace.py`
 - `benchmarks/results/a100-vllm-sampling-semantics-qwen25-05b/`
 - `benchmarks/results/a100-fused-topk-topp-penalty/`
 - `benchmarks/results/a100-sparse-topk-topp-penalty/`
+- `benchmarks/results/a100-vllm-combined-sampling-logprobs-matrix/`
+- `benchmarks/results/a100-lm-head-sparse-penalty-boundary/`
+- `benchmarks/results/a100-vllm-gemm-epilogue-semantic-trace/`
+- `benchmarks/results/l20-vllm-gemm-epilogue-scout/`
+- `benchmarks/results/l20-vllm-gemm-epilogue-trace/`
 
 ## Naming Policy
 

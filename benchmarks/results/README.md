@@ -50,7 +50,7 @@ PYTHONPATH=src single-gpu-infer artifact-index
 | --- | --- |
 | `l20-vllm-sampling-itl/` | Self-written standalone sampler regressed real serving; keep disabled. |
 | `l20-lm-head-topk-boundary/` | Standalone top-k/logits replacement loses; move to epilogue/upstream boundary. |
-| `a100-lm-head-sparse-penalty-boundary/` | Standalone producer-side sparse-penalty LM-head replacement is correct but slower; only a true GEMM epilogue can plausibly win. |
+| A100 LM-head sparse-penalty boundary | Standalone producer-side sparse-penalty LM-head replacement is correct but slower; only a true GEMM epilogue can plausibly win. |
 | `l20-vllm-paged-decode-o2/` | O2 path is not the blocker; the isolated paged-decode boundary is too small. |
 
 ## Artifact Contract

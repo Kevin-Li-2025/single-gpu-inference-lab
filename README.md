@@ -68,6 +68,7 @@ than cuBLAS/full-logits baselines by 1.32x-1.39x on the tested A100 shapes.
 | Combined sparse sampling + fused top-logprobs | A100 multi-model serving matrix: 8 paired 30-run rows across Qwen2.5-0.5B, Qwen2.5-Coder-1.5B, Qwen3-0.6B, and Qwen3-1.7B. `logprobs=20` wins on all four models, with best median ITL 4.486 ms -> 4.254 ms (-5.18%) on Qwen2.5-0.5B and 5.053 ms -> 4.845 ms (-4.11%) on Qwen3-0.6B. | `benchmarks/results/a100-vllm-combined-sampling-logprobs-matrix/` |
 | GEMM epilogue semantic trace | 310/320 decode-safe events; 179.67 MiB FP32 logits budget | `benchmarks/results/a100-vllm-gemm-epilogue-semantic-trace/` |
 | Standalone LM-head sparse penalties | Correct but 1.32x-1.39x slower than cuBLAS/full-logits baselines | `benchmarks/results/a100-lm-head-sparse-penalty-boundary/` |
+| L20 residual RMSNorm boundary | 24-shape L20 matrix with cache flush: all providers correct; fused residual RMSNorm often wins on decode/medium shapes, while large prefill mostly collapses to parity or small wins | `benchmarks/results/l20-residual-rmsnorm-v3/` |
 
 ## Boundary Diagram
 
@@ -185,6 +186,14 @@ GEMM epilogue semantic trace summary:
 PYTHONPATH=src python scripts/summarize_l20_gemm_epilogue_trace.py \
   benchmarks/results/a100-vllm-gemm-epilogue-semantic-trace/qwen25-05b-topk-topp-penalty-r8/gemm_epilogue_trace.jsonl \
   --output /tmp/gemm-epilogue-semantic-summary.json
+```
+
+RMSNorm benchmark summary:
+
+```bash
+PYTHONPATH=src single-gpu-infer rmsnorm-summary \
+  benchmarks/results/l20-residual-rmsnorm-v3/full-matrix-cacheflush64.json \
+  --output /tmp/rmsnorm-summary.json
 ```
 
 More commands and raw summaries are listed in `benchmarks/results/README.md`.

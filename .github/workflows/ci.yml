@@ -21,29 +21,20 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
+          python -m pip install numpy
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 
-      - name: Run CPU-safe unittest suite
+      - name: Validate benchmark artifact index
         env:
           PYTHONPATH: src
         run: |
-          python -m unittest discover -s tests -p "test_cli.py" -q
-          python -m unittest discover -s tests -p "test_experiment.py" -q
-          python -m unittest discover -s tests -p "test_hardware.py" -q
-          python -m unittest discover -s tests -p "test_memory.py" -q
-          python -m unittest discover -s tests -p "test_operators.py" -q
-          python -m unittest discover -s tests -p "test_sampling.py" -q
-          python -m unittest discover -s tests -p "test_artifact_index.py" -q
-          python -m unittest discover -s tests -p "test_rmsnorm_summary.py" -q
+          single-gpu-infer artifact-index --strict-warnings
 
-      - name: Run public-result planning tests
+      - name: Run CPU-safe pytest suite
         env:
           PYTHONPATH: src
         run: |
-          python -m pytest \
-            tests/test_l20_topk_topp_vllm_integration.py \
-            tests/test_sampling_semantics_probe.py \
-            tests/test_sampler_semantics_target_plan.py \
-            -q
+          python -m pytest -q
 
       - name: Compile source and scripts
         env:
