@@ -202,6 +202,25 @@ V2_SAMPLE_BLOCK_PATCHED = """        # Clear ephemeral state.
         self._update_states_after_model_execute(
 """
 
+TOPK_TOPP_NATIVE_SIGNATURE = """    def forward_native(
+        self,
+        logits: torch.Tensor,
+        generators: dict[int, torch.Generator],
+        k: torch.Tensor | None,
+        p: torch.Tensor | None,
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+"""
+
+TOPK_TOPP_NATIVE_SIGNATURE_PATCHED = """    def forward_native(
+        self,
+        logits: torch.Tensor,
+        generators: dict[int, torch.Generator],
+        k: torch.Tensor | None,
+        p: torch.Tensor | None,
+        **_: object,
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+"""
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -306,6 +325,23 @@ def patch_gpu_model_runner(source: str) -> str:
     return source
 
 
+def patch_topk_topp_sampler(source: str) -> str:
+    """Allow L20-only sampler metadata to reach the native fallback path.
+
+    Some local vLLM RFC trees pass ``l20_expanded_idx_mapping`` and related
+    kwargs through ``TopKTopPSampler``. When FlashInfer is disabled for a
+    server smoke, the native fallback must ignore those kwargs instead of
+    failing before the GEMM epilogue path can be exercised.
+    """
+
+    return replace_once(
+        source,
+        TOPK_TOPP_NATIVE_SIGNATURE,
+        TOPK_TOPP_NATIVE_SIGNATURE_PATCHED,
+        "TopKTopPSampler.forward_native L20 kwargs compatibility",
+    )
+
+
 def _patch_file(path: Path, patcher: Callable[[str], str]) -> None:
     if not path.exists():
         return
@@ -335,6 +371,10 @@ def install(package: Path) -> None:
         package / "model_executor" / "layers" / "logits_processor.py",
         patch_logits_processor,
     )
+    _patch_file(
+        package / "v1" / "sample" / "ops" / "topk_topp_sampler.py",
+        patch_topk_topp_sampler,
+    )
     _patch_file(package / "v1" / "worker" / "gpu" / "model_runner.py", patch_model_runner)
     _patch_file(package / "v1" / "worker" / "gpu_model_runner.py", patch_gpu_model_runner)
 
@@ -342,6 +382,7 @@ def install(package: Path) -> None:
 def uninstall(package: Path) -> None:
     for target in (
         package / "model_executor" / "layers" / "logits_processor.py",
+        package / "v1" / "sample" / "ops" / "topk_topp_sampler.py",
         package / "v1" / "worker" / "gpu" / "model_runner.py",
         package / "v1" / "worker" / "gpu_model_runner.py",
     ):

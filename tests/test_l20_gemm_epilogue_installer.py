@@ -99,6 +99,19 @@ class GPUModelRunner:
         return sampler_output
 """
 
+TOPK_TOPP_SAMPLER_SOURCE = """import torch
+
+class TopKTopPSampler:
+    def forward_native(
+        self,
+        logits: torch.Tensor,
+        generators: dict[int, torch.Generator],
+        k: torch.Tensor | None,
+        p: torch.Tensor | None,
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        return logits, None
+"""
+
 
 HELPER_SOURCE = """def maybe_try_l20_gemm_epilogue(*args, **kwargs):
     return None
@@ -121,18 +134,23 @@ def write_package(tmp_path: Path):
     logits_processor = package / "model_executor/layers/logits_processor.py"
     model_runner = package / "v1/worker/gpu/model_runner.py"
     gpu_model_runner = package / "v1/worker/gpu_model_runner.py"
+    topk_topp_sampler = package / "v1/sample/ops/topk_topp_sampler.py"
     logits_processor.parent.mkdir(parents=True, exist_ok=True)
     model_runner.parent.mkdir(parents=True, exist_ok=True)
     gpu_model_runner.parent.mkdir(parents=True, exist_ok=True)
+    topk_topp_sampler.parent.mkdir(parents=True, exist_ok=True)
     logits_processor.write_text(LOGITS_PROCESSOR_SOURCE, encoding="utf-8")
     model_runner.write_text(MODEL_RUNNER_SOURCE, encoding="utf-8")
     gpu_model_runner.write_text(GPU_MODEL_RUNNER_SOURCE, encoding="utf-8")
-    return package, logits_processor, model_runner, gpu_model_runner
+    topk_topp_sampler.write_text(TOPK_TOPP_SAMPLER_SOURCE, encoding="utf-8")
+    return package, logits_processor, model_runner, gpu_model_runner, topk_topp_sampler
 
 
 def test_gemm_epilogue_installer_patches_idempotently_and_uninstalls(tmp_path):
     installer = load_installer()
-    package, logits_processor, model_runner, gpu_model_runner = write_package(tmp_path)
+    package, logits_processor, model_runner, gpu_model_runner, topk_topp_sampler = write_package(
+        tmp_path
+    )
     helper_source = tmp_path / "l20_gemm_epilogue_trace.py"
     helper_source.write_text(HELPER_SOURCE, encoding="utf-8")
     installer.HELPER_SOURCE = helper_source
@@ -142,29 +160,33 @@ def test_gemm_epilogue_installer_patches_idempotently_and_uninstalls(tmp_path):
     logits_text = logits_processor.read_text(encoding="utf-8")
     model_text = model_runner.read_text(encoding="utf-8")
     gpu_text = gpu_model_runner.read_text(encoding="utf-8")
+    topk_text = topk_topp_sampler.read_text(encoding="utf-8")
     assert "def try_sample_from_lm_head(" in logits_text
     assert "maybe_try_l20_gemm_epilogue(" in model_text
     assert "if sampler_output is None:" in model_text
     assert "maybe_try_l20_gemm_epilogue(" in gpu_text
     assert "maybe_take_l20_gemm_epilogue_sampler_output(self)" in gpu_text
+    assert "**_: object" in topk_text
     assert (package / "v1/worker/gpu/l20_gemm_epilogue_trace.py").exists()
 
     installer.install(package)
     assert logits_processor.read_text(encoding="utf-8") == logits_text
     assert model_runner.read_text(encoding="utf-8") == model_text
     assert gpu_model_runner.read_text(encoding="utf-8") == gpu_text
+    assert topk_topp_sampler.read_text(encoding="utf-8") == topk_text
 
     installer.uninstall(package)
     assert logits_processor.read_text(encoding="utf-8") == LOGITS_PROCESSOR_SOURCE
     assert model_runner.read_text(encoding="utf-8") == MODEL_RUNNER_SOURCE
     assert gpu_model_runner.read_text(encoding="utf-8") == GPU_MODEL_RUNNER_SOURCE
+    assert topk_topp_sampler.read_text(encoding="utf-8") == TOPK_TOPP_SAMPLER_SOURCE
     assert not (package / "v1/worker/gpu/l20_gemm_epilogue_trace.py").exists()
     assert not list(package.rglob("*.l20-gemm-epilogue-trace-backup"))
 
 
 def test_gemm_epilogue_installer_requires_helper(tmp_path):
     installer = load_installer()
-    package, logits_processor, model_runner, gpu_model_runner = write_package(tmp_path)
+    package, logits_processor, model_runner, gpu_model_runner, _ = write_package(tmp_path)
     installer.HELPER_SOURCE = tmp_path / "missing.py"
 
     with pytest.raises(RuntimeError, match="missing helper source"):

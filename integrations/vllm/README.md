@@ -53,6 +53,22 @@ VLLM_L20_GEMM_EPILOGUE_TRACE_LIMIT=4096 \
   <run paired vLLM serving benchmark>
 ```
 
+For a minimal server-path smoke, use:
+
+```bash
+PYTHONPATH=src python scripts/smoke_vllm_l20_gemm_epilogue_server.py \
+  --python /home/hhai/venvs/vllm-l20/bin/python \
+  --vllm-source /home/hhai/vllm-l20-rfc \
+  --model /path/to/local/qwen2.5-0.5b-snapshot \
+  --output-dir /tmp/l20-vllm-gemm-smoke
+```
+
+The smoke disables FlashInfer's sampler by default with
+`VLLM_USE_FLASHINFER_SAMPLER=0`, starts the OpenAI server, sends a greedy
+`/v1/completions` request, and fails unless all GEMM epilogue trace events
+return sampled tokens without materializing full logits and match baseline
+argmax correctness. This is a server correctness/path proof, not an ITL claim.
+
 By default this hook returns `None` and falls back to vLLM's existing
 `compute_logits` plus sampler path. `VLLM_L20_GEMM_EPILOGUE_ENABLE=1` is reserved
 for explicit experiments where a future epilogue returns a `SamplerOutput`.
