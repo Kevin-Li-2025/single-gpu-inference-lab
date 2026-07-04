@@ -33,6 +33,7 @@ jobs:
           python -m unittest discover -s tests -p "test_operators.py" -q
           python -m unittest discover -s tests -p "test_sampling.py" -q
           python -m unittest discover -s tests -p "test_artifact_index.py" -q
+          python -m unittest discover -s tests -p "test_rmsnorm_summary.py" -q
 
       - name: Run public-result planning tests
         env:

@@ -11,6 +11,7 @@ from l20_stack.artifacts import inspect_artifact_index
 from l20_stack.experiment import ExperimentConfig
 from l20_stack.memory import estimate_training_memory
 from l20_stack.operators import OperatorTarget, l20_operator_summary, plan_operators
+from l20_stack.rmsnorm_summary import summarize_rmsnorm_report
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -42,6 +43,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--strict-warnings",
         action="store_true",
         help="return a non-zero exit code when artifact warnings are present",
+    )
+
+    rmsnorm_summary = subparsers.add_parser(
+        "rmsnorm-summary", help="summarize an RMSNorm benchmark JSON report"
+    )
+    rmsnorm_summary.add_argument("report", help="path to benchmark_rmsnorm.py JSON output")
+    rmsnorm_summary.add_argument(
+        "--output",
+        help="optional path to write the compact summary JSON; stdout is always emitted",
     )
 
     return parser
@@ -98,6 +108,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(report.to_json())
         if report.errors or (args.strict_warnings and report.warnings):
             return 1
+        return 0
+
+    if args.command == "rmsnorm-summary":
+        summary = summarize_rmsnorm_report(args.report)
+        output = summary.to_json()
+        if args.output:
+            Path(args.output).write_text(output + "\n", encoding="utf-8")
+        print(output)
         return 0
 
     parser.error("unknown command: " + str(args.command))
