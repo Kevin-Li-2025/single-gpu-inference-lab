@@ -1,0 +1,126 @@
+{
+  "all_correct": true,
+  "artifact": "full-matrix-cacheflush64.json",
+  "cache_flush_mb": 64,
+  "compute_capability": "8.9",
+  "cuda": "13.0",
+  "dtype": "float16",
+  "flashinfer": "0.6.12",
+  "gpu_name": "NVIDIA L20",
+  "large_prefill_rows_4096": [
+    {
+      "operators": {
+        "residual_rmsnorm": {
+          "best_mean_ms": 0.2038,
+          "fastest_provider": "l20_dispatch",
+          "speedup_vs_torch_eager": 1.005,
+          "torch_eager_mean_ms": 0.2048
+        },
+        "rmsnorm": {
+          "best_mean_ms": 0.1033,
+          "fastest_provider": "triton_w4",
+          "speedup_vs_torch_eager": 1.1,
+          "torch_eager_mean_ms": 0.1133
+        }
+      },
+      "shape": {
+        "dtype": "float16",
+        "hidden_size": 4096,
+        "rows": 4096
+      }
+    },
+    {
+      "operators": {
+        "residual_rmsnorm": {
+          "best_mean_ms": 0.2559,
+          "fastest_provider": "torch_eager",
+          "speedup_vs_torch_eager": 1.0,
+          "torch_eager_mean_ms": 0.2559
+        },
+        "rmsnorm": {
+          "best_mean_ms": 0.1313,
+          "fastest_provider": "triton_w8",
+          "speedup_vs_torch_eager": 1.063,
+          "torch_eager_mean_ms": 0.1394
+        }
+      },
+      "shape": {
+        "dtype": "float16",
+        "hidden_size": 5120,
+        "rows": 4096
+      }
+    },
+    {
+      "operators": {
+        "residual_rmsnorm": {
+          "best_mean_ms": 0.3084,
+          "fastest_provider": "l20_inplace",
+          "speedup_vs_torch_eager": 1.04,
+          "torch_eager_mean_ms": 0.3209
+        },
+        "rmsnorm": {
+          "best_mean_ms": 0.1552,
+          "fastest_provider": "triton_w8",
+          "speedup_vs_torch_eager": 1.06,
+          "torch_eager_mean_ms": 0.1641
+        }
+      },
+      "shape": {
+        "dtype": "float16",
+        "hidden_size": 6144,
+        "rows": 4096
+      }
+    },
+    {
+      "operators": {
+        "residual_rmsnorm": {
+          "best_mean_ms": 0.4081,
+          "fastest_provider": "l20_inplace",
+          "speedup_vs_torch_eager": 1.17,
+          "torch_eager_mean_ms": 0.4782
+        },
+        "rmsnorm": {
+          "best_mean_ms": 0.2071,
+          "fastest_provider": "triton_w4",
+          "speedup_vs_torch_eager": 1.055,
+          "torch_eager_mean_ms": 0.2178
+        }
+      },
+      "shape": {
+        "dtype": "float16",
+        "hidden_size": 8192,
+        "rows": 4096
+      }
+    }
+  ],
+  "measured_iterations": 50,
+  "operators": {
+    "residual_rmsnorm": {
+      "best_speedup_max": 2.412,
+      "best_speedup_min": 1.0,
+      "fastest_counts": {
+        "flashinfer": 8,
+        "l20_dispatch": 1,
+        "l20_inplace": 14,
+        "torch_eager": 1
+      },
+      "incorrect_results": [],
+      "shape_count": 24
+    },
+    "rmsnorm": {
+      "best_speedup_max": 1.1,
+      "best_speedup_min": 1.0,
+      "fastest_counts": {
+        "torch_eager": 20,
+        "triton_w4": 2,
+        "triton_w8": 2
+      },
+      "incorrect_results": [],
+      "shape_count": 24
+    }
+  },
+  "shape_count": 24,
+  "torch": "2.11.0+cu130",
+  "triton": "3.6.0",
+  "warmup_iterations": 15
+}

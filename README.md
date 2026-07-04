@@ -148,6 +148,12 @@ CPU-safe regression tests:
 PYTHONPATH=src python -m unittest discover -s tests
 ```
 
+Checked-in benchmark artifact index validation:
+
+```bash
+PYTHONPATH=src single-gpu-infer artifact-index
+```
+
 Sampling-semantics probe against an OpenAI-compatible vLLM server:
 
 ```bash
@@ -212,6 +218,9 @@ Start with `docs/repo-map.md`, `docs/hardware-scope.md`,
 - Negative results stay when they change the direction.
 - Checked-in artifacts should be compact and reviewable: `README.md`,
   `summary.json`, campaign summaries, and small serving JSON reports.
+- Keep `benchmarks/results/README.md` machine-checkable with
+  `single-gpu-infer artifact-index` whenever adding or renaming result
+  directories.
 - Do not commit model weights, checkpoints, datasets, secrets, `server.log`,
   `.nsys-rep`, SQLite exports, or large raw profiler captures.
 
