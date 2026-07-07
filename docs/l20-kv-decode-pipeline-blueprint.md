@@ -94,6 +94,11 @@ for the CUDA Graph preservation config that declares
 `l20_stack::sparse_repetition_penalty_out` as both a custom op and splitting op.
 The first checked-in Qwen3-0.6B runner smoke only proves plumbing: the tiny
 batch-one shape stays outside the sparse gate and records zero sparse-op hits.
+The first c8/i512/o32 eager run reaches the CUDA op 65 times, but it is a
+negative serving result: the standalone logits-processor launch and Python
+processor boundary erase the microbenchmark win. This pushes the next sparse
+penalty attempt toward a fused sampler or LM-head epilogue rather than another
+standalone logits processor.
 
 ### 5. MLA/GQA Compression Track
 

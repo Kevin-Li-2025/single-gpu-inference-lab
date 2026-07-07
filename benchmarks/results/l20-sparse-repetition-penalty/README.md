@@ -43,10 +43,12 @@ kernel as `l20_stack::sparse_repetition_penalty_out` through the PyTorch
 dispatcher. This is still not a serving-speed claim; it only makes the real
 sampling-loop A/B possible without monkey-patching vLLM internals. A publishable
 serving result still needs TTFT, ITL, throughput, and trace hit coverage.
-Use `scripts/run_vllm_l20_sparse_repetition_penalty_serving_ab.sh` for the
-next paired eager serving run. The script records native repetition penalty as
-baseline, the custom logits processor as candidate, and the processor trace as
-policy-hit evidence.
+Use `scripts/run_vllm_l20_sparse_repetition_penalty_serving_ab.sh` for paired
+eager serving runs. The first nontrivial Qwen3-0.6B c8/i512/o32 run proves the
+custom path is reachable (`sparse_op=65`, `torch_fallback=36`) but regresses
+serving latency: median ITL moves 14.33 ms -> 15.67 ms. Treat the standalone
+logits processor as integration evidence and keep the optimization target at a
+larger sampler or LM-head boundary.
 
 ## Reproduce
 
