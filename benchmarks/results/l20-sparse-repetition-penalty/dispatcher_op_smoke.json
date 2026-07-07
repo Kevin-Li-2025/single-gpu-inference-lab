@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "status": "pass",
+  "boundary": "dispatcher-op smoke only; no vLLM serving A/B latency claim",
+  "gpu": "NVIDIA L20",
+  "torch_version": "2.11.0+cu130",
+  "vllm_version": "0.23.1rc1.dev521+gbb1ae10f0.d20260627",
+  "op": "l20_stack::sparse_repetition_penalty_out",
+  "logits_processor_base": "vllm.v1.sample.logits_processor.interface",
+  "case": {
+    "batch": 8,
+    "vocab": 151936,
+    "unique_history_tokens": 512
+  },
+  "max_abs_diff_vs_torch_reference": 2.384185791015625e-7
+}

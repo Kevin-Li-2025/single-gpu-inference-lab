@@ -196,6 +196,12 @@ L20 CUDA sparse repetition-penalty benchmark:
 scripts/run_l20_sparse_repetition_penalty.sh
 ```
 
+L20 dispatcher-op smoke for the vLLM custom logits-processor scaffold:
+
+```bash
+python scripts/smoke_cuda_sparse_repetition_penalty_op.py
+```
+
 GEMM epilogue semantic trace summary:
 
 ```bash

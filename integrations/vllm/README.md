@@ -11,6 +11,7 @@ serving behavior.
 | --- | --- | --- | --- |
 | `install_l20_logits_boundary_trace.py` | Safe trace | Records where an LM-head/logits/sampling epilogue could be legal. | Behavior-preserving only; no speed claim. |
 | `install_l20_gemm_epilogue_trace.py` | Safe trace / API scaffold | Adds a fallback-first `LogitsProcessor.try_sample_from_lm_head` hook before `compute_logits`. | Behavior-preserving by default; install smoke only, no ITL claim. |
+| `l20_sparse_repetition_penalty_logits_processor.py` | Official custom processor scaffold | Exposes the sparse repetition-penalty gate through vLLM's custom logits-processor API and a `l20_stack::sparse_repetition_penalty_out` dispatcher op. | Opt-in only; no serving A/B claim yet. |
 | `l20_flashsampling_epilogue.py` | Shadow helper | Narrows the logits-boundary trace to the FlashSampling-style full-vocab Gumbel epilogue gate. | Behavior-preserving only; micro result is not serving proof. |
 | `install_l20_flashsampling_epilogue_trace.py` | Safe trace | Installs the logits-boundary trace plus the narrower FlashSampling gate into vLLM. | Behavior-preserving only; path-proof/fallback accounting. |
 | `install_l20_flashsampling_epilogue_candidate.py` | Experimental | Opt-in LM-head FlashSampling candidate for full-vocab decode. | Real native path works; current paired run is not a throughput win. |
@@ -61,6 +62,49 @@ request against the next producer-side target. The current P0 target is
 `fused_topk_topp_sparse_penalty_lm_head_epilogue`: top-k/top-p decode with
 sparse token-history penalties and an available history source. This is still a
 shadow contract, not a serving speed claim.
+
+Use the official vLLM custom logits-processor surface for the standalone sparse
+repetition-penalty boundary before touching vLLM internals. The processor is
+explicitly request-gated by custom args so it cannot double-apply vLLM's native
+repetition penalty by accident:
+
+```bash
+PYTHONPATH=/path/to/single-gpu-inference-lab:/path/to/vllm-source \
+VLLM_L20_SPARSE_REPETITION_PENALTY_LIBRARY=/tmp/l20_sparse_repetition_penalty_ops.so \
+VLLM_L20_SPARSE_REPETITION_PENALTY_TRACE=/tmp/l20-sparse-rp.jsonl \
+vllm serve /home/hhai/models/Qwen2.5-Coder-1.5B \
+  --logits_processors \
+  "integrations.vllm.l20_sparse_repetition_penalty_logits_processor:L20SparseRepetitionPenaltyProcessor"
+```
+
+Example OpenAI-compatible request payload:
+
+```json
+{
+  "model": "/home/hhai/models/Qwen2.5-Coder-1.5B",
+  "prompt": "write a short CUDA kernel",
+  "max_tokens": 64,
+  "extra_body": {
+    "logits_processors": [
+      "integrations.vllm.l20_sparse_repetition_penalty_logits_processor:L20SparseRepetitionPenaltyProcessor"
+    ],
+    "vllm_xargs": {
+      "l20_sparse_repetition_penalty": true,
+      "l20_repetition_penalty": 1.1,
+      "l20_penalty_include_prompt": false
+    }
+  }
+}
+```
+
+The shared object comes from
+`integrations/vllm/cuda/l20_sparse_repetition_penalty.cpp` plus
+`integrations/vllm/cuda/l20_sparse_repetition_penalty.cu`; the smoke entry is
+`scripts/smoke_cuda_sparse_repetition_penalty_op.py`. This remains a scaffold
+until a paired L20 serving run reports TTFT, ITL, throughput, and trace hit
+coverage. vLLM marks the custom logits-processor API as version-sensitive, so
+the first serving run should verify the request payload shape against the target
+vLLM commit before collecting latency.
 
 The upstream-shaped proposal is in `docs/logits-boundary-rfc.md`. The trace
 events include `metadata.shadow_epilogue`, which records whether the request

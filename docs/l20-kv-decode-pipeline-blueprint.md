@@ -79,8 +79,12 @@ artifact and move on.
 
 The new sparse repetition-penalty CUDA result belongs here. It proves a narrow
 fact: full-vocabulary repetition-penalty passes are avoidable for large vocab
-and throughput batches. The next version should be fused into a larger sampling
-or LM-head boundary rather than launched standalone.
+and throughput batches. The current integration scaffold exposes this through a
+formal `l20_stack::sparse_repetition_penalty_out` PyTorch dispatcher op and a
+vLLM custom logits processor so the measured gate can be exercised in real
+serving traffic without monkey-patching vLLM internals. The next version should
+still be fused into a larger sampling or LM-head boundary rather than launched
+standalone.
 
 Gate: real vLLM serving A/B with trace coverage showing the custom path was hit.
 
@@ -127,6 +131,6 @@ The final writeup should read like a short systems paper:
 | 1 | L20 baseline serving matrix with prefix-cache on/off | no optimization work until bottlenecks are measured |
 | 2 | KV pressure and prefix-cache jitter benchmark | publish cache hit and TTFT deltas only |
 | 3 | FP8 KV decode serving gate with Nsight summary | disable if BF16/FlashInfer wins |
-| 4 | sparse repetition-penalty fusion into sampler/logits boundary | require path trace plus no-trace latency A/B |
+| 4 | sparse repetition-penalty vLLM processor, then fusion into sampler/logits boundary | require path trace plus no-trace latency A/B |
 | 5 | MLA/GQA latent-KV fixture and decode benchmark | keep accuracy and speed claims separate |
 | 6 | consolidated case study and upstreamable diagnostic PR | no broad claim without serving evidence |

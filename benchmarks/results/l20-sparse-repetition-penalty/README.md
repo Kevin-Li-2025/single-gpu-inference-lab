@@ -35,8 +35,14 @@ The checked-in policy therefore uses sparse only when `vocab >= 65536`,
 keeps the dense path. On the measured matrix this avoids all sparse regressions
 while accepting at most 1.08x opportunity cost on launch-bound rows.
 
-The next serving step is to fold this boundary into a larger logits-processing
-or LM-head/sampler epilogue so the standalone launch floor does not dominate.
+The next serving step has an official-interface scaffold:
+`integrations/vllm/l20_sparse_repetition_penalty_logits_processor.py` routes the
+same gate through vLLM's custom logits-processor API, and
+`integrations/vllm/cuda/l20_sparse_repetition_penalty.cpp` registers the CUDA
+kernel as `l20_stack::sparse_repetition_penalty_out` through the PyTorch
+dispatcher. This is still not a serving-speed claim; it only makes the real
+sampling-loop A/B possible without monkey-patching vLLM internals. A publishable
+serving result still needs TTFT, ITL, throughput, and trace hit coverage.
 
 ## Reproduce
 
@@ -49,3 +55,6 @@ Artifacts:
 - `results.csv`: raw per-shape timings.
 - `summary.json`: aggregate statistics.
 - `summary.md`: rendered table.
+- `dispatcher_op_smoke.json`: L20 PyTorch dispatcher-op compile/correctness
+  smoke for `l20_stack::sparse_repetition_penalty_out`; no serving latency
+  claim.
