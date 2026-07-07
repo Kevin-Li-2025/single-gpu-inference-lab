@@ -1,0 +1,26 @@
+{
+  "gpu": "NVIDIA L20",
+  "kv_cache_memory_bytes": null,
+  "max_tokens": 32,
+  "model": "/home/hhai/models/Qwen3-0.6B",
+  "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0",
+  "probe_case": "sample_topk_topp_penalty",
+  "runs": 4,
+  "sampling": {
+    "frequency_penalty": 0.1,
+    "presence_penalty": 0.1,
+    "repetition_penalty": 1.05,
+    "temperature": 0.8,
+    "top_k": 50,
+    "top_p": 0.9
+  },
+  "schema_version": 1,
+  "served_model": "qwen3-0p6b",
+  "torch_cuda_version": "13.0",
+  "torch_version": "2.11.0+cu130",
+  "trace_max_tokens": 16,
+  "trace_runs": 2,
+  "trace_warmup": 1,
+  "vllm_version": "0.23.1rc1.dev521+gbb1ae10f0.d20260627",
+  "warmup": 1
+}

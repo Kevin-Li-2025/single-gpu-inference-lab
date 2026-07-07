@@ -176,6 +176,16 @@ def test_l20_topk_topp_helper_uses_vllm_rng_state():
     assert "torch.rand" not in source
 
 
+def test_sparse_sampling_ab_runner_detects_log_request_flag():
+    source = Path("scripts/run_vllm_a100_flashinfer_sparse_sampling_ab.sh").read_text()
+
+    assert "detect_no_log_requests_arg" in source
+    assert "VLLM_LOG_REQUESTS_ARG" in source
+    assert "--no-enable-log-requests" in source
+    assert "--disable-log-requests" in source
+    assert 'server_args+=("$no_log_requests_arg")' in source
+
+
 def test_l20_topk_topp_installer_patches_forward_level_penalty_guard():
     module = load_installer()
     active_sampler_source = """

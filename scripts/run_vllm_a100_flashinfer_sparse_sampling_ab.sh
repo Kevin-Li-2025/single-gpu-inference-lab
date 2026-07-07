@@ -44,6 +44,22 @@ export PYTHONPATH="$repo_root/src:${PYTHONPATH:-}"
 export HF_HOME="$hf_home"
 export VLLM_NO_USAGE_STATS=1
 
+detect_no_log_requests_arg() {
+  if [[ -n "${VLLM_LOG_REQUESTS_ARG:-}" ]]; then
+    echo "$VLLM_LOG_REQUESTS_ARG"
+    return
+  fi
+  local help
+  help=$("$python_bin" -m vllm.entrypoints.openai.api_server --help 2>&1 || true)
+  if [[ "$help" == *"--no-enable-log-requests"* ]]; then
+    echo "--no-enable-log-requests"
+  elif [[ "$help" == *"--disable-log-requests"* ]]; then
+    echo "--disable-log-requests"
+  fi
+}
+
+no_log_requests_arg=$(detect_no_log_requests_arg)
+
 check_gpu_idle() {
   if [[ "$require_idle" != "1" ]]; then
     return
@@ -136,8 +152,10 @@ start_server() {
     --port "$port"
     --gpu-memory-utilization "$gpu_memory_utilization"
     --max-model-len "$max_model_len"
-    --disable-log-requests
   )
+  if [[ -n "$no_log_requests_arg" ]]; then
+    server_args+=("$no_log_requests_arg")
+  fi
   if [[ -n "$kv_cache_memory_bytes" ]]; then
     server_args+=(--kv-cache-memory-bytes "$kv_cache_memory_bytes")
   fi

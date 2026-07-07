@@ -1,0 +1,205 @@
+{
+  "artifact": "qwen3-0p6b-c8-penalty-fused-v2",
+  "baseline": {
+    "mode": "vllm_flashinfer_topk_topp_penalty",
+    "ok_runs": 4,
+    "path_match_counts": {
+      "cpu": 0,
+      "cuda13": 0,
+      "fallback": 0,
+      "flashinfer": 3,
+      "sampling": 3
+    },
+    "summary": {
+      "itl_ms": {
+        "max": 2.6154019869863987,
+        "mean": 2.6078670052811503,
+        "median": 2.6088044978678226,
+        "min": 2.5984570384025574
+      },
+      "ms_per_output_token": {
+        "max": 2.965649029647466,
+        "mean": 2.9223855472082505,
+        "median": 2.9102420012350194,
+        "min": 2.9034091567154974
+      },
+      "total_ms": {
+        "max": 94.9007689487189,
+        "mean": 93.51633751066402,
+        "median": 93.12774403952062,
+        "min": 92.90909301489592
+      },
+      "ttft_ms": {
+        "max": 14.77879798039794,
+        "mean": 13.572297990322113,
+        "median": 13.290711445733905,
+        "min": 12.928971089422703
+      }
+    }
+  },
+  "candidate": {
+    "mode": "opt_in_sparse_token_history_sampler_no_trace",
+    "ok_runs": 4,
+    "path_match_counts": {
+      "cpu": 0,
+      "cuda13": 0,
+      "fallback": 0,
+      "flashinfer": 3,
+      "sampling": 5
+    },
+    "summary": {
+      "itl_ms": {
+        "max": 2.5916339363902807,
+        "mean": 2.571659511886537,
+        "median": 2.574708079919219,
+        "min": 2.5455879513174295
+      },
+      "ms_per_output_token": {
+        "max": 3.072863530057172,
+        "mean": 2.9352344858731763,
+        "median": 2.8923226418555714,
+        "min": 2.883429129724391
+      },
+      "total_ms": {
+        "max": 92.79555710963905,
+        "mean": 92.39107178291306,
+        "median": 92.29141206014901,
+        "min": 92.18590590171516
+      },
+      "ttft_ms": {
+        "max": 14.696691883727908,
+        "mean": 13.677449431270361,
+        "median": 13.448104029521346,
+        "min": 13.116897782310843
+      }
+    }
+  },
+  "case": {
+    "description": "Stochastic top-k/top-p sampling with repetition/presence/frequency penalties.",
+    "name": "sample_topk_topp_penalty",
+    "sampling": {
+      "frequency_penalty": 0.1,
+      "presence_penalty": 0.1,
+      "repetition_penalty": 1.05,
+      "temperature": 0.8,
+      "top_k": 50,
+      "top_p": 0.9
+    }
+  },
+  "claim_boundary": [
+    "This is a real vLLM HTTP serving A/B, not a standalone microbenchmark.",
+    "The baseline uses vLLM's FlashInfer top-k/top-p sampler path.",
+    "The no-trace candidate is compared against the FlashInfer-enabled baseline.",
+    "The separate trace run proves custom hook coverage but is not used for latency.",
+    "Results should only be claimed when the GPU was idle before the run."
+  ],
+  "config": {
+    "gpu": "NVIDIA L20",
+    "kv_cache_memory_bytes": null,
+    "max_tokens": 32,
+    "model": "/home/hhai/models/Qwen3-0.6B",
+    "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0",
+    "probe_case": "sample_topk_topp_penalty",
+    "runs": 4,
+    "sampling": {
+      "frequency_penalty": 0.1,
+      "presence_penalty": 0.1,
+      "repetition_penalty": 1.05,
+      "temperature": 0.8,
+      "top_k": 50,
+      "top_p": 0.9
+    },
+    "schema_version": 1,
+    "served_model": "qwen3-0p6b",
+    "torch_cuda_version": "13.0",
+    "torch_version": "2.11.0+cu130",
+    "trace_max_tokens": 16,
+    "trace_runs": 2,
+    "trace_warmup": 1,
+    "vllm_version": "0.23.1rc1.dev521+gbb1ae10f0.d20260627",
+    "warmup": 1
+  },
+  "delta": {
+    "itl_ms": {
+      "baseline_median": 2.6088044978678226,
+      "candidate_median": 2.574708079919219,
+      "delta_percent": -1.3069748222402504,
+      "speedup": 1.0132428286587245
+    },
+    "ms_per_output_token": {
+      "baseline_median": 2.9102420012350194,
+      "candidate_median": 2.8923226418555714,
+      "delta_percent": -0.6157343400254535,
+      "speedup": 1.0061954911669024
+    },
+    "total_ms": {
+      "baseline_median": 93.12774403952062,
+      "candidate_median": 92.29141206014901,
+      "delta_percent": -0.8980481466583075,
+      "speedup": 1.0090618613444395
+    },
+    "ttft_ms": {
+      "baseline_median": 13.290711445733905,
+      "candidate_median": 13.448104029521346,
+      "delta_percent": 1.1842299370509743,
+      "speedup": 0.9882962993562563
+    }
+  },
+  "flashinfer_prewarm": {
+    "flashinfer_cuda_env": {
+      "changed": true,
+      "cuda_home": "/home/hhai/venvs/vllm-l20/lib/python3.12/site-packages/nvidia/cu13",
+      "library_paths": [
+        "/home/hhai/venvs/vllm-l20/lib/python3.12/site-packages/nvidia/cu13/lib"
+      ],
+      "nvcc": "/home/hhai/venvs/vllm-l20/lib/python3.12/site-packages/nvidia/cu13/bin/nvcc",
+      "nvcc_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Wed_Aug_20_01:58:59_PM_PDT_2025\nCuda compilation tools, release 13.0, V13.0.88\nBuild cuda_13.0.r13.0/compiler.36424714_0",
+      "preloaded_libraries": [
+        "/home/hhai/venvs/vllm-l20/lib/python3.12/site-packages/nvidia/cu13/lib/libcudart.so.13",
+        "/home/hhai/venvs/vllm-l20/lib/python3.12/site-packages/nvidia/cu13/lib/libcurand.so.10"
+      ]
+    },
+    "flashinfer_version": "0.6.12",
+    "hardware": "NVIDIA L20",
+    "output_dtype": "torch.int32",
+    "output_shape": [
+      4
+    ],
+    "schema_version": 1,
+    "status": "ok"
+  },
+  "schema_version": 1,
+  "stability": {
+    "itl_ms": {
+      "baseline_measured_median": 2.6088044978678226,
+      "candidate_measured_median": 2.574708079919219
+    },
+    "ms_per_output_token": {
+      "baseline_measured_median": 2.9102420012350194,
+      "candidate_measured_median": 2.8923226418555714
+    },
+    "total_ms": {
+      "baseline_measured_median": 93.12774403952062,
+      "candidate_measured_median": 92.29141206014901
+    },
+    "ttft_ms": {
+      "baseline_measured_median": 13.290711445733905,
+      "candidate_measured_median": 13.448104029521346
+    }
+  },
+  "trace_proof": {
+    "eligible_events": 48,
+    "eligible_fraction": 0.96,
+    "fallback_events": 2,
+    "logits_shape_counts": {
+      "1x151936": 48,
+      "256x151936": 2
+    },
+    "reason_counts": {
+      "outside_l20_profitability_gate": 2
+    },
+    "schema_version": 1,
+    "total_events": 50,
+    "trace": "benchmarks/results/l20-vllm-fused-sparse-sampling/qwen3-0p6b-c8-penalty-fused-v2/candidate-trace/l20-topk-topp-trace.jsonl"
+  }
+}

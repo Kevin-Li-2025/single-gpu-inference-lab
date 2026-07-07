@@ -1,0 +1,50 @@
+{
+  "cpu_fallback_suspected": false,
+  "line_count": 125,
+  "log": "benchmarks/results/l20-vllm-fused-sparse-sampling/qwen3-0p6b-c8-penalty-fused-v2/baseline-flashinfer/server.log",
+  "match_counts": {
+    "cpu": 0,
+    "cuda13": 0,
+    "fallback": 0,
+    "flashinfer": 3,
+    "sampling": 3
+  },
+  "matches": {
+    "cpu": [],
+    "cuda13": [],
+    "fallback": [],
+    "flashinfer": [
+      {
+        "line": 14,
+        "text": "_rope_kvcache_cat_mla': False, 'fuse_act_padding': False}, 'max_cudagraph_capture_size': 512, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native']), enable_flashinfer_autotune=True, moe_backend='auto', linear_backend='auto')"
+      },
+      {
+        "line": 23,
+        "text": "(EngineCore pid=3383082) INFO 07-07 23:35:14 [cuda.py:483] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION']."
+      },
+      {
+        "line": 36,
+        "text": "(EngineCore pid=3383082) INFO 07-07 23:35:16 [topk_topp_sampler.py:57] Using FlashInfer for top-p & top-k sampling."
+      }
+    ],
+    "sampling": [
+      {
+        "line": 14,
+        "text": "_rope_kvcache_cat_mla': False, 'fuse_act_padding': False}, 'max_cudagraph_capture_size': 512, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native']), enable_flashinfer_autotune=True, moe_backend='auto', linear_backend='auto')"
+      },
+      {
+        "line": 36,
+        "text": "(EngineCore pid=3383082) INFO 07-07 23:35:16 [topk_topp_sampler.py:57] Using FlashInfer for top-p & top-k sampling."
+      },
+      {
+        "line": 83,
+        "text": "(APIServer pid=3383030) WARNING 07-07 23:35:50 [model.py:1479] Default vLLM sampling parameters have been overridden by the model's `generation_config.json`: `{'temperature': 0.6, 'top_k': 20, 'top_p': 0.95}`. If this is not intended, please relaunch vLLM instance with `--generation-config vllm`."
+      }
+    ]
+  },
+  "notes": [
+    "This is log evidence only. Absence of CPU/fallback strings does not prove that no CPU synchronization happened inside lower-level kernels.",
+    "Use paired stochastic serving latency and FlashInfer prewarm status as the primary service-level signal."
+  ],
+  "schema_version": 1
+}
