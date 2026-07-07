@@ -45,6 +45,10 @@ struct CaseResult {
   float max_abs_diff;
   float dense_effective_gbs;
   float sparse_effective_gbs;
+  std::string policy_provider;
+  float policy_ms;
+  float policy_speedup;
+  float policy_regret;
 };
 
 __device__ __forceinline__ float apply_repetition_penalty(float x,
@@ -88,6 +92,13 @@ __global__ void sparse_token_penalty_kernel(float *logits,
 }
 
 int ceil_div(int x, int y) { return (x + y - 1) / y; }
+
+bool should_use_sparse_policy(const BenchCase &c) {
+  const long long dense_elements =
+      static_cast<long long>(c.batch) * static_cast<long long>(c.vocab);
+  return c.vocab >= 65536 && dense_elements >= 524288 &&
+         c.unique_tokens <= 1024;
+}
 
 std::vector<float> make_logits(int batch, int vocab, int seed) {
   std::mt19937 rng(seed);
@@ -276,6 +287,11 @@ CaseResult run_case(const BenchCase &c, int warmup_iters, int iters,
       static_cast<float>(dense_bytes_per_iter / (dense_ms * 1.0e6));
   result.sparse_effective_gbs =
       static_cast<float>(sparse_bytes_per_iter / (sparse_ms * 1.0e6));
+  bool use_sparse = should_use_sparse_policy(c);
+  result.policy_provider = use_sparse ? "sparse" : "dense";
+  result.policy_ms = use_sparse ? sparse_ms : dense_ms;
+  result.policy_speedup = dense_ms / result.policy_ms;
+  result.policy_regret = result.policy_ms / std::min(dense_ms, sparse_ms);
   return result;
 }
 
@@ -301,13 +317,15 @@ std::vector<BenchCase> default_cases(bool quick) {
 }
 
 void print_table(const std::vector<CaseResult> &results) {
-  std::cout << "| batch | vocab | unique history | dense ms | sparse ms | speedup | max diff |\n";
-  std::cout << "|---:|---:|---:|---:|---:|---:|---:|\n";
+  std::cout << "| batch | vocab | unique history | dense ms | sparse ms | speedup | policy | policy speedup | regret | max diff |\n";
+  std::cout << "|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|\n";
   for (const CaseResult &r : results) {
     std::cout << "| " << r.batch << " | " << r.vocab << " | "
               << r.unique_tokens << " | " << std::fixed
               << std::setprecision(4) << r.dense_ms << " | " << r.sparse_ms
               << " | " << std::setprecision(2) << r.speedup << "x | "
+              << r.policy_provider << " | " << r.policy_speedup << "x | "
+              << r.policy_regret << "x | "
               << std::setprecision(1) << r.max_abs_diff << " |\n";
   }
 }
@@ -318,14 +336,17 @@ void write_csv(const std::string &path, const std::vector<CaseResult> &results) 
     throw std::runtime_error("failed to open csv path: " + path);
   }
   out << "gpu,compute_cap,batch,vocab,unique_tokens,dense_ms,sparse_ms,"
-         "speedup,max_abs_diff,dense_effective_gbs,sparse_effective_gbs\n";
+         "speedup,max_abs_diff,dense_effective_gbs,sparse_effective_gbs,"
+         "policy_provider,policy_ms,policy_speedup,policy_regret\n";
   for (const CaseResult &r : results) {
     out << '"' << r.gpu_name << '"' << ',' << r.compute_major << "."
         << r.compute_minor << ',' << r.batch << ',' << r.vocab << ','
         << r.unique_tokens << ',' << std::fixed << std::setprecision(6)
         << r.dense_ms << ',' << r.sparse_ms << ',' << r.speedup << ','
         << r.max_abs_diff << ',' << r.dense_effective_gbs << ','
-        << r.sparse_effective_gbs << '\n';
+        << r.sparse_effective_gbs << ',' << r.policy_provider << ','
+        << r.policy_ms << ',' << r.policy_speedup << ','
+        << r.policy_regret << '\n';
   }
 }
 
@@ -394,6 +415,9 @@ int main(int argc, char **argv) {
       std::cerr << "case batch=" << r.batch << " vocab=" << r.vocab
                 << " unique=" << r.unique_tokens << " dense=" << r.dense_ms
                 << "ms sparse=" << r.sparse_ms << "ms speedup=" << r.speedup
+                << "x policy=" << r.policy_provider
+                << " policy_speedup=" << r.policy_speedup
+                << "x regret=" << r.policy_regret
                 << "x diff=" << r.max_abs_diff << "\n";
       if (r.max_abs_diff != 0.0f) {
         throw std::runtime_error("correctness check failed");

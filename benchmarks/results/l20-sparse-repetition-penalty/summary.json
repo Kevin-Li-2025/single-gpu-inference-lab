@@ -2,8 +2,18 @@
   "gpu": "NVIDIA L20",
   "compute_cap": "8.9",
   "cases": 39,
-  "median_speedup": 1.256318,
-  "min_speedup": 0.968067,
-  "max_speedup": 3.978648,
-  "max_abs_diff": 0.0
+  "median_speedup": 1.256732,
+  "min_speedup": 0.977391,
+  "max_speedup": 4.08561,
+  "max_abs_diff": 0.0,
+  "policy": {
+    "rule": "Use sparse when vocab>=65536 and batch*vocab>=524288 and unique_tokens<=1024; otherwise use dense.",
+    "sparse_cases": 21,
+    "dense_cases": 18,
+    "median_speedup": 1.256732,
+    "min_speedup": 1.0,
+    "max_speedup": 4.08561,
+    "max_regret": 1.083942,
+    "regression_cases": 0
+  }
 }

@@ -24,6 +24,16 @@ def main() -> int:
     max_diff = max(float(row["max_abs_diff"]) for row in rows)
     gpu = rows[0]["gpu"]
     compute_cap = rows[0]["compute_cap"]
+    has_policy = "policy_provider" in rows[0]
+    policy_speedups = (
+        [float(row["policy_speedup"]) for row in rows] if has_policy else []
+    )
+    policy_regrets = [float(row["policy_regret"]) for row in rows] if has_policy else []
+    sparse_policy_cases = (
+        sum(1 for row in rows if row["policy_provider"] == "sparse")
+        if has_policy
+        else 0
+    )
 
     summary = {
         "gpu": gpu,
@@ -34,6 +44,20 @@ def main() -> int:
         "max_speedup": max(speedups),
         "max_abs_diff": max_diff,
     }
+    if has_policy:
+        summary["policy"] = {
+            "rule": (
+                "Use sparse when vocab>=65536 and batch*vocab>=524288 "
+                "and unique_tokens<=1024; otherwise use dense."
+            ),
+            "sparse_cases": sparse_policy_cases,
+            "dense_cases": len(rows) - sparse_policy_cases,
+            "median_speedup": statistics.median(policy_speedups),
+            "min_speedup": min(policy_speedups),
+            "max_speedup": max(policy_speedups),
+            "max_regret": max(policy_regrets),
+            "regression_cases": sum(1 for value in policy_speedups if value < 1.0),
+        }
     json_path = csv_path.with_name("summary.json")
     json_path.write_text(json.dumps(summary, indent=2) + "\n")
 
@@ -44,15 +68,37 @@ def main() -> int:
     print(f"- Median speedup: `{summary['median_speedup']:.2f}x`")
     print(f"- Speedup range: `{summary['min_speedup']:.2f}x` to `{summary['max_speedup']:.2f}x`")
     print(f"- Max dense-vs-sparse diff: `{max_diff:.1f}`")
+    if has_policy:
+        policy = summary["policy"]
+        print(f"- Policy sparse cases: `{policy['sparse_cases']} / {len(rows)}`")
+        print(f"- Policy median speedup: `{policy['median_speedup']:.2f}x`")
+        print(f"- Policy min speedup: `{policy['min_speedup']:.2f}x`")
+        print(f"- Policy max regret: `{policy['max_regret']:.2f}x`")
+        print(f"- Policy regression cases: `{policy['regression_cases']}`")
     print()
-    print("| batch | vocab | unique history | dense ms | sparse ms | speedup |")
-    print("|---:|---:|---:|---:|---:|---:|")
-    for row in rows:
+    if has_policy:
         print(
+            "| batch | vocab | unique history | dense ms | sparse ms | "
+            "speedup | policy | policy speedup | regret |"
+        )
+        print("|---:|---:|---:|---:|---:|---:|---|---:|---:|")
+    else:
+        print("| batch | vocab | unique history | dense ms | sparse ms | speedup |")
+        print("|---:|---:|---:|---:|---:|---:|")
+    for row in rows:
+        base = (
             f"| {row['batch']} | {row['vocab']} | {row['unique_tokens']} | "
             f"{fmt(row['dense_ms'])} | {fmt(row['sparse_ms'])} | "
             f"{float(row['speedup']):.2f}x |"
         )
+        if has_policy:
+            print(
+                f"{base} {row['policy_provider']} | "
+                f"{float(row['policy_speedup']):.2f}x | "
+                f"{float(row['policy_regret']):.2f}x |"
+            )
+        else:
+            print(base)
 
     return 0
 

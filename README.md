@@ -30,9 +30,11 @@ speedups, integration behavior, and end-to-end token latency.
   Qwen2.5-0.5B workload.
 - A standalone L20 CUDA sparse repetition-penalty kernel now proves the same
   logits-processing boundary at the kernel level: 39 correct cases, 1.26x
-  median speedup, and up to 3.98x on Qwen-size vocabularies with throughput
-  batching. Batch-one cases are launch-bound, so the next step is fusion into a
-  larger sampler/logits boundary rather than another standalone launch.
+  median speedup, and up to 4.09x on Qwen-size vocabularies with throughput
+  batching. The measured dispatch policy selects sparse for 21/39 cases with
+  zero regressions; batch-one cases remain launch-bound, so the next step is
+  fusion into a larger sampler/logits boundary rather than another standalone
+  launch.
 - Combining sparse token-history sampling with fused generated-token
   top-logprobs now produces a repeated A100 serving win on the richer
   top-k/top-p + penalties + logprobs workload, with an 8-row model/logprobs
@@ -67,7 +69,7 @@ than cuBLAS/full-logits baselines by 1.32x-1.39x on the tested A100 shapes.
 | Sampling semantics tax | Greedy 6.720 ms median ITL; top-k/top-p + penalties 9.562 ms, or +42.29% | `benchmarks/results/a100-vllm-sampling-semantics-qwen25-05b/` |
 | Dense top-k/top-p + penalties | 1.36x-1.42x A100 microbenchmark speedup versus apply-then-sample | `benchmarks/results/a100-fused-topk-topp-penalty/` |
 | Sparse token-history penalties | 1.27x-1.31x A100 microbenchmark speedup without dense `[batch, vocab]` counts | `benchmarks/results/a100-sparse-topk-topp-penalty/` |
-| L20 sparse repetition penalty | Standalone CUDA kernel: 39 correct L20 cases, 1.26x median speedup, up to 3.98x when full-vocab penalty scans dominate launch overhead | `benchmarks/results/l20-sparse-repetition-penalty/` |
+| L20 sparse repetition penalty | Standalone CUDA kernel: 39 correct L20 cases, 1.26x median speedup, up to 4.09x when full-vocab penalty scans dominate launch overhead; calibrated policy chooses sparse for 21/39 cases with zero measured regressions | `benchmarks/results/l20-sparse-repetition-penalty/` |
 | Sparse sampler vs native PyTorch path | Median ITL 9.544 ms -> 4.093 ms on A100/Qwen2.5-0.5B | `benchmarks/results/a100-vllm-sparse-penalty-sampling/` |
 | Sparse sampler vs FlashInfer path | Median ITL 4.468 ms -> 4.346 ms on the same A100 workload | `benchmarks/results/a100-vllm-flashinfer-sparse-penalty-sampling/` |
 | Fused top-logprobs selection | 8.04x-9.17x A100 microbenchmark speedup; dirty and clean A100 serving artifacts show path validation, while clean request-level total time stayed flat | `benchmarks/results/a100-fused-top-logprobs/`, `benchmarks/results/a100-vllm-top-logprobs-clean/` |

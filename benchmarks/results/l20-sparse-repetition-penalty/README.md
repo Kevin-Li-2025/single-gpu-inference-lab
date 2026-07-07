@@ -15,17 +15,25 @@ the same rule and each row verifies `max_abs_diff == 0.0`.
 | Compute capability | 8.9 |
 | Cases | 39 |
 | Median speedup | 1.26x |
-| Speedup range | 0.97x to 3.98x |
+| Speedup range | 0.98x to 4.09x |
 | Max dense-vs-sparse diff | 0.0 |
+| Policy sparse cases | 21 / 39 |
+| Policy min speedup | 1.00x |
+| Policy regression cases | 0 |
+| Policy max regret | 1.08x |
 
 Best row: `batch=32`, `vocab=151936`, `unique_history_tokens=1024`, where the
-dense baseline takes 0.0114 ms and the sparse kernel takes 0.0029 ms.
+dense baseline takes 0.0115 ms and the sparse kernel takes 0.0028 ms.
 
 ## Boundary
 
 This is not an end-to-end serving-speed claim. It shows the full-vocabulary
 penalty pass becomes avoidable on Qwen-size vocabularies and throughput batches.
 Batch-1 and small-vocabulary rows are launch-bound and show little to no gain.
+The checked-in policy therefore uses sparse only when `vocab >= 65536`,
+`batch * vocab >= 524288`, and `unique_history_tokens <= 1024`; otherwise it
+keeps the dense path. On the measured matrix this avoids all sparse regressions
+while accepting at most 1.08x opportunity cost on launch-bound rows.
 
 The next serving step is to fold this boundary into a larger logits-processing
 or LM-head/sampler epilogue so the standalone launch floor does not dominate.
