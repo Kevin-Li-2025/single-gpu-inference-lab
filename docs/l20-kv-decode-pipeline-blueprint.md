@@ -87,6 +87,13 @@ still be fused into a larger sampling or LM-head boundary rather than launched
 standalone.
 
 Gate: real vLLM serving A/B with trace coverage showing the custom path was hit.
+The prepared entrypoints are
+`scripts/run_vllm_l20_sparse_repetition_penalty_serving_ab.sh` for eager/O2
+serving and `scripts/build_l20_sparse_repetition_penalty_compilation_config.py`
+for the CUDA Graph preservation config that declares
+`l20_stack::sparse_repetition_penalty_out` as both a custom op and splitting op.
+The first checked-in Qwen3-0.6B runner smoke only proves plumbing: the tiny
+batch-one shape stays outside the sparse gate and records zero sparse-op hits.
 
 ### 5. MLA/GQA Compression Track
 

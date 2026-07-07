@@ -43,6 +43,10 @@ kernel as `l20_stack::sparse_repetition_penalty_out` through the PyTorch
 dispatcher. This is still not a serving-speed claim; it only makes the real
 sampling-loop A/B possible without monkey-patching vLLM internals. A publishable
 serving result still needs TTFT, ITL, throughput, and trace hit coverage.
+Use `scripts/run_vllm_l20_sparse_repetition_penalty_serving_ab.sh` for the
+next paired eager serving run. The script records native repetition penalty as
+baseline, the custom logits processor as candidate, and the processor trace as
+policy-hit evidence.
 
 ## Reproduce
 

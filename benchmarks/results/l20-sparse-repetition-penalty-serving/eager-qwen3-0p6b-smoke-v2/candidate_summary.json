@@ -1,0 +1,30 @@
+{
+  "completed": 2,
+  "errors": [],
+  "failed": 0,
+  "input_tokens_requested": 64,
+  "max_concurrency": 1,
+  "median_e2el_ms": 68.27748951036483,
+  "median_itl_ms": 15.555999998468906,
+  "median_ttft_ms": 36.97294800076634,
+  "model": "qwen3-0p6b",
+  "num_prompts": 2,
+  "output_throughput": 43.513575905946,
+  "output_tokens_requested": 4,
+  "p95_itl_ms": 16.159494989551604,
+  "p95_ttft_ms": 37.97666705213487,
+  "request_throughput": 14.504525301982,
+  "schema_version": 1,
+  "trace": {
+    "event_count": 9,
+    "max_unique_tokens_seen": 3,
+    "provider_counts": {
+      "torch_fallback": 9
+    },
+    "reason_counts": {
+      "outside_sparse_gate": 9
+    },
+    "trace_exists": true
+  },
+  "variant": "candidate"
+}

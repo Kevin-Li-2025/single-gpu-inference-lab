@@ -73,7 +73,7 @@ PYTHONPATH=/path/to/single-gpu-inference-lab:/path/to/vllm-source \
 VLLM_L20_SPARSE_REPETITION_PENALTY_LIBRARY=/tmp/l20_sparse_repetition_penalty_ops.so \
 VLLM_L20_SPARSE_REPETITION_PENALTY_TRACE=/tmp/l20-sparse-rp.jsonl \
 vllm serve /home/hhai/models/Qwen2.5-Coder-1.5B \
-  --logits_processors \
+  --logits-processors \
   "integrations.vllm.l20_sparse_repetition_penalty_logits_processor:L20SparseRepetitionPenaltyProcessor"
 ```
 
@@ -105,6 +105,23 @@ until a paired L20 serving run reports TTFT, ITL, throughput, and trace hit
 coverage. vLLM marks the custom logits-processor API as version-sensitive, so
 the first serving run should verify the request payload shape against the target
 vLLM commit before collecting latency.
+
+For CUDA Graph/O2 experiments, generate the explicit op-preservation config
+instead of relying on compiler defaults:
+
+```bash
+python scripts/build_l20_sparse_repetition_penalty_compilation_config.py \
+  --no-fuse-rope-kvcache
+```
+
+The paired serving runner uses that config in O2 mode and keeps eager mode as
+the first latency proof:
+
+```bash
+EXECUTION_MODE=eager scripts/run_vllm_l20_sparse_repetition_penalty_serving_ab.sh \
+  /home/hhai/models/Qwen2.5-Coder-1.5B qwen25-coder-1p5b \
+  /tmp/l20-sparse-rp-serving /home/hhai/vllm-l20-rfc
+```
 
 The upstream-shaped proposal is in `docs/logits-boundary-rfc.md`. The trace
 events include `metadata.shadow_epilogue`, which records whether the request

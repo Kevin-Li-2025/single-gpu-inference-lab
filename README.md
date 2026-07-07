@@ -202,6 +202,17 @@ L20 dispatcher-op smoke for the vLLM custom logits-processor scaffold:
 python scripts/smoke_cuda_sparse_repetition_penalty_op.py
 ```
 
+L20 paired serving A/B entrypoint for native vs custom sparse repetition
+penalty:
+
+```bash
+EXECUTION_MODE=eager INPUT_TOKENS=512 MAX_CONCURRENCY=8 NUM_PROMPTS=32 \
+scripts/run_vllm_l20_sparse_repetition_penalty_serving_ab.sh \
+  /home/hhai/models/Qwen2.5-Coder-1.5B qwen25-coder-1p5b \
+  benchmarks/results/l20-sparse-repetition-penalty-serving/eager-b8-i512 \
+  /home/hhai/vllm-l20-rfc
+```
+
 GEMM epilogue semantic trace summary:
 
 ```bash

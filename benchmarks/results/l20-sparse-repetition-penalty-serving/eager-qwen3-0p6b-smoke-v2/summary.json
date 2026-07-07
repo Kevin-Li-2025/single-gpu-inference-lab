@@ -1,0 +1,66 @@
+{
+  "baseline_failed": 0,
+  "baseline_trace": {
+    "trace_exists": false
+  },
+  "boundary": "paired serving summary; not a speed claim unless request failures are zero and candidate_sparse_op_hits is positive",
+  "candidate_failed": 0,
+  "candidate_sparse_op_hits": 0,
+  "candidate_trace": {
+    "event_count": 9,
+    "max_unique_tokens_seen": 3,
+    "provider_counts": {
+      "torch_fallback": 9
+    },
+    "reason_counts": {
+      "outside_sparse_gate": 9
+    },
+    "trace_exists": true
+  },
+  "metrics": [
+    {
+      "baseline": 15.993211,
+      "candidate": 14.504525,
+      "change_pct": -9.308,
+      "metric": "request_throughput"
+    },
+    {
+      "baseline": 47.979632,
+      "candidate": 43.513576,
+      "change_pct": -9.308,
+      "metric": "output_throughput"
+    },
+    {
+      "baseline": 35.664119,
+      "candidate": 36.972948,
+      "change_pct": 3.67,
+      "metric": "median_ttft_ms"
+    },
+    {
+      "baseline": 37.428899,
+      "candidate": 37.976667,
+      "change_pct": 1.463,
+      "metric": "p95_ttft_ms"
+    },
+    {
+      "baseline": 13.077766,
+      "candidate": 15.556,
+      "change_pct": 18.95,
+      "metric": "median_itl_ms"
+    },
+    {
+      "baseline": 13.09138,
+      "candidate": 16.159495,
+      "change_pct": 23.436,
+      "metric": "p95_itl_ms"
+    },
+    {
+      "baseline": 61.938994,
+      "candidate": 68.27749,
+      "change_pct": 10.233,
+      "metric": "median_e2el_ms"
+    }
+  ],
+  "schema_version": 1,
+  "smoke_only": true
+}
