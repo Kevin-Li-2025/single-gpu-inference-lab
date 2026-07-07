@@ -228,7 +228,6 @@ def render_markdown(summary: dict[str, Any]) -> str:
         ]
     )
     lines.extend(f"- {item}" for item in summary["claim_boundary"])
-    lines.append("")
     return "\n".join(lines)
 
 

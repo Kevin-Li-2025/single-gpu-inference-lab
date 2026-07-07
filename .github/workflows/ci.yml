@@ -30,6 +30,18 @@ jobs:
         run: |
           single-gpu-infer artifact-index --strict-warnings
 
+      - name: Validate public doc links
+        env:
+          PYTHONPATH: src
+        run: |
+          single-gpu-infer doc-links
+
+      - name: Build artifact catalog
+        env:
+          PYTHONPATH: src
+        run: |
+          single-gpu-infer artifact-catalog --output /tmp/artifact-catalog.json
+
       - name: Run CPU-safe pytest suite
         env:
           PYTHONPATH: src

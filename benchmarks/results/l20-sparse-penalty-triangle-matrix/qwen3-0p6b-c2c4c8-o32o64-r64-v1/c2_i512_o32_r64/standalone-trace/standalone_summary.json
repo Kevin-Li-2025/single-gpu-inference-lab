@@ -1,0 +1,30 @@
+{
+  "completed": 2,
+  "errors": [],
+  "failed": 0,
+  "input_tokens_requested": 512,
+  "max_concurrency": 2,
+  "median_e2el_ms": 325.5079030059278,
+  "median_itl_ms": 16.563904588110745,
+  "median_ttft_ms": 67.73102597799152,
+  "model": "qwen3-0p6b",
+  "num_prompts": 2,
+  "output_throughput": 94.95549140314168,
+  "output_tokens_requested": 16,
+  "p95_itl_ms": 16.570836072787642,
+  "p95_ttft_ms": 82.51138590276241,
+  "request_throughput": 6.126160735686559,
+  "schema_version": 1,
+  "trace": {
+    "event_count": 31,
+    "max_unique_tokens_seen": 15,
+    "provider_counts": {
+      "torch_fallback": 31
+    },
+    "reason_counts": {
+      "outside_sparse_gate": 31
+    },
+    "trace_exists": true
+  },
+  "variant": "standalone"
+}

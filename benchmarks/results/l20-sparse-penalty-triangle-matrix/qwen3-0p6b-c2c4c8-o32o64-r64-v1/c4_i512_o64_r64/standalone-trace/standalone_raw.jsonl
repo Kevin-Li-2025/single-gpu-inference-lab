@@ -1,0 +1,4 @@
+{"completion_tokens": 16, "error": null, "itl_ms": 15.544811962172389, "output_chunks": 16, "status": "ok", "total_ms": 315.9565278328955, "ttft_ms": 58.02345788106322}
+{"completion_tokens": 15, "error": null, "itl_ms": 15.314734540879726, "output_chunks": 15, "status": "ok", "total_ms": 329.21099686063826, "ttft_ms": 101.98757890611887}
+{"completion_tokens": 16, "error": null, "itl_ms": 15.436437912285328, "output_chunks": 16, "status": "ok", "total_ms": 330.09224897250533, "ttft_ms": 74.77049506269395}
+{"completion_tokens": 16, "error": null, "itl_ms": 15.389633132144809, "output_chunks": 16, "status": "ok", "total_ms": 330.8607239741832, "ttft_ms": 75.2958101220429}

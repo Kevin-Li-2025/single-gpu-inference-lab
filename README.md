@@ -35,6 +35,12 @@ speedups, integration behavior, and end-to-end token latency.
   zero regressions; batch-one cases remain launch-bound, so the next step is
   fusion into a larger sampler/logits boundary rather than another standalone
   launch.
+- The L20 sparse-penalty serving work now has the full positive/negative loop:
+  the official custom logits-processor path reaches vLLM but regresses serving,
+  while moving the same idea into the fused sampler boundary gives a repeated
+  4-row L20 serving-matrix signal. Fused median ITL is positive in all 4
+  comparable Qwen3-0.6B rows; the standalone request-level processor is positive
+  in only 1/4 rows.
 - Combining sparse token-history sampling with fused generated-token
   top-logprobs now produces a repeated A100 serving win on the richer
   top-k/top-p + penalties + logprobs workload, with an 8-row model/logprobs
@@ -70,6 +76,9 @@ than cuBLAS/full-logits baselines by 1.32x-1.39x on the tested A100 shapes.
 | Dense top-k/top-p + penalties | 1.36x-1.42x A100 microbenchmark speedup versus apply-then-sample | `benchmarks/results/a100-fused-topk-topp-penalty/` |
 | Sparse token-history penalties | 1.27x-1.31x A100 microbenchmark speedup without dense `[batch, vocab]` counts | `benchmarks/results/a100-sparse-topk-topp-penalty/` |
 | L20 sparse repetition penalty | Standalone CUDA kernel: 39 correct L20 cases, 1.26x median speedup, up to 4.09x when full-vocab penalty scans dominate launch overhead; calibrated policy chooses sparse for 21/39 cases with zero measured regressions | `benchmarks/results/l20-sparse-repetition-penalty/` |
+| L20 standalone logits-processor A/B | Real vLLM path proof but negative serving result: the CUDA op is hit 65 times, while median ITL regresses 14.33 ms -> 15.67 ms | `benchmarks/results/l20-sparse-repetition-penalty-serving/` |
+| L20 fused sparse sampler | FlashInfer-enabled L20 smoke moves median ITL 2.609 ms -> 2.575 ms with 48/50 traced sampler events eligible; formal 4-row triangle matrix then keeps fused median ITL positive in 4/4 comparable rows | `benchmarks/results/l20-vllm-fused-sparse-sampling/`, `benchmarks/results/l20-sparse-penalty-triangle-matrix/` |
+| L20 sparse penalty triangle | Native-vs-standalone-vs-fused Qwen3-0.6B matrix: fused median ITL is positive in 4/4 rows (+0.562%, +5.859%, +4.092%, +2.430%), fused median E2E is positive in 4/4 rows, and standalone logits processor is positive in only 1/4 rows | `benchmarks/results/l20-sparse-penalty-triangle-matrix/` |
 | Sparse sampler vs native PyTorch path | Median ITL 9.544 ms -> 4.093 ms on A100/Qwen2.5-0.5B | `benchmarks/results/a100-vllm-sparse-penalty-sampling/` |
 | Sparse sampler vs FlashInfer path | Median ITL 4.468 ms -> 4.346 ms on the same A100 workload | `benchmarks/results/a100-vllm-flashinfer-sparse-penalty-sampling/` |
 | Fused top-logprobs selection | 8.04x-9.17x A100 microbenchmark speedup; dirty and clean A100 serving artifacts show path validation, while clean request-level total time stayed flat | `benchmarks/results/a100-fused-top-logprobs/`, `benchmarks/results/a100-vllm-top-logprobs-clean/` |
@@ -124,7 +133,8 @@ See `docs/hardware-scope.md` for the full claim policy.
 | Q/K norm + Q/K RoPE + KV write | Path validation | Useful integration proof, too small alone for a broad serving claim. |
 | FlashInfer sampling route | Production comparator | Prewarm and compare against it when available. |
 | Sparse top-k/top-p + penalties | Active positive path | Continue only through real vLLM serving A/B and upstream-shaped gates. |
-| L20 sparse repetition penalty | Positive standalone CUDA boundary | Fold into a larger sampler/logits or LM-head epilogue path before making a serving claim. |
+| L20 sparse repetition penalty | Positive standalone CUDA boundary / negative standalone serving path | Keep as a kernel boundary and correctness oracle; do not claim serving win from the request-level logits processor. |
+| L20 fused sparse penalty sampler | Positive 4-row L20 serving matrix | Keep the claim scoped to Qwen3-0.6B/c2-c8 shapes: fused median ITL wins in 4/4 comparable rows, while standalone request-level processor wins in only 1/4. |
 | Fused top-logprobs | Correct standalone path, flat request time | Useful only when folded into a larger sampling/logits boundary. |
 | Combined sparse sampling + fused top-logprobs | Positive A100 serving matrix | First repeated combined-boundary serving win: 8 paired rows, 6/8 median ITL positives, and 4/4 positives at `logprobs=20`; every row proves `borrowed` raw logits and sparse-sampler trace coverage. |
 | LM-head / GEMM epilogue | Current P0 boundary | Implement producer-side semantics instead of external standalone GEMM. |
@@ -144,8 +154,11 @@ Full status map: `docs/experiment-status.md`
 | Experiment status map | `docs/experiment-status.md` |
 | Top-tier kernel gaps | `docs/l20-top-tier-kernel-gaps.md` |
 | KV/decode pipeline blueprint | `docs/l20-kv-decode-pipeline-blueprint.md` |
+| L20 sparse penalty case study | `docs/l20-sparse-penalty-case-study.md` |
 | vLLM integration notes | `integrations/vllm/README.md` |
 | Artifact index | `benchmarks/results/README.md` |
+| Artifact catalog JSON | `benchmarks/results/artifact-catalog.json` |
+| L20 sparse penalty triangle matrix | `benchmarks/results/l20-sparse-penalty-triangle-matrix/qwen3-0p6b-c2c4c8-o32o64-r64-v1/README.md` |
 | Combined A100 sampling/logprobs A/B | `benchmarks/results/a100-vllm-combined-sampling-logprobs/README.md` |
 | Combined A100 sampling/logprobs matrix | `benchmarks/results/a100-vllm-combined-sampling-logprobs-matrix/README.md` |
 | Serving optimization ceiling | `benchmarks/results/l20-serving-optimization-ceiling/README.md` |
@@ -163,6 +176,19 @@ Checked-in benchmark artifact index validation:
 
 ```bash
 PYTHONPATH=src single-gpu-infer artifact-index
+```
+
+Local Markdown path validation:
+
+```bash
+PYTHONPATH=src single-gpu-infer doc-links
+```
+
+Machine-readable benchmark artifact catalog:
+
+```bash
+PYTHONPATH=src single-gpu-infer artifact-catalog \
+  --output benchmarks/results/artifact-catalog.json
 ```
 
 Sampling-semantics probe against an OpenAI-compatible vLLM server:
@@ -210,6 +236,16 @@ EXECUTION_MODE=eager INPUT_TOKENS=512 MAX_CONCURRENCY=8 NUM_PROMPTS=32 \
 scripts/run_vllm_l20_sparse_repetition_penalty_serving_ab.sh \
   /home/hhai/models/Qwen2.5-Coder-1.5B qwen25-coder-1p5b \
   benchmarks/results/l20-sparse-repetition-penalty-serving/eager-b8-i512 \
+  /home/hhai/vllm-l20-rfc
+```
+
+L20 native-vs-standalone-vs-fused sparse-penalty triangle matrix:
+
+```bash
+MATRIX_ROWS="c2_i512_o32_r64 c4_i512_o32_r64 c8_i512_o32_r64 c4_i512_o64_r64" \
+scripts/run_vllm_l20_sparse_penalty_triangle_matrix.sh \
+  /home/hhai/models/Qwen3-0.6B qwen3-0p6b \
+  benchmarks/results/l20-sparse-penalty-triangle-matrix/qwen3-0p6b-c2c4c8-o32o64-r64-v1 \
   /home/hhai/vllm-l20-rfc
 ```
 

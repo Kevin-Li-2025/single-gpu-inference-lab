@@ -1,0 +1,40 @@
+{
+  "attention_backend": "FLASHINFER",
+  "compilation_config": {
+    "cudagraph_mode": "FULL",
+    "custom_ops": [
+      "none",
+      "+l20_stack::sparse_repetition_penalty_out"
+    ],
+    "mode": 3,
+    "pass_config": {
+      "fuse_rope_kvcache": false
+    },
+    "splitting_ops": [
+      "l20_stack::sparse_repetition_penalty_out"
+    ]
+  },
+  "cuda_home": "/home/hhai/venvs/vllm-l20/lib/python3.12/site-packages/nvidia/cu13",
+  "cudacxx": "/home/hhai/venvs/vllm-l20/lib/python3.12/site-packages/nvidia/cu13/bin/nvcc",
+  "execution_mode": "eager",
+  "gpu_memory_utilization": 0.7,
+  "input_tokens": 512,
+  "logits_processors_flag": "--logits-processors",
+  "max_concurrency": 8,
+  "max_model_len": 2048,
+  "model": "/home/hhai/models/Qwen3-0.6B",
+  "num_prompts": 64,
+  "op_library": "l20_sparse_repetition_penalty_ops.so",
+  "output_tokens": 32,
+  "processor_fqcn": "integrations.vllm.l20_sparse_repetition_penalty_logits_processor:L20SparseRepetitionPenaltyProcessor",
+  "repetition_penalty": 1.1,
+  "schema_version": 1,
+  "served_name": "qwen3-0p6b",
+  "temperature": 0.8,
+  "top_k": 50,
+  "top_p": 0.9,
+  "trace_num_prompts": 8,
+  "trace_output_tokens": 16,
+  "trace_warmup": 1,
+  "warmup": 4
+}

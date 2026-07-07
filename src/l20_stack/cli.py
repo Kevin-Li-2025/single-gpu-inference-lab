@@ -7,7 +7,9 @@ import json
 from pathlib import Path
 from typing import Sequence
 
+from l20_stack.artifact_catalog import build_artifact_catalog
 from l20_stack.artifacts import inspect_artifact_index
+from l20_stack.doc_links import inspect_doc_links
 from l20_stack.experiment import ExperimentConfig
 from l20_stack.memory import estimate_training_memory
 from l20_stack.operators import OperatorTarget, l20_operator_summary, plan_operators
@@ -43,6 +45,39 @@ def build_parser() -> argparse.ArgumentParser:
         "--strict-warnings",
         action="store_true",
         help="return a non-zero exit code when artifact warnings are present",
+    )
+
+    doc_links = subparsers.add_parser(
+        "doc-links", help="validate local Markdown path references"
+    )
+    doc_links.add_argument(
+        "--root",
+        default=".",
+        help="repository root that local Markdown paths are resolved from",
+    )
+    doc_links.add_argument(
+        "--file",
+        action="append",
+        dest="files",
+        help="specific Markdown file to check; may be repeated",
+    )
+
+    artifact_catalog = subparsers.add_parser(
+        "artifact-catalog", help="emit a machine-readable benchmark artifact catalog"
+    )
+    artifact_catalog.add_argument(
+        "--index",
+        default="benchmarks/results/README.md",
+        help="path to the benchmark result index README",
+    )
+    artifact_catalog.add_argument(
+        "--result-root",
+        default="benchmarks/results",
+        help="directory that contains checked-in benchmark result artifacts",
+    )
+    artifact_catalog.add_argument(
+        "--output",
+        help="optional path to write the catalog JSON; stdout is always emitted",
     )
 
     rmsnorm_summary = subparsers.add_parser(
@@ -108,6 +143,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(report.to_json())
         if report.errors or (args.strict_warnings and report.warnings):
             return 1
+        return 0
+
+    if args.command == "doc-links":
+        report = inspect_doc_links(args.root, files=args.files)
+        print(report.to_json())
+        return 0 if report.ok else 1
+
+    if args.command == "artifact-catalog":
+        catalog = build_artifact_catalog(args.index, result_root=args.result_root)
+        output = catalog.to_json()
+        if args.output:
+            Path(args.output).write_text(output + "\n", encoding="utf-8")
+        print(output)
         return 0
 
     if args.command == "rmsnorm-summary":

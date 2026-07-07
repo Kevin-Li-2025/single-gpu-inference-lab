@@ -11,6 +11,7 @@ This file is the fastest way to orient in the repo.
 | `docs/experiment-status.md` | Current status map and negative-result ledger. |
 | `docs/where-optimizations-stop-mattering.md` | Paper-style one-page systems thesis. |
 | `benchmarks/results/README.md` | Curated artifact index. |
+| `benchmarks/results/artifact-catalog.json` | Generated machine-readable artifact catalog. |
 | `integrations/vllm/README.md` | vLLM hook and patch status. |
 
 ## Code Areas
@@ -23,6 +24,14 @@ This file is the fastest way to orient in the repo.
 | `integrations/vllm/` | Patch installers and runtime dispatch helpers for local vLLM experiments. |
 | `scripts/` | Benchmarks, profilers, serving campaigns, scouts, and summarizers. |
 | `tests/` | CPU-safe and source-level regression tests. |
+
+## CPU-Safe Repository Checks
+
+| Command | Purpose |
+| --- | --- |
+| `single-gpu-infer artifact-index --strict-warnings` | Validate curated benchmark result references. |
+| `single-gpu-infer doc-links` | Validate local paths in public Markdown entry points. |
+| `single-gpu-infer artifact-catalog --output benchmarks/results/artifact-catalog.json` | Regenerate the machine-readable result catalog. |
 
 ## Evidence Areas
 
@@ -46,6 +55,7 @@ serving semantics probe
 -> fused top-logprobs path proof
 -> combined sparse-sampling + top-logprobs serving matrix
 -> standalone LM-head sparse-penalty negative proof
+-> L20 sparse repetition-penalty kernel + negative processor + fused sampler matrix
 -> true GEMM epilogue / upstream LM-head boundary
 ```
 
@@ -66,6 +76,8 @@ Relevant files:
 - `benchmarks/results/a100-vllm-combined-sampling-logprobs-matrix/`
 - `benchmarks/results/a100-lm-head-sparse-penalty-boundary/`
 - `benchmarks/results/a100-vllm-gemm-epilogue-semantic-trace/`
+- `benchmarks/results/l20-sparse-repetition-penalty/`
+- `benchmarks/results/l20-sparse-penalty-triangle-matrix/`
 - `benchmarks/results/l20-vllm-gemm-epilogue-scout/`
 - `benchmarks/results/l20-vllm-gemm-epilogue-trace/`
 

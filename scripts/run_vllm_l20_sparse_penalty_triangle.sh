@@ -282,7 +282,7 @@ payload = {
     "repetition_penalty": float("$repetition_penalty"),
     "processor_fqcn": "$processor_fqcn",
     "logits_processors_flag": "$logits_processors_flag",
-    "op_library": "$op_library",
+    "op_library": "l20_sparse_repetition_penalty_ops.so",
     "compilation_config": compilation_config,
     "cuda_home": os.environ.get("CUDA_HOME"),
     "cudacxx": os.environ.get("CUDACXX"),

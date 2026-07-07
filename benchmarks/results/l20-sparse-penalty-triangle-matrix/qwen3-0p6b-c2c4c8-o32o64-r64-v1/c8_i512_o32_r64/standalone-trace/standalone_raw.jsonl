@@ -1,0 +1,8 @@
+{"completion_tokens": 16, "error": null, "itl_ms": 15.085671097040176, "output_chunks": 16, "status": "ok", "total_ms": 321.6905479785055, "ttft_ms": 54.95495395734906}
+{"completion_tokens": 16, "error": null, "itl_ms": 15.064276056364179, "output_chunks": 16, "status": "ok", "total_ms": 335.9664180316031, "ttft_ms": 80.85693791508675}
+{"completion_tokens": 16, "error": null, "itl_ms": 15.141946962103248, "output_chunks": 16, "status": "ok", "total_ms": 335.3917929343879, "ttft_ms": 80.40771097876132}
+{"completion_tokens": 15, "error": null, "itl_ms": 15.03589004278183, "output_chunks": 15, "status": "ok", "total_ms": 349.81026593595743, "ttft_ms": 128.1200349330902}
+{"completion_tokens": 15, "error": null, "itl_ms": 15.05161402747035, "output_chunks": 15, "status": "ok", "total_ms": 349.31802516803145, "ttft_ms": 127.7541071176529}
+{"completion_tokens": 16, "error": null, "itl_ms": 15.074250986799598, "output_chunks": 16, "status": "ok", "total_ms": 351.6349168494344, "ttft_ms": 103.67811401374638}
+{"completion_tokens": 16, "error": null, "itl_ms": 15.06913104094565, "output_chunks": 16, "status": "ok", "total_ms": 351.28629580140114, "ttft_ms": 103.59987989068031}
+{"completion_tokens": 16, "error": null, "itl_ms": 15.082214027643204, "output_chunks": 16, "status": "ok", "total_ms": 350.77789705246687, "ttft_ms": 102.82107605598867}

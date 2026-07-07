@@ -1,0 +1,252 @@
+{
+  "artifact": "c4_i512_o64_r64",
+  "boundary": "three-way serving comparison: native vLLM penalty path vs request-level standalone logits processor vs fused sampler-boundary sparse penalty",
+  "claim_boundary": [
+    "Only compare rows when comparable_workload is true.",
+    "Latency variants should run without trace enabled; trace variants are path proof only.",
+    "This comparison isolates repetition penalty so standalone and fused routes share one semantic target.",
+    "Treat small deltas as directional until request count and traffic shape are expanded."
+  ],
+  "comparable_workload": true,
+  "delta_vs_baseline": {
+    "fused": [
+      {
+        "baseline": 4.073959,
+        "candidate": 4.169083,
+        "higher_is_better": true,
+        "improvement_pct": 2.335,
+        "metric": "request_throughput",
+        "speedup": 1.023349
+      },
+      {
+        "baseline": 260.542386,
+        "candidate": 266.625862,
+        "higher_is_better": true,
+        "improvement_pct": 2.335,
+        "metric": "output_throughput",
+        "speedup": 1.023349
+      },
+      {
+        "baseline": 54.325759,
+        "candidate": 52.675702,
+        "higher_is_better": false,
+        "improvement_pct": 3.132,
+        "metric": "median_ttft_ms",
+        "speedup": 1.031325
+      },
+      {
+        "baseline": 74.990035,
+        "candidate": 58.435069,
+        "higher_is_better": false,
+        "improvement_pct": 28.331,
+        "metric": "p95_ttft_ms",
+        "speedup": 1.283305
+      },
+      {
+        "baseline": 14.562633,
+        "candidate": 13.990212,
+        "higher_is_better": false,
+        "improvement_pct": 4.092,
+        "metric": "median_itl_ms",
+        "speedup": 1.040916
+      },
+      {
+        "baseline": 15.854749,
+        "candidate": 15.379268,
+        "higher_is_better": false,
+        "improvement_pct": 3.092,
+        "metric": "p95_itl_ms",
+        "speedup": 1.030917
+      },
+      {
+        "baseline": 972.970402,
+        "candidate": 935.728812,
+        "higher_is_better": false,
+        "improvement_pct": 3.98,
+        "metric": "median_e2el_ms",
+        "speedup": 1.0398
+      }
+    ],
+    "standalone": [
+      {
+        "baseline": 4.073959,
+        "candidate": 3.96996,
+        "higher_is_better": true,
+        "improvement_pct": -2.553,
+        "metric": "request_throughput",
+        "speedup": 0.974472
+      },
+      {
+        "baseline": 260.542386,
+        "candidate": 253.953402,
+        "higher_is_better": true,
+        "improvement_pct": -2.529,
+        "metric": "output_throughput",
+        "speedup": 0.974711
+      },
+      {
+        "baseline": 54.325759,
+        "candidate": 55.624596,
+        "higher_is_better": false,
+        "improvement_pct": -2.335,
+        "metric": "median_ttft_ms",
+        "speedup": 0.97665
+      },
+      {
+        "baseline": 74.990035,
+        "candidate": 61.436752,
+        "higher_is_better": false,
+        "improvement_pct": 22.061,
+        "metric": "p95_ttft_ms",
+        "speedup": 1.220605
+      },
+      {
+        "baseline": 14.562633,
+        "candidate": 14.833198,
+        "higher_is_better": false,
+        "improvement_pct": -1.824,
+        "metric": "median_itl_ms",
+        "speedup": 0.98176
+      },
+      {
+        "baseline": 15.854749,
+        "candidate": 16.202479,
+        "higher_is_better": false,
+        "improvement_pct": -2.146,
+        "metric": "p95_itl_ms",
+        "speedup": 0.978538
+      },
+      {
+        "baseline": 972.970402,
+        "candidate": 994.551498,
+        "higher_is_better": false,
+        "improvement_pct": -2.17,
+        "metric": "median_e2el_ms",
+        "speedup": 0.978301
+      }
+    ]
+  },
+  "schema_version": 1,
+  "trace_proof": {
+    "fused": {
+      "eligible_events": 34,
+      "eligible_fraction": 0.9444444444444444,
+      "fallback_events": 2,
+      "logits_shape_counts": {
+        "1x151936": 18,
+        "256x151936": 2,
+        "3x151936": 1,
+        "4x151936": 15
+      },
+      "reason_counts": {
+        "outside_l20_profitability_gate": 2
+      },
+      "total_events": 36,
+      "trace_exists": true
+    },
+    "standalone": {
+      "event_count": 32,
+      "max_unique_tokens_seen": 15,
+      "provider_counts": {
+        "sparse_op": 15,
+        "torch_fallback": 17
+      },
+      "reason_counts": {
+        "inside_sparse_gate": 15,
+        "outside_sparse_gate": 17
+      },
+      "trace_exists": true
+    }
+  },
+  "variants": {
+    "baseline": {
+      "completed": 64,
+      "errors": [],
+      "failed": 0,
+      "input_tokens_requested": 512,
+      "max_concurrency": 4,
+      "median_e2el_ms": 972.9704021010548,
+      "median_itl_ms": 14.562633412424475,
+      "median_ttft_ms": 54.32575894519687,
+      "model": "qwen3-0p6b",
+      "num_prompts": 64,
+      "output_throughput": 260.5423864198817,
+      "output_tokens_requested": 64,
+      "p95_itl_ms": 15.854748548008502,
+      "p95_ttft_ms": 74.99003480188549,
+      "request_throughput": 4.073958644239538,
+      "schema_version": 1,
+      "trace": {
+        "trace_exists": false
+      },
+      "variant": "baseline"
+    },
+    "fused": {
+      "completed": 64,
+      "errors": [],
+      "failed": 0,
+      "input_tokens_requested": 512,
+      "max_concurrency": 4,
+      "median_e2el_ms": 935.7288124738261,
+      "median_itl_ms": 13.99021246470511,
+      "median_ttft_ms": 52.67570249270648,
+      "model": "qwen3-0p6b",
+      "num_prompts": 64,
+      "output_throughput": 266.62586243236984,
+      "output_tokens_requested": 64,
+      "p95_itl_ms": 15.379267977550626,
+      "p95_ttft_ms": 58.43506916426122,
+      "request_throughput": 4.169082627821077,
+      "schema_version": 1,
+      "trace": {
+        "trace_exists": false
+      },
+      "variant": "fused"
+    },
+    "standalone": {
+      "completed": 64,
+      "errors": [],
+      "failed": 0,
+      "input_tokens_requested": 512,
+      "max_concurrency": 4,
+      "median_e2el_ms": 994.551497977227,
+      "median_itl_ms": 14.833197579719126,
+      "median_ttft_ms": 55.62459595967084,
+      "model": "qwen3-0p6b",
+      "num_prompts": 64,
+      "output_throughput": 253.95340241084972,
+      "output_tokens_requested": 64,
+      "p95_itl_ms": 16.202479135245085,
+      "p95_ttft_ms": 61.436752090230584,
+      "request_throughput": 3.969960369881383,
+      "schema_version": 1,
+      "trace": {
+        "trace_exists": false
+      },
+      "variant": "standalone"
+    }
+  },
+  "workloads": {
+    "baseline": {
+      "input_tokens_requested": 512,
+      "max_concurrency": 4,
+      "model": "qwen3-0p6b",
+      "num_prompts": 64,
+      "output_tokens_requested": 64
+    },
+    "fused": {
+      "input_tokens_requested": 512,
+      "max_concurrency": 4,
+      "model": "qwen3-0p6b",
+      "num_prompts": 64,
+      "output_tokens_requested": 64
+    },
+    "standalone": {
+      "input_tokens_requested": 512,
+      "max_concurrency": 4,
+      "model": "qwen3-0p6b",
+      "num_prompts": 64,
+      "output_tokens_requested": 64
+    }
+  }
+}
