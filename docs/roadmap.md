@@ -19,6 +19,12 @@ The project should avoid broad framework claims until the implementation earns t
 - benchmark reports that include latency, throughput, and peak memory
 - model cards generated from experiment manifests
 
+The next kernel-serving narrative is narrower and more valuable than a generic
+KV-cache wishlist: use the L20 KV/decode pipeline in
+`docs/l20-kv-decode-pipeline-blueprint.md` to connect PagedAttention, prefix
+caching, FP8 KV, sparse logits processing, and MLA/GQA-style compression into
+measured serving ablations.
+
 ## Version Plan
 
 ### v0.1: Reproducible QLoRA Baseline

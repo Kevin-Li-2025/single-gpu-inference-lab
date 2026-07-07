@@ -1,0 +1,9 @@
+{
+  "gpu": "NVIDIA L20",
+  "compute_cap": "8.9",
+  "cases": 39,
+  "median_speedup": 1.256318,
+  "min_speedup": 0.968067,
+  "max_speedup": 3.978648,
+  "max_abs_diff": 0.0
+}
