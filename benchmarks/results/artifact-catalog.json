@@ -4,7 +4,7 @@
     "analysis": 1,
     "negative": 3,
     "other": 5,
-    "path_proof": 10,
+    "path_proof": 11,
     "positive": 10
   },
   "entries": [
@@ -62,6 +62,17 @@
       "reference": "a100-sparse-topk-topp-penalty/",
       "status": "A100 serving-shaped micro result",
       "summary": "Replaces dense counts with sparse token history and keeps 1.27x-1.31x wins versus apply-then-sample on Qwen-vocab shapes."
+    },
+    {
+      "category": "path_proof",
+      "compact_file_count": 2,
+      "has_campaign_summary_json": false,
+      "has_readme": true,
+      "has_summary_json": true,
+      "path": "benchmarks/results/cpu-tiny-transformer",
+      "reference": "cpu-tiny-transformer/",
+      "status": "CPU path proof",
+      "summary": "Adds a self-written FP32 C++ tiny-transformer decode scaffold with synthetic weights, RMSNorm, RoPE, KV cache, causal attention, greedy decode, and naive/tiled matmul; this is a mechanics and profiling baseline, not a real small-model serving claim."
     },
     {
       "category": "other",
@@ -372,7 +383,7 @@
       "summary": "Custom three-way serving path evidence; not yet a broad win."
     }
   ],
-  "entry_count": 33,
+  "entry_count": 34,
   "index_path": "benchmarks/results/README.md",
   "result_root": "benchmarks/results",
   "schema_version": 1

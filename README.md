@@ -47,6 +47,9 @@ speedups, integration behavior, and end-to-end token latency.
   matrix showing the strongest gains on small models and `logprobs=20`.
 - Producer-side LM-head experiments remain boundary checks until they become a
   true GEMM epilogue or upstream-shaped integration.
+- The CPU track has started as a control, not a new mainline: `cpp/my.cpp`
+  implements a synthetic FP32 tiny-transformer decode path so CPU mechanics can
+  be profiled before comparing against llama.cpp or real GGUF small models.
 - Negative results stay in the repo when they change the direction.
 
 ## Current Checkpoint
@@ -79,6 +82,7 @@ than cuBLAS/full-logits baselines by 1.32x-1.39x on the tested A100 shapes.
 | L20 standalone logits-processor A/B | Real vLLM path proof but negative serving result: the CUDA op is hit 65 times, while median ITL regresses 14.33 ms -> 15.67 ms | `benchmarks/results/l20-sparse-repetition-penalty-serving/` |
 | L20 fused sparse sampler | FlashInfer-enabled L20 smoke moves median ITL 2.609 ms -> 2.575 ms with 48/50 traced sampler events eligible; formal 4-row triangle matrix then keeps fused median ITL positive in 4/4 comparable rows | `benchmarks/results/l20-vllm-fused-sparse-sampling/`, `benchmarks/results/l20-sparse-penalty-triangle-matrix/` |
 | L20 sparse penalty triangle | Native-vs-standalone-vs-fused Qwen3-0.6B matrix: fused median ITL is positive in 4/4 rows (+0.562%, +5.859%, +4.092%, +2.430%), fused median E2E is positive in 4/4 rows, and standalone logits processor is positive in only 1/4 rows | `benchmarks/results/l20-sparse-penalty-triangle-matrix/` |
+| CPU tiny transformer scaffold | Self-written C++ FP32 synthetic decode path with RMSNorm, RoPE, KV cache, causal attention, greedy decode, and naive/tiled matmul; path proof only, not a real CPU small-model serving claim | `benchmarks/results/cpu-tiny-transformer/` |
 | Sparse sampler vs native PyTorch path | Median ITL 9.544 ms -> 4.093 ms on A100/Qwen2.5-0.5B | `benchmarks/results/a100-vllm-sparse-penalty-sampling/` |
 | Sparse sampler vs FlashInfer path | Median ITL 4.468 ms -> 4.346 ms on the same A100 workload | `benchmarks/results/a100-vllm-flashinfer-sparse-penalty-sampling/` |
 | Fused top-logprobs selection | 8.04x-9.17x A100 microbenchmark speedup; dirty and clean A100 serving artifacts show path validation, while clean request-level total time stayed flat | `benchmarks/results/a100-fused-top-logprobs/`, `benchmarks/results/a100-vllm-top-logprobs-clean/` |
@@ -135,6 +139,7 @@ See `docs/hardware-scope.md` for the full claim policy.
 | Sparse top-k/top-p + penalties | Active positive path | Continue only through real vLLM serving A/B and upstream-shaped gates. |
 | L20 sparse repetition penalty | Positive standalone CUDA boundary / negative standalone serving path | Keep as a kernel boundary and correctness oracle; do not claim serving win from the request-level logits processor. |
 | L20 fused sparse penalty sampler | Positive 4-row L20 serving matrix | Keep the claim scoped to Qwen3-0.6B/c2-c8 shapes: fused median ITL wins in 4/4 comparable rows, while standalone request-level processor wins in only 1/4. |
+| CPU tiny transformer | Path proof | Keep as a scalar C++ control for CPU decode mechanics and future CPU-vs-L20 break-even analysis. |
 | Fused top-logprobs | Correct standalone path, flat request time | Useful only when folded into a larger sampling/logits boundary. |
 | Combined sparse sampling + fused top-logprobs | Positive A100 serving matrix | First repeated combined-boundary serving win: 8 paired rows, 6/8 median ITL positives, and 4/4 positives at `logprobs=20`; every row proves `borrowed` raw logits and sparse-sampler trace coverage. |
 | LM-head / GEMM epilogue | Current P0 boundary | Implement producer-side semantics instead of external standalone GEMM. |
@@ -155,10 +160,12 @@ Full status map: `docs/experiment-status.md`
 | Top-tier kernel gaps | `docs/l20-top-tier-kernel-gaps.md` |
 | KV/decode pipeline blueprint | `docs/l20-kv-decode-pipeline-blueprint.md` |
 | L20 sparse penalty case study | `docs/l20-sparse-penalty-case-study.md` |
+| CPU small-model boundary | `docs/cpu-small-model-boundary.md` |
 | vLLM integration notes | `integrations/vllm/README.md` |
 | Artifact index | `benchmarks/results/README.md` |
 | Artifact catalog JSON | `benchmarks/results/artifact-catalog.json` |
 | L20 sparse penalty triangle matrix | `benchmarks/results/l20-sparse-penalty-triangle-matrix/qwen3-0p6b-c2c4c8-o32o64-r64-v1/README.md` |
+| CPU tiny transformer artifact | `benchmarks/results/cpu-tiny-transformer/README.md` |
 | Combined A100 sampling/logprobs A/B | `benchmarks/results/a100-vllm-combined-sampling-logprobs/README.md` |
 | Combined A100 sampling/logprobs matrix | `benchmarks/results/a100-vllm-combined-sampling-logprobs-matrix/README.md` |
 | Serving optimization ceiling | `benchmarks/results/l20-serving-optimization-ceiling/README.md` |
@@ -189,6 +196,21 @@ Machine-readable benchmark artifact catalog:
 ```bash
 PYTHONPATH=src single-gpu-infer artifact-catalog \
   --output benchmarks/results/artifact-catalog.json
+```
+
+Self-written CPU tiny-transformer smoke:
+
+```bash
+scripts/bench_cpu_tiny_transformer.sh \
+  --layers 2 \
+  --dim 64 \
+  --heads 4 \
+  --vocab 1024 \
+  --prompt 32 \
+  --decode 16 \
+  --matmul tiled \
+  --tile 32 \
+  --seed 7
 ```
 
 Sampling-semantics probe against an OpenAI-compatible vLLM server:
@@ -279,6 +301,7 @@ Boundary scripts:
 | Area | Purpose |
 | --- | --- |
 | `src/l20_stack/` | Legacy implementation namespace for CPU-safe planners, policy gates, memory calculators, and Triton/CUDA operator wrappers. |
+| `cpp/` | Self-contained C++ CPU inference experiments such as `cpp/my.cpp`. |
 | `integrations/vllm/` | Local vLLM patch installers and guarded dispatch helpers. |
 | `scripts/` | Benchmarks, profiling wrappers, serving campaigns, scouts, and summarizers. |
 | `benchmarks/results/` | Compact checked-in evidence: JSON summaries, serving reports, and short Markdown notes. |

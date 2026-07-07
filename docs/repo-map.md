@@ -10,6 +10,7 @@ This file is the fastest way to orient in the repo.
 | `docs/hardware-scope.md` | Hardware claim policy: L20-first, A100 controls. |
 | `docs/experiment-status.md` | Current status map and negative-result ledger. |
 | `docs/where-optimizations-stop-mattering.md` | Paper-style one-page systems thesis. |
+| `docs/cpu-small-model-boundary.md` | CPU tiny-transformer path proof and future CPU-vs-L20 break-even scope. |
 | `benchmarks/results/README.md` | Curated artifact index. |
 | `benchmarks/results/artifact-catalog.json` | Generated machine-readable artifact catalog. |
 | `integrations/vllm/README.md` | vLLM hook and patch status. |
@@ -21,6 +22,7 @@ This file is the fastest way to orient in the repo.
 | `src/l20_stack/epilogue/` | Legacy namespace for CPU-safe planning around logits/sampling epilogue boundaries. |
 | `src/l20_stack/ops/` | Legacy namespace for Triton and CUDA-facing operator prototypes. |
 | `src/l20_stack/` | Legacy implementation namespace for CLI, memory estimators, config, hardware descriptors, and research utilities. |
+| `cpp/` | Self-contained C++ CPU inference experiments. |
 | `integrations/vllm/` | Patch installers and runtime dispatch helpers for local vLLM experiments. |
 | `scripts/` | Benchmarks, profilers, serving campaigns, scouts, and summarizers. |
 | `tests/` | CPU-safe and source-level regression tests. |
@@ -56,6 +58,7 @@ serving semantics probe
 -> combined sparse-sampling + top-logprobs serving matrix
 -> standalone LM-head sparse-penalty negative proof
 -> L20 sparse repetition-penalty kernel + negative processor + fused sampler matrix
+-> CPU tiny-transformer path proof for cost/boundary control
 -> true GEMM epilogue / upstream LM-head boundary
 ```
 
@@ -67,6 +70,8 @@ Relevant files:
 - `scripts/benchmark_l20_sparse_topk_topp_penalty_sampling.py`
 - `scripts/summarize_l20_gemm_epilogue_trace.py`
 - `scripts/scout_vllm_gemm_epilogue_boundary.py`
+- `scripts/bench_cpu_tiny_transformer.sh`
+- `cpp/my.cpp`
 - `src/l20_stack/epilogue/sampler_epilogue.py`
 - `src/l20_stack/ops/triton_sampling.py`
 - `integrations/vllm/l20_gemm_epilogue_trace.py`
@@ -78,6 +83,7 @@ Relevant files:
 - `benchmarks/results/a100-vllm-gemm-epilogue-semantic-trace/`
 - `benchmarks/results/l20-sparse-repetition-penalty/`
 - `benchmarks/results/l20-sparse-penalty-triangle-matrix/`
+- `benchmarks/results/cpu-tiny-transformer/`
 - `benchmarks/results/l20-vllm-gemm-epilogue-scout/`
 - `benchmarks/results/l20-vllm-gemm-epilogue-trace/`
 

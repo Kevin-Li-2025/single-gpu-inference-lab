@@ -15,6 +15,7 @@ ALLOWED_LOCAL_PREFIXES = (
     ".github/",
     "benchmarks/",
     "configs/",
+    "cpp/",
     "cuda/",
     "docs/",
     "integrations/",
