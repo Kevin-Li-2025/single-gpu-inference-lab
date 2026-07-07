@@ -125,7 +125,7 @@ def sample():
     assert "sampling_metadata.frequency_penalties" in patched_active_sampler
     assert 'getattr(sampling_metadata, "l20_defer_penalties", False)' in patched_active_sampler
     assert "self.l20_sampler_seeds" in patched_gpu_input_batch
-    assert "pin_memory=pin_memory" in patched_gpu_input_batch
+    assert 'globals().get("PIN_MEMORY"' in patched_gpu_input_batch
     assert "self.l20_sampler_positions" in patched_gpu_input_batch
     assert "self.l20_sampler_positions_cpu_tensor" in patched_gpu_input_batch
     assert "self.l20_sampler_positions_cpu[:num_reqs]" in patched_gpu_input_batch

@@ -16,6 +16,10 @@ IMPORT_LINE = (
 )
 DEFER_ENV = "VLLM_L20_TOPK_TOPP_DEFER_PENALTIES"
 ALLOW_LOGPROBS_ENV = "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS"
+PIN_MEMORY_EXPR = (
+    'globals().get("PIN_MEMORY", locals().get("pin_memory", '
+    'getattr(self, "pin_memory", False)))'
+)
 
 TOPK_IMPORT_MARKER = "from vllm.triton_utils import HAS_TRITON\n"
 TOPK_IMPORT_MARKER_V010 = "from vllm.platforms import current_platform\n"
@@ -294,20 +298,20 @@ INPUT_BATCH_TOPK_REQS_V010 = """        self.top_k_reqs: set[str] = set()
 
         # IDs of requests which do not support spec decoding
 """
-INPUT_BATCH_TOPK_REQS_PATCHED = """        self.top_k_reqs: set[str] = set()
+INPUT_BATCH_TOPK_REQS_PATCHED = f"""        self.top_k_reqs: set[str] = set()
 
         self.l20_sampler_seeds = torch.empty(
             (max_num_reqs,), dtype=torch.int64, device=device
         )
         self.l20_sampler_seeds_cpu_tensor = torch.empty(
-            (max_num_reqs,), dtype=torch.int64, device=\"cpu\", pin_memory=pin_memory
+            (max_num_reqs,), dtype=torch.int64, device=\"cpu\", pin_memory={PIN_MEMORY_EXPR}
         )
         self.l20_sampler_seeds_cpu = self.l20_sampler_seeds_cpu_tensor.numpy()
         self.l20_sampler_positions = torch.empty(
             (max_num_reqs,), dtype=torch.int64, device=device
         )
         self.l20_sampler_positions_cpu_tensor = torch.empty(
-            (max_num_reqs,), dtype=torch.int64, device="cpu", pin_memory=pin_memory
+            (max_num_reqs,), dtype=torch.int64, device="cpu", pin_memory={PIN_MEMORY_EXPR}
         )
         self.l20_sampler_positions_cpu = self.l20_sampler_positions_cpu_tensor.numpy()
         self.l20_sampler_indices = torch.arange(
@@ -316,20 +320,20 @@ INPUT_BATCH_TOPK_REQS_PATCHED = """        self.top_k_reqs: set[str] = set()
 
         # Frequency penalty related data structures
 """
-INPUT_BATCH_TOPK_REQS_V010_PATCHED = """        self.top_k_reqs: set[str] = set()
+INPUT_BATCH_TOPK_REQS_V010_PATCHED = f"""        self.top_k_reqs: set[str] = set()
 
         self.l20_sampler_seeds = torch.empty(
             (max_num_reqs,), dtype=torch.int64, device=device
         )
         self.l20_sampler_seeds_cpu_tensor = torch.empty(
-            (max_num_reqs,), dtype=torch.int64, device="cpu", pin_memory=pin_memory
+            (max_num_reqs,), dtype=torch.int64, device="cpu", pin_memory={PIN_MEMORY_EXPR}
         )
         self.l20_sampler_seeds_cpu = self.l20_sampler_seeds_cpu_tensor.numpy()
         self.l20_sampler_positions = torch.empty(
             (max_num_reqs,), dtype=torch.int64, device=device
         )
         self.l20_sampler_positions_cpu_tensor = torch.empty(
-            (max_num_reqs,), dtype=torch.int64, device="cpu", pin_memory=pin_memory
+            (max_num_reqs,), dtype=torch.int64, device="cpu", pin_memory={PIN_MEMORY_EXPR}
         )
         self.l20_sampler_positions_cpu = self.l20_sampler_positions_cpu_tensor.numpy()
         self.l20_sampler_indices = torch.arange(
@@ -426,13 +430,13 @@ INPUT_BATCH_SPARSE_HISTORY = f"""        l20_history_tokens = None
                 self.vocab_size,
                 dtype=torch.int64,
                 device="cpu",
-                pin_memory=self.pin_memory,
+                pin_memory={PIN_MEMORY_EXPR},
             )
             l20_lengths_cpu = torch.zeros(
                 (num_reqs,),
                 dtype=torch.int32,
                 device="cpu",
-                pin_memory=self.pin_memory,
+                pin_memory={PIN_MEMORY_EXPR},
             )
             for row in range(num_reqs):
                 token_count = int(self.num_tokens_no_spec[row])
@@ -632,6 +636,13 @@ def patch_gpu_model_runner(source: str) -> str:
 
 
 def patch_gpu_input_batch(source: str) -> str:
+    source = source.replace(
+        "pin_memory=pin_memory",
+        f"pin_memory={PIN_MEMORY_EXPR}",
+    ).replace(
+        "pin_memory=self.pin_memory",
+        f"pin_memory={PIN_MEMORY_EXPR}",
+    )
     source = source.replace(
         "            and not self.no_penalties\n"
         "            and num_reqs <= 4\n",

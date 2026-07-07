@@ -43,7 +43,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--url", required=True, help="OpenAI completions endpoint")
     parser.add_argument("--model", required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--variant", choices=["baseline", "candidate"], required=True)
+    parser.add_argument(
+        "--variant",
+        choices=["baseline", "candidate", "standalone", "fused"],
+        required=True,
+    )
     parser.add_argument("--input-tokens", type=int, default=512)
     parser.add_argument("--output-tokens", type=int, default=64)
     parser.add_argument("--num-prompts", type=int, default=32)
@@ -90,7 +94,7 @@ def request_payload(args: argparse.Namespace, index: int) -> dict[str, Any]:
         "top_p": args.top_p,
         "top_k": args.top_k,
     }
-    if args.variant == "baseline":
+    if args.variant in {"baseline", "fused"}:
         payload["repetition_penalty"] = args.repetition_penalty
     else:
         payload["repetition_penalty"] = 1.0

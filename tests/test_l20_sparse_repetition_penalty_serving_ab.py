@@ -1,6 +1,8 @@
 import json
+import importlib.util
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -36,6 +38,9 @@ class L20SparseRepetitionPenaltyServingAbTest(unittest.TestCase):
 
     def test_http_probe_sends_native_baseline_and_vllm_xargs_candidate(self):
         source = Path("scripts/probe_vllm_sparse_repetition_penalty_serving.py").read_text()
+        self.assertIn('"standalone"', source)
+        self.assertIn('"fused"', source)
+        self.assertIn('args.variant in {"baseline", "fused"}', source)
         self.assertIn('"repetition_penalty"', source)
         self.assertIn('"logits_processors"', source)
         self.assertIn('"vllm_xargs"', source)
@@ -51,3 +56,95 @@ class L20SparseRepetitionPenaltyServingAbTest(unittest.TestCase):
         self.assertIn("request_throughput", source)
         self.assertIn("median_itl_ms", source)
         self.assertIn("change_pct", source)
+
+    def test_sparse_penalty_triangle_runner_separates_latency_and_trace_paths(self):
+        source = Path("scripts/run_vllm_l20_sparse_penalty_triangle.sh").read_text()
+
+        self.assertIn("install_l20_topk_topp_sampler.py", source)
+        self.assertIn("run_variant baseline", source)
+        self.assertIn("run_variant standalone", source)
+        self.assertIn("run_variant fused", source)
+        self.assertIn("standalone-trace/sparse-rp-trace.jsonl", source)
+        self.assertIn("fused-trace/l20-topk-topp-trace.jsonl", source)
+        self.assertIn("VLLM_L20_TOPK_TOPP_DEFER_PENALTIES=1", source)
+        self.assertIn("summarize_vllm_sparse_penalty_triangle.py", source)
+
+    def test_sparse_penalty_triangle_summary_checks_workload_and_traces(self):
+        spec = importlib.util.spec_from_file_location(
+            "summarize_vllm_sparse_penalty_triangle",
+            "scripts/summarize_vllm_sparse_penalty_triangle.py",
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        def summary(variant, itl, throughput):
+            return {
+                "variant": variant,
+                "model": "qwen",
+                "input_tokens_requested": 512,
+                "output_tokens_requested": 32,
+                "num_prompts": 8,
+                "max_concurrency": 4,
+                "request_throughput": throughput,
+                "output_throughput": throughput * 32,
+                "median_ttft_ms": 10.0,
+                "p95_ttft_ms": 12.0,
+                "median_itl_ms": itl,
+                "p95_itl_ms": itl + 1.0,
+                "median_e2el_ms": 80.0,
+            }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for variant, itl, throughput in [
+                ("baseline", 5.0, 1.0),
+                ("standalone", 6.0, 0.9),
+                ("fused", 4.0, 1.1),
+            ]:
+                run_dir = root / variant
+                run_dir.mkdir()
+                (run_dir / f"{variant}_summary.json").write_text(
+                    json.dumps(summary(variant, itl, throughput)),
+                    encoding="utf-8",
+                )
+            standalone_trace = root / "standalone-trace"
+            standalone_trace.mkdir()
+            (standalone_trace / "sparse-rp-trace.jsonl").write_text(
+                json.dumps(
+                    {
+                        "provider": "sparse_op",
+                        "reason": "inside_sparse_gate",
+                        "max_unique_tokens": 32,
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            fused_trace = root / "fused-trace"
+            fused_trace.mkdir()
+            (fused_trace / "l20-topk-topp-trace.jsonl").write_text(
+                json.dumps(
+                    {
+                        "eligible": True,
+                        "reasons": [],
+                        "metadata": {"logits_shape": [1, 151936]},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            result = module.build_summary(root)
+
+        self.assertTrue(result["comparable_workload"])
+        self.assertEqual(
+            result["trace_proof"]["standalone"]["provider_counts"]["sparse_op"],
+            1,
+        )
+        self.assertEqual(result["trace_proof"]["fused"]["eligible_events"], 1)
+        fused_itl = next(
+            row
+            for row in result["delta_vs_baseline"]["fused"]
+            if row["metric"] == "median_itl_ms"
+        )
+        self.assertEqual(fused_itl["improvement_pct"], 25.0)

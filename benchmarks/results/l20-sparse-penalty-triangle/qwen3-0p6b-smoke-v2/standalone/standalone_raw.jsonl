@@ -1,0 +1,2 @@
+{"completion_tokens": 8, "error": null, "itl_ms": 14.14541993290186, "output_chunks": 8, "status": "ok", "total_ms": 161.88206197693944, "ttft_ms": 40.33663496375084}
+{"completion_tokens": 8, "error": null, "itl_ms": 14.085784088820219, "output_chunks": 8, "status": "ok", "total_ms": 161.2700531259179, "ttft_ms": 64.70432318747044}

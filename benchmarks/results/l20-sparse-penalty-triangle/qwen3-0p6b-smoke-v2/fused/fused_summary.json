@@ -1,0 +1,22 @@
+{
+  "completed": 2,
+  "errors": [],
+  "failed": 0,
+  "input_tokens_requested": 256,
+  "max_concurrency": 2,
+  "median_e2el_ms": 152.34715002588928,
+  "median_itl_ms": 12.994505348615348,
+  "median_ttft_ms": 62.0396095328033,
+  "model": "qwen3-0p6b",
+  "num_prompts": 2,
+  "output_throughput": 104.27311764039014,
+  "output_tokens_requested": 8,
+  "p95_itl_ms": 13.048414839431643,
+  "p95_ttft_ms": 74.07518895342946,
+  "request_throughput": 13.034139705048768,
+  "schema_version": 1,
+  "trace": {
+    "trace_exists": false
+  },
+  "variant": "fused"
+}
