@@ -1,0 +1,53 @@
+{
+  "claim_boundary": [
+    "This runner is for the L20 side of the Qwen2.5-Coder-0.5B CPU-vs-L20 break-even proof.",
+    "The CPU side uses the checked-in Q4_K_M GGUF llama.cpp artifacts.",
+    "The L20 side should use the same Qwen2.5-Coder-0.5B-Instruct model in vLLM serving; runtime precision may differ from the CPU GGUF.",
+    "Do not claim same-model L20 latency until the expected summary.json files exist from a real L20 run."
+  ],
+  "cpu_inputs": {
+    "p512_o128": "benchmarks/results/cpu-real-model/qwen25-coder-0p5b-q4km-p512-o128-sweep/summary.json",
+    "p512_o32": "benchmarks/results/cpu-real-model/qwen25-coder-0p5b-q4km-p512-o32-sweep/summary.json"
+  },
+  "expected_l20_outputs": [
+    "p512-o32/summary.json",
+    "p512-o32/README.md",
+    "p512-o128/summary.json",
+    "p512-o128/README.md"
+  ],
+  "input_tokens": 512,
+  "mode": "l20_qwen25_coder_0p5b_same_model_break_even_runner",
+  "model": "/home/hhai/models/Qwen2.5-Coder-0.5B-Instruct",
+  "schema_version": 1,
+  "served_model_name": "qwen25-coder-0p5b",
+  "shapes": [
+    {
+      "base_port": 8120,
+      "concurrencies": [
+        "1",
+        "2",
+        "4",
+        "8"
+      ],
+      "num_prompts": 32,
+      "output_dir": "p512-o32",
+      "output_tokens": 32,
+      "runs": 5
+    },
+    {
+      "base_port": 8220,
+      "concurrencies": [
+        "1",
+        "2",
+        "4",
+        "8"
+      ],
+      "num_prompts": 32,
+      "output_dir": "p512-o128",
+      "output_tokens": 128,
+      "runs": 3
+    }
+  ],
+  "slug": "qwen25-coder-0p5b",
+  "status": "runner_ready_measurement_pending"
+}

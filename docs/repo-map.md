@@ -96,7 +96,7 @@ Relevant files:
 - `benchmarks/results/cpu-tiny-transformer/`
 - `benchmarks/results/cpu-real-model/`
 - `benchmarks/results/cpu-l20-break-even/`
-- `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-pending/`
+- `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/`
 - `benchmarks/results/l20-vllm-gemm-epilogue-scout/`
 - `benchmarks/results/l20-vllm-gemm-epilogue-trace/`
 

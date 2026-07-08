@@ -75,19 +75,17 @@ The Qwen CPU path now also has p512 `llama-bench` controls:
 
 Artifact: `benchmarks/results/cpu-l20-break-even/qwen-family-p512-o32-o128-v1/`
 
-The first CPU-vs-L20 boundary table compares those real M4 CPU rows against
+The first CPU-vs-L20 boundary table compared those real M4 CPU rows against
 checked-in L20 Qwen3-0.6B FlashInfer serving artifacts. It reports 7.45x-74.63x
 serial-M4 request-throughput equivalents across the measured L20 rows. This is
-family-level evidence, not identical-model proof.
+kept as family-level control evidence.
 
-Artifact: `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-pending/`
+Artifact: `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/`
 
-The same-model L20 proof is now an execution gate rather than an open-ended
-TODO. `scripts/run_vllm_l20_qwen25_coder_0p5b_break_even.sh` runs the existing
-L20 FlashInfer-vs-torch serving campaign for Qwen2.5-Coder-0.5B at p512/o32 and
-p512/o128, then writes the compact L20 summaries needed to replace the
-family-level table. This pending artifact has no latency claim until those
-summaries exist from a real L20 run.
+The same-model L20 proof now compares Qwen2.5-Coder-0.5B on both sides. The
+L20/vLLM FlashInfer run reaches 59.906 req/s at p512/o32 c8 and 22.382 req/s at
+p512/o128 c8, or 105.43x and 63.78x serial-M4 request throughput. FlashInfer
+beats torch/native sampling in all 8 paired L20 rows.
 
 The resume-ready narrative and final same-model gate are in
 `docs/cpu-l20-break-even-case-study.md`.
@@ -111,9 +109,7 @@ L20/vLLM baseline -> optimized L20 sampling/logits/KV paths
    on the same synthetic model.
 2. Add weight-only int8 matmul and report both latency and output drift against
    FP32.
-3. Run the checked-in same-model L20 runner on the L20 host and replace the
-   family-level rows with Qwen2.5-Coder-0.5B serving artifacts.
-4. Add memory footprint and operational cost columns to the CPU-vs-L20 table.
+3. Add memory footprint and operational cost columns to the CPU-vs-L20 table.
 
 ## Non-Goals
 

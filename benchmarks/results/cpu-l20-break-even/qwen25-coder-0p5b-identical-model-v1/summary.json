@@ -1,0 +1,190 @@
+{
+  "claim_boundary": [
+    "CPU and L20 rows target the same Qwen2.5-Coder-0.5B-Instruct model family.",
+    "CPU rows use Qwen2.5-Coder-0.5B-Instruct Q4_K_M GGUF on Apple M4.",
+    "L20 rows use Qwen2.5-Coder-0.5B-Instruct vLLM FlashInfer serving artifacts.",
+    "CPU and L20 runtimes use different precision/runtime stacks, so this is a serving boundary comparison, not bit-identical math.",
+    "CPU llama-bench excludes tokenization and sampling; use the C++ completion smoke for an output-producing CPU path proof.",
+    "L20 request throughput is estimated as output_throughput / requested_output_tokens because these source summaries do not store request_throughput."
+  ],
+  "cpu": {
+    "p512_o128": {
+      "combined_ms": 2849.67943,
+      "combined_threads": 8,
+      "combined_tokens_per_s": 224.601666,
+      "decode_threads": 6,
+      "decode_tokens_per_s": 101.846924,
+      "model": "Qwen2.5-Coder-0.5B-Instruct Q4_K_M",
+      "model_filename": "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf",
+      "output_tokens": 128,
+      "prefill_threads": 6,
+      "prefill_tokens_per_s": 358.928703,
+      "prompt_tokens": 512,
+      "serial_requests_per_s": 0.35091666433511787,
+      "source": "llama-bench CPU-only, Apple M4 Accelerate"
+    },
+    "p512_o32": {
+      "combined_ms": 1759.909277,
+      "combined_threads": 8,
+      "combined_tokens_per_s": 309.114693,
+      "decode_threads": 8,
+      "decode_tokens_per_s": 105.372956,
+      "model": "Qwen2.5-Coder-0.5B-Instruct Q4_K_M",
+      "model_filename": "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf",
+      "output_tokens": 32,
+      "prefill_threads": 6,
+      "prefill_tokens_per_s": 359.649619,
+      "prompt_tokens": 512,
+      "serial_requests_per_s": 0.5682111078501918,
+      "source": "llama-bench CPU-only, Apple M4 Accelerate"
+    }
+  },
+  "decision": {
+    "next_proof": "Add cost-per-1M-output-token and memory footprint columns after same-model latency is checked in.",
+    "serving_boundary": "Use L20/vLLM once the p512 workload needs multi-request concurrency, stable tail latency, or more than one serial M4 process can provide.",
+    "single_local_request": "M4 CPU is usable for local single-user Qwen2.5-Coder-0.5B decode when the measured serial p512 request rate is acceptable."
+  },
+  "inputs": {
+    "cpu_o128": "benchmarks/results/cpu-real-model/qwen25-coder-0p5b-q4km-p512-o128-sweep/summary.json",
+    "cpu_o32": "benchmarks/results/cpu-real-model/qwen25-coder-0p5b-q4km-p512-o32-sweep/summary.json",
+    "l20_o128": "benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/p512-o128/summary.json",
+    "l20_o32": "benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/p512-o32/summary.json"
+  },
+  "l20": {
+    "p512_o128": [
+      {
+        "concurrency": 1,
+        "estimated_request_throughput": 3.4428733638003832,
+        "median_itl_ms": 2.1054340759292245,
+        "median_ttft_ms": 24.53252556733787,
+        "model": "Qwen2.5-Coder-0.5B-Instruct",
+        "output_throughput": 440.68779056644905,
+        "output_tokens": 128,
+        "p99_itl_ms": 2.3494192189536984,
+        "prompt_tokens": 512,
+        "runs": 3,
+        "shape": "c1-i512",
+        "source": "vLLM FlashInfer serving, NVIDIA L20",
+        "vs_cpu_decode_throughput": 4.326962202279659,
+        "vs_cpu_serial_request_throughput": 9.81108540491686
+      },
+      {
+        "concurrency": 2,
+        "estimated_request_throughput": 6.387425644898027,
+        "median_itl_ms": 2.2318681003525853,
+        "median_ttft_ms": 29.27775459829718,
+        "model": "Qwen2.5-Coder-0.5B-Instruct",
+        "output_throughput": 817.5904825469474,
+        "output_tokens": 128,
+        "p99_itl_ms": 2.768811611458658,
+        "prompt_tokens": 512,
+        "runs": 3,
+        "shape": "c2-i512",
+        "source": "vLLM FlashInfer serving, NVIDIA L20",
+        "vs_cpu_decode_throughput": 8.027640408137877,
+        "vs_cpu_serial_request_throughput": 18.20211547092039
+      },
+      {
+        "concurrency": 4,
+        "estimated_request_throughput": 12.20214637397939,
+        "median_itl_ms": 2.2807485656812787,
+        "median_ttft_ms": 37.14122902601957,
+        "model": "Qwen2.5-Coder-0.5B-Instruct",
+        "output_throughput": 1561.874735869362,
+        "output_tokens": 128,
+        "p99_itl_ms": 2.8215562691912055,
+        "prompt_tokens": 512,
+        "runs": 3,
+        "shape": "c4-i512",
+        "source": "vLLM FlashInfer serving, NVIDIA L20",
+        "vs_cpu_decode_throughput": 15.335512105101593,
+        "vs_cpu_serial_request_throughput": 34.772205523778155
+      },
+      {
+        "concurrency": 8,
+        "estimated_request_throughput": 22.381792216067833,
+        "median_itl_ms": 2.3482725955545902,
+        "median_ttft_ms": 51.04103498160839,
+        "model": "Qwen2.5-Coder-0.5B-Instruct",
+        "output_throughput": 2864.8694036566826,
+        "output_tokens": 128,
+        "p99_itl_ms": 3.2121580373495706,
+        "prompt_tokens": 512,
+        "runs": 3,
+        "shape": "c8-i512",
+        "source": "vLLM FlashInfer serving, NVIDIA L20",
+        "vs_cpu_decode_throughput": 28.12916965127668,
+        "vs_cpu_serial_request_throughput": 63.78093288466262
+      }
+    ],
+    "p512_o32": [
+      {
+        "concurrency": 1,
+        "estimated_request_throughput": 11.413399299704992,
+        "median_itl_ms": 2.092184964567423,
+        "median_ttft_ms": 23.639706545509398,
+        "model": "Qwen2.5-Coder-0.5B-Instruct",
+        "output_throughput": 365.22877759055973,
+        "output_tokens": 32,
+        "p99_itl_ms": 2.5603646761737764,
+        "prompt_tokens": 512,
+        "runs": 5,
+        "shape": "c1-i512",
+        "source": "vLLM FlashInfer serving, NVIDIA L20",
+        "vs_cpu_decode_throughput": 3.466058004394977,
+        "vs_cpu_serial_request_throughput": 20.086547309656115
+      },
+      {
+        "concurrency": 2,
+        "estimated_request_throughput": 20.172800167568436,
+        "median_itl_ms": 2.2183950059115887,
+        "median_ttft_ms": 30.501188128255308,
+        "model": "Qwen2.5-Coder-0.5B-Instruct",
+        "output_throughput": 645.52960536219,
+        "output_tokens": 32,
+        "p99_itl_ms": 2.8725665900856256,
+        "prompt_tokens": 512,
+        "runs": 5,
+        "shape": "c2-i512",
+        "source": "vLLM FlashInfer serving, NVIDIA L20",
+        "vs_cpu_decode_throughput": 6.126141183343001,
+        "vs_cpu_serial_request_throughput": 35.50229815797084
+      },
+      {
+        "concurrency": 4,
+        "estimated_request_throughput": 36.469418151067714,
+        "median_itl_ms": 2.2698461543768644,
+        "median_ttft_ms": 37.12953091599047,
+        "model": "Qwen2.5-Coder-0.5B-Instruct",
+        "output_throughput": 1167.0213808341668,
+        "output_tokens": 32,
+        "p99_itl_ms": 4.68046413268894,
+        "prompt_tokens": 512,
+        "runs": 5,
+        "shape": "c4-i512",
+        "source": "vLLM FlashInfer serving, NVIDIA L20",
+        "vs_cpu_decode_throughput": 11.075150827449187,
+        "vs_cpu_serial_request_throughput": 64.18286733085625
+      },
+      {
+        "concurrency": 8,
+        "estimated_request_throughput": 59.905547946820825,
+        "median_itl_ms": 2.342077437788248,
+        "median_ttft_ms": 53.313397453166544,
+        "model": "Qwen2.5-Coder-0.5B-Instruct",
+        "output_throughput": 1916.9775342982664,
+        "output_tokens": 32,
+        "p99_itl_ms": 12.827297032345086,
+        "prompt_tokens": 512,
+        "runs": 5,
+        "shape": "c8-i512",
+        "source": "vLLM FlashInfer serving, NVIDIA L20",
+        "vs_cpu_decode_throughput": 18.19231050420818,
+        "vs_cpu_serial_request_throughput": 105.42832957537827
+      }
+    ]
+  },
+  "mode": "cpu_l20_same_model_break_even",
+  "schema_version": 1,
+  "title": "CPU vs L20 Break-Even: Qwen2.5-Coder-0.5B p512"
+}

@@ -1,0 +1,131 @@
+{
+  "input_dir": "benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/p512-o128",
+  "pairs": [
+    {
+      "flashinfer_dir": "benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/p512-o128/qwen25-coder-0p5b-flashinfer-c1c2c4c8-i512-o128-r3",
+      "key": "qwen25-coder-0p5b-c1c2c4c8-i512-o128-r3",
+      "shapes": {
+        "c1-i512": {
+          "deltas": {
+            "mean_itl_ms_pct": -4.931007762186568,
+            "median_itl_ms_pct": -4.633582971257628,
+            "median_ttft_ms_pct": -1.1593521944101557,
+            "output_throughput_pct": 5.16969922793552,
+            "p99_itl_ms_pct": -6.6037524662031695
+          },
+          "flashinfer": {
+            "mean_itl_ms": 2.099120072219823,
+            "median_itl_ms": 2.1054340759292245,
+            "median_ttft_ms": 24.53252556733787,
+            "output_throughput": 440.68779056644905,
+            "p99_itl_ms": 2.3494192189536984,
+            "runs": 3
+          },
+          "median_itl_win": true,
+          "strict_win": true,
+          "throughput_win": true,
+          "torch": {
+            "mean_itl_ms": 2.207996553670108,
+            "median_itl_ms": 2.207731129601598,
+            "median_ttft_ms": 24.820280028507113,
+            "output_throughput": 419.02543584473057,
+            "p99_itl_ms": 2.515539200976491,
+            "runs": 3
+          }
+        },
+        "c2-i512": {
+          "deltas": {
+            "mean_itl_ms_pct": -12.53796411202782,
+            "median_itl_ms_pct": -12.60861245188177,
+            "median_ttft_ms_pct": -7.800542906824179,
+            "output_throughput_pct": 13.45243752465792,
+            "p99_itl_ms_pct": -9.72050840963725
+          },
+          "flashinfer": {
+            "mean_itl_ms": 2.2256424939067387,
+            "median_itl_ms": 2.2318681003525853,
+            "median_ttft_ms": 29.27775459829718,
+            "output_throughput": 817.5904825469474,
+            "p99_itl_ms": 2.768811611458658,
+            "runs": 3
+          },
+          "median_itl_win": true,
+          "strict_win": true,
+          "throughput_win": true,
+          "torch": {
+            "mean_itl_ms": 2.5446955028093625,
+            "median_itl_ms": 2.5538764894008636,
+            "median_ttft_ms": 31.754801515489817,
+            "output_throughput": 720.6460261105021,
+            "p99_itl_ms": 3.066933101508766,
+            "runs": 3
+          }
+        },
+        "c4-i512": {
+          "deltas": {
+            "mean_itl_ms_pct": -13.191822414970785,
+            "median_itl_ms_pct": -13.329924892497859,
+            "median_ttft_ms_pct": -1.4515175454030964,
+            "output_throughput_pct": 13.800987660913886,
+            "p99_itl_ms_pct": -12.590607674807698
+          },
+          "flashinfer": {
+            "mean_itl_ms": 2.2807847530861554,
+            "median_itl_ms": 2.2807485656812787,
+            "median_ttft_ms": 37.14122902601957,
+            "output_throughput": 1561.874735869362,
+            "p99_itl_ms": 2.8215562691912055,
+            "runs": 3
+          },
+          "median_itl_win": true,
+          "strict_win": true,
+          "throughput_win": true,
+          "torch": {
+            "mean_itl_ms": 2.62738467335305,
+            "median_itl_ms": 2.6315294671803713,
+            "median_ttft_ms": 37.68828103784472,
+            "output_throughput": 1372.4614943792828,
+            "p99_itl_ms": 3.2279783603735264,
+            "runs": 3
+          }
+        },
+        "c8-i512": {
+          "deltas": {
+            "mean_itl_ms_pct": -6.3355596665324025,
+            "median_itl_ms_pct": -5.972004779639935,
+            "median_ttft_ms_pct": -6.7320855148281735,
+            "output_throughput_pct": 5.711713561309258,
+            "p99_itl_ms_pct": -36.22446835405869
+          },
+          "flashinfer": {
+            "mean_itl_ms": 2.400402363038644,
+            "median_itl_ms": 2.3482725955545902,
+            "median_ttft_ms": 51.04103498160839,
+            "output_throughput": 2864.8694036566826,
+            "p99_itl_ms": 3.2121580373495706,
+            "runs": 3
+          },
+          "median_itl_win": true,
+          "strict_win": true,
+          "throughput_win": true,
+          "torch": {
+            "mean_itl_ms": 2.5627680627702927,
+            "median_itl_ms": 2.497418550774455,
+            "median_ttft_ms": 54.72518096212298,
+            "output_throughput": 2710.0775374293353,
+            "p99_itl_ms": 5.036662109196221,
+            "runs": 3
+          }
+        }
+      },
+      "torch_dir": "benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/p512-o128/qwen25-coder-0p5b-torch-c1c2c4c8-i512-o128-r3"
+    }
+  ],
+  "schema_version": 1,
+  "winner_gate": {
+    "definition": "FlashInfer must reduce median ITL and increase output throughput versus the paired torch/native sampler.",
+    "strict_win_fraction": 1.0,
+    "strict_win_pairs": 4,
+    "total_pairs": 4
+  }
+}

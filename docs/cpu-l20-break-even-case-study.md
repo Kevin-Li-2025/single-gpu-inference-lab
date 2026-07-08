@@ -14,7 +14,18 @@ The CPU side is already real-model evidence:
 - p512/o32: 1759.909277 ms combined, 0.568211 serial req/s;
 - p512/o128: 2849.679430 ms combined, 0.350917 serial req/s.
 
-The first L20 comparison is intentionally scoped as Qwen-family evidence:
+The completed same-model L20 comparison uses the same Qwen2.5-Coder-0.5B target
+through vLLM FlashInfer serving:
+
+- p512/o32 c8: 59.906 req/s, 53.313 ms median TTFT, 2.342 ms median ITL;
+- p512/o128 c8: 22.382 req/s, 51.041 ms median TTFT, 2.348 ms median ITL;
+- best M4 serial-request equivalents: 105.43x for p512/o32 and 63.78x for
+  p512/o128;
+- FlashInfer beats torch/native sampling in 8/8 paired L20 rows.
+
+Artifact: `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/`
+
+The earlier L20 comparison is retained as Qwen-family control evidence:
 
 - CPU: Qwen2.5-Coder-0.5B Q4_K_M on M4;
 - L20: Qwen3-0.6B vLLM FlashInfer serving;
@@ -22,12 +33,12 @@ The first L20 comparison is intentionally scoped as Qwen-family evidence:
 - result: measured L20 rows span 7.45x-74.63x serial-M4 request-throughput
   equivalent.
 
-That comparison is useful for deployment intuition, but it is not the final
-same-model proof.
+That comparison is useful for deployment intuition, but the same-model proof is
+now the primary claim.
 
-## Final Gate
+## Reproduce
 
-The final gate is the same model on both sides:
+The L20 side was generated with the same-model runner:
 
 ```bash
 MODEL=/home/hhai/models/Qwen2.5-Coder-0.5B-Instruct \
@@ -37,7 +48,7 @@ scripts/run_vllm_l20_qwen25_coder_0p5b_break_even.sh \
   benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1
 ```
 
-Then build the final table:
+Then the final table was built with:
 
 ```bash
 /usr/bin/python3 scripts/build_cpu_l20_break_even.py \
@@ -65,13 +76,10 @@ point: this is an operational boundary, not a pure kernel benchmark.
 
 ## Resume-Ready Claim
 
-After the same-model L20 artifact exists, the public claim can be:
+The public claim can be:
 
 > Built a CPU-to-L20 deployment boundary study for Qwen2.5-Coder-0.5B, using
 > real M4 llama.cpp measurements and real L20/vLLM serving measurements at
 > p512/o32 and p512/o128. The project reports TTFT, ITL, throughput, serial
 > CPU request capacity, and L20 equivalents, with all raw claims backed by
 > checked-in JSON artifacts and reproducible scripts.
-
-Until then, keep the current claim scoped to Qwen-family evidence plus a
-same-model L20 runner that is ready but pending execution.

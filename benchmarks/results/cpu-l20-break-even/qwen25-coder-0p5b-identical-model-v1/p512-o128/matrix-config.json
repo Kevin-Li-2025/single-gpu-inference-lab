@@ -1,0 +1,30 @@
+{
+  "base_port": 8220,
+  "concurrencies": [
+    "1",
+    "2",
+    "4",
+    "8"
+  ],
+  "environment": {
+    "GPU_MEMORY_UTILIZATION": "0.70",
+    "MAX_MODEL_LEN": "4096",
+    "PYTHON": "/home/hhai/venvs/vllm-l20/bin/python",
+    "VLLM_SOURCE_TREE": "/home/hhai/vllm-l20-rfc"
+  },
+  "inputs": [
+    "512"
+  ],
+  "model_specs": [
+    "/home/hhai/models/Qwen2.5-Coder-0.5B-Instruct|qwen25-coder-0p5b|qwen25-coder-0p5b"
+  ],
+  "num_prompts": 32,
+  "output_tokens": 128,
+  "runs": 3,
+  "sampler_modes": [
+    "torch",
+    "flashinfer"
+  ],
+  "schema_version": 1,
+  "strict_gate": "FlashInfer must reduce median ITL and increase output throughput versus the paired torch/native sampler."
+}
