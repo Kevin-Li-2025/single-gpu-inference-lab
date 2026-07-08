@@ -85,7 +85,18 @@ Artifact: `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-mod
 The same-model L20 proof now compares Qwen2.5-Coder-0.5B on both sides. The
 L20/vLLM FlashInfer run reaches 59.906 req/s at p512/o32 c8 and 22.382 req/s at
 p512/o128 c8, or 105.43x and 63.78x serial-M4 request throughput. FlashInfer
-beats torch/native sampling in all 8 paired L20 rows.
+beats torch/native sampling in all 8 paired L20 rows. The same artifact now
+adds p95/p99 tail tables and illustrative cost-per-1M-token columns: at
+`$0.80/h`, the best FlashInfer rows are `$0.1159/1M` output tokens for p512/o32
+and `$0.0776/1M` output tokens for p512/o128.
+
+Artifact: `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-real-prompt-trace-v1/`
+
+A fixed real-prompt trace completes 12/12 code prompts through the real L20
+vLLM HTTP streaming path. It reports 9.233 req/s, 914.022 output tok/s,
+26.198 ms median TTFT, and 2.142 ms median per-prompt ITL. Its p95/p99 TTFT is
+about 522 ms because the first concurrency wave is visible in the small trace,
+so this is workload evidence rather than a production SLO.
 
 The resume-ready narrative and final same-model gate are in
 `docs/cpu-l20-break-even-case-study.md`.
@@ -109,7 +120,8 @@ L20/vLLM baseline -> optimized L20 sampling/logits/KV paths
    on the same synthetic model.
 2. Add weight-only int8 matmul and report both latency and output drift against
    FP32.
-3. Add memory footprint and operational cost columns to the CPU-vs-L20 table.
+3. Add a repeated real-prompt trace with more prompts and explicit warmup
+   separation if this becomes a service-SLO claim.
 
 ## Non-Goals
 

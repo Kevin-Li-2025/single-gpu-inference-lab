@@ -40,7 +40,7 @@
     }
   },
   "decision": {
-    "next_proof": "Add cost-per-1M-output-token and memory footprint columns after same-model latency is checked in.",
+    "next_proof": "Repeat the fixed real-prompt trace with a larger prompt set and explicit warmup separation if this becomes a service-SLO claim.",
     "serving_boundary": "Use L20/vLLM once the p512 workload needs multi-request concurrency, stable tail latency, or more than one serial M4 process can provide.",
     "single_local_request": "M4 CPU is usable for local single-user Qwen2.5-Coder-0.5B decode when the measured serial p512 request rate is acceptable."
   },

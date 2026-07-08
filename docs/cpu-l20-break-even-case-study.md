@@ -25,6 +25,32 @@ through vLLM FlashInfer serving:
 
 Artifact: `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/`
 
+That artifact now includes a derived cost/tail table:
+
+- default rate: `$0.80/h`, treated as an illustrative public L20 rental rate
+  rather than a bill-of-record;
+- p512/o32 c8 FlashInfer: `$0.1159/1M` output tokens, p95/p99 TTFT
+  76.289/77.125 ms, p95/p99 ITL 3.139/12.827 ms;
+- p512/o128 c8 FlashInfer: `$0.0776/1M` output tokens, p95/p99 TTFT
+  72.129/72.962 ms, p95/p99 ITL 2.547/3.212 ms.
+
+Cost/tail artifact:
+`benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/cost-tail.md`
+
+The real-prompt trace adds a non-random workload check:
+
+- prompts: 12 fixed code-oriented tasks from
+  `benchmarks/prompt_traces/qwen25_coder_real_prompts_v1.jsonl`;
+- endpoint: real vLLM OpenAI-compatible streaming completions on L20;
+- result: 12/12 completed, 9.233 req/s, 914.022 output tok/s;
+- median TTFT: 26.198 ms;
+- median per-prompt ITL: 2.142 ms;
+- p95/p99 TTFT: 522.091/522.563 ms, driven by the first concurrency wave in
+  this small trace.
+
+Prompt-trace artifact:
+`benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-real-prompt-trace-v1/`
+
 The earlier L20 comparison is retained as Qwen-family control evidence:
 
 - CPU: Qwen2.5-Coder-0.5B Q4_K_M on M4;
@@ -60,6 +86,27 @@ Then the final table was built with:
   --output-dir benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1
 ```
 
+The cost/tail table is derived from the compact serving JSON reports:
+
+```bash
+/usr/bin/python3 scripts/build_cpu_l20_cost_tail.py \
+  --artifact-dir benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1 \
+  --l20-hourly-usd 0.80
+```
+
+The real prompt trace is generated on L20 with:
+
+```bash
+PYTHON=/home/hhai/venvs/vllm-l20/bin/python \
+VLLM_SOURCE_TREE=/home/hhai/vllm-l20-rfc \
+CONCURRENCY=4 \
+scripts/run_vllm_l20_real_prompt_trace.sh \
+  /home/hhai/models/Qwen2.5-Coder-0.5B-Instruct \
+  qwen25-coder-0p5b \
+  benchmarks/prompt_traces/qwen25_coder_real_prompts_v1.jsonl \
+  benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-real-prompt-trace-v1
+```
+
 ## How To Interpret The Final Table
 
 The CPU row should be read as local single-user capacity. It is the right tool
@@ -81,5 +128,6 @@ The public claim can be:
 > Built a CPU-to-L20 deployment boundary study for Qwen2.5-Coder-0.5B, using
 > real M4 llama.cpp measurements and real L20/vLLM serving measurements at
 > p512/o32 and p512/o128. The project reports TTFT, ITL, throughput, serial
-> CPU request capacity, and L20 equivalents, with all raw claims backed by
+> CPU request capacity, L20 equivalents, cost-per-1M-token, p95/p99 tails, and
+> a fixed real-prompt HTTP streaming trace, with all raw claims backed by
 > checked-in JSON artifacts and reproducible scripts.

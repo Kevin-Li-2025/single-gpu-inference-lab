@@ -28,6 +28,18 @@ L20 uses vLLM serving.
 | `p512_o128` / `c4-i512` | 4 | 1561.875 | 12.202 | 37.141 ms | 2.281 ms | 34.77x | 15.34x |
 | `p512_o128` / `c8-i512` | 8 | 2864.869 | 22.382 | 51.041 ms | 2.348 ms | 63.78x | 28.13x |
 
+## Cost, Tail, And Real Prompt Trace
+
+Derived cost and tail-latency columns are stored in
+`cost-tail.md` and `cost-tail-summary.json`. The default rate is
+an illustrative `$0.80/h` L20 rental value and can be overridden
+with `scripts/build_cpu_l20_cost_tail.py --l20-hourly-usd`.
+
+A separate fixed code-prompt trace is stored at
+`../qwen25-coder-0p5b-real-prompt-trace-v1/`. It runs the same
+Qwen2.5-Coder-0.5B target through the real vLLM HTTP streaming
+path instead of random-token prompts.
+
 ## Decision
 
 - M4 CPU is credible for local single-user inference when roughly

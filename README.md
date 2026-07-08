@@ -59,6 +59,9 @@ speedups, integration behavior, and end-to-end token latency.
   vLLM FlashInfer serving rows: M4 serial capacity is about 0.35-0.57 req/s,
   while the measured L20 rows reach 59.906 req/s for p512/o32 and 22.382 req/s
   for p512/o128 at c8, or 105.43x and 63.78x serial-M4 request throughput.
+  The same artifact now includes p95/p99 tail tables and illustrative
+  cost-per-1M-token columns; a separate fixed real-prompt trace completes 12/12
+  code prompts with 26.198 ms median TTFT and 2.142 ms median per-prompt ITL.
 - Negative results stay in the repo when they change the direction.
 
 ## Current Checkpoint
@@ -93,7 +96,8 @@ than cuBLAS/full-logits baselines by 1.32x-1.39x on the tested A100 shapes.
 | L20 sparse penalty triangle | Native-vs-standalone-vs-fused Qwen3-0.6B matrix: fused median ITL is positive in 4/4 rows (+0.562%, +5.859%, +4.092%, +2.430%), fused median E2E is positive in 4/4 rows, and standalone logits processor is positive in only 1/4 rows | `benchmarks/results/l20-sparse-penalty-triangle-matrix/` |
 | CPU tiny transformer scaffold | Self-written C++ FP32 synthetic decode path with RMSNorm, RoPE, KV cache, causal attention, greedy decode, and naive/tiled matmul; path proof only, not a real CPU small-model serving claim | `benchmarks/results/cpu-tiny-transformer/` |
 | CPU real-model smoke | SmolLM2-135M-Instruct Q4_K_M GGUF CPU-only: Python-call-path decode reaches 209.868 tok/s, and standard `llama-bench` reports `tg16` 359.429 tok/s / `pp17+tg16` 412.213 tok/s. Qwen2.5-Coder-0.5B Q4_K_M cache is now valid; the M4 thread sweep reports `tg16` 170.641 tok/s at 6 threads and the C++ completion smoke reports 152.85 decode eval tok/s with `threads=6`, `threads_batch=8`. | `benchmarks/results/cpu-real-model/` |
-| CPU vs L20 break-even | Same-model Qwen2.5-Coder-0.5B p512 boundary table: M4 CPU serial `p512/o32` is 0.568 req/s and `p512/o128` is 0.351 req/s; L20/vLLM FlashInfer serving reaches 59.906 req/s at p512/o32 c8 and 22.382 req/s at p512/o128 c8, or 105.43x and 63.78x serial-M4 request throughput. FlashInfer also beats torch/native sampling in 8/8 paired L20 rows. | `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/` |
+| CPU vs L20 break-even | Same-model Qwen2.5-Coder-0.5B p512 boundary table: M4 CPU serial `p512/o32` is 0.568 req/s and `p512/o128` is 0.351 req/s; L20/vLLM FlashInfer serving reaches 59.906 req/s at p512/o32 c8 and 22.382 req/s at p512/o128 c8, or 105.43x and 63.78x serial-M4 request throughput. FlashInfer also beats torch/native sampling in 8/8 paired L20 rows. At an illustrative `$0.80/h` L20 rate, the best FlashInfer rows are `$0.1159/1M` output tokens for p512/o32 and `$0.0776/1M` output tokens for p512/o128. | `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/` |
+| L20 real prompt trace | Fixed Qwen2.5-Coder-0.5B code-prompt trace through real vLLM HTTP streaming: 12/12 prompts complete, 9.233 req/s, 914.022 output tok/s, 26.198 ms median TTFT, 2.142 ms median per-prompt ITL, with p95/p99 TTFT exposed by the first concurrency wave. | `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-real-prompt-trace-v1/` |
 | CPU vs L20 family control | Earlier Qwen-family p512 boundary table: checked-in L20 Qwen3-0.6B FlashInfer rows range from 7.45x to 74.63x serial-M4 request throughput equivalent. | `benchmarks/results/cpu-l20-break-even/qwen-family-p512-o32-o128-v1/` |
 | Sparse sampler vs native PyTorch path | Median ITL 9.544 ms -> 4.093 ms on A100/Qwen2.5-0.5B | `benchmarks/results/a100-vllm-sparse-penalty-sampling/` |
 | Sparse sampler vs FlashInfer path | Median ITL 4.468 ms -> 4.346 ms on the same A100 workload | `benchmarks/results/a100-vllm-flashinfer-sparse-penalty-sampling/` |
@@ -180,6 +184,8 @@ Full status map: `docs/experiment-status.md`
 | L20 sparse penalty triangle matrix | `benchmarks/results/l20-sparse-penalty-triangle-matrix/qwen3-0p6b-c2c4c8-o32o64-r64-v1/README.md` |
 | CPU tiny transformer artifact | `benchmarks/results/cpu-tiny-transformer/README.md` |
 | CPU vs L20 break-even | `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/README.md` |
+| CPU vs L20 cost/tail | `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/cost-tail.md` |
+| L20 real prompt trace | `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-real-prompt-trace-v1/README.md` |
 | CPU vs L20 family control | `benchmarks/results/cpu-l20-break-even/qwen-family-p512-o32-o128-v1/README.md` |
 | Combined A100 sampling/logprobs A/B | `benchmarks/results/a100-vllm-combined-sampling-logprobs/README.md` |
 | Combined A100 sampling/logprobs matrix | `benchmarks/results/a100-vllm-combined-sampling-logprobs-matrix/README.md` |

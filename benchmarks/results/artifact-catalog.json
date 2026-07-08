@@ -3,8 +3,8 @@
     "active": 4,
     "analysis": 1,
     "negative": 3,
-    "other": 6,
-    "path_proof": 12,
+    "other": 5,
+    "path_proof": 13,
     "positive": 10
   },
   "entries": [
@@ -86,15 +86,15 @@
       "summary": "Adds non-mock CPU baselines with `n_gpu_layers=0`: SmolLM2-135M-Instruct Q4_K_M reaches 209.868062 decode tok/s through the Python call path and `tg16` 359.429002 tok/s in `llama-bench`; Qwen2.5-Coder-0.5B Q4_K_M cache is valid after redownload, with a M4 thread sweep reporting `tg16` 170.641218 tok/s at 6 threads and a C++ `llama-completion` smoke reporting 152.85 decode eval tok/s using `threads=6`, `threads_batch=8`."
     },
     {
-      "category": "other",
-      "compact_file_count": 11,
+      "category": "path_proof",
+      "compact_file_count": 13,
       "has_campaign_summary_json": false,
       "has_readme": true,
       "has_summary_json": true,
       "path": "benchmarks/results/cpu-l20-break-even",
       "reference": "cpu-l20-break-even/",
       "status": "CPU-vs-L20 boundary table",
-      "summary": "Converts real M4 CPU Qwen2.5-Coder GGUF p512 measurements and same-model L20/vLLM FlashInfer serving rows into a scoped break-even table: M4 serial capacity is 0.568 req/s for p512/o32 and 0.351 req/s for p512/o128, while L20 reaches 59.906 req/s at p512/o32 c8 and 22.382 req/s at p512/o128 c8, or 105.43x and 63.78x serial-M4 request throughput. FlashInfer beats torch/native sampling in 8/8 paired L20 rows."
+      "summary": "Converts real M4 CPU Qwen2.5-Coder GGUF p512 measurements and same-model L20/vLLM FlashInfer serving rows into a scoped break-even table: M4 serial capacity is 0.568 req/s for p512/o32 and 0.351 req/s for p512/o128, while L20 reaches 59.906 req/s at p512/o32 c8 and 22.382 req/s at p512/o128 c8, or 105.43x and 63.78x serial-M4 request throughput. FlashInfer beats torch/native sampling in 8/8 paired L20 rows. The same evidence now includes cost-per-1M-token, p95/p99 tail tables, and a fixed 12-prompt real HTTP streaming trace."
     },
     {
       "category": "other",

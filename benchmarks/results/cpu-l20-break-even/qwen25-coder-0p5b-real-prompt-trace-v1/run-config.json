@@ -1,0 +1,23 @@
+{
+  "claim_boundary": [
+    "This runner uses fixed real prompts against the vLLM OpenAI-compatible completions endpoint.",
+    "It is a streaming latency trace, not a randomized maximum-throughput matrix.",
+    "Server logs are removed by default to keep large runtime logs out of artifacts."
+  ],
+  "concurrency": 4,
+  "environment": {
+    "PYTHON": "/home/hhai/venvs/vllm-l20/bin/python",
+    "VLLM_SOURCE_TREE": "/home/hhai/vllm-l20-rfc",
+    "VLLM_USE_FLASHINFER_SAMPLER": "1"
+  },
+  "gpu_memory_utilization": 0.7,
+  "max_model_len": 2048,
+  "mode": "l20_qwen25_coder_real_prompt_trace_runner",
+  "model": "/home/hhai/models/Qwen2.5-Coder-0.5B-Instruct",
+  "port": 8330,
+  "prompts_jsonl": "benchmarks/prompt_traces/qwen25_coder_real_prompts_v1.jsonl",
+  "schema_version": 1,
+  "served_model_name": "qwen25-coder-0p5b",
+  "temperature": 0.0,
+  "top_p": 1.0
+}

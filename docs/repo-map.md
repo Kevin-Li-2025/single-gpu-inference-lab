@@ -62,6 +62,7 @@ serving semantics probe
 -> L20 sparse repetition-penalty kernel + negative processor + fused sampler matrix
 -> CPU tiny-transformer path proof and real GGUF smoke for cost/boundary control
 -> CPU-vs-L20 Qwen-family break-even table
+-> CPU-vs-L20 cost/tail table plus fixed real-prompt HTTP trace
 -> true GEMM epilogue / upstream LM-head boundary
 ```
 
@@ -80,7 +81,10 @@ Relevant files:
 - `scripts/summarize_cpu_llama_bench.py`
 - `scripts/run_m4_cpu_qwen_inference.py`
 - `scripts/build_cpu_l20_break_even.py`
+- `scripts/build_cpu_l20_cost_tail.py`
 - `scripts/run_vllm_l20_qwen25_coder_0p5b_break_even.sh`
+- `scripts/run_vllm_l20_real_prompt_trace.sh`
+- `scripts/run_real_prompt_trace_client.py`
 - `cpp/my.cpp`
 - `src/l20_stack/epilogue/sampler_epilogue.py`
 - `src/l20_stack/ops/triton_sampling.py`
@@ -97,6 +101,8 @@ Relevant files:
 - `benchmarks/results/cpu-real-model/`
 - `benchmarks/results/cpu-l20-break-even/`
 - `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/`
+- `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-real-prompt-trace-v1/`
+- `benchmarks/prompt_traces/qwen25_coder_real_prompts_v1.jsonl`
 - `benchmarks/results/l20-vllm-gemm-epilogue-scout/`
 - `benchmarks/results/l20-vllm-gemm-epilogue-trace/`
 

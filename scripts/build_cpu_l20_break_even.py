@@ -192,7 +192,7 @@ def build_summary(
         decision = {
             "single_local_request": "M4 CPU is usable for local single-user Qwen2.5-Coder-0.5B decode when the measured serial p512 request rate is acceptable.",
             "serving_boundary": "Use L20/vLLM once the p512 workload needs multi-request concurrency, stable tail latency, or more than one serial M4 process can provide.",
-            "next_proof": "Add cost-per-1M-output-token and memory footprint columns after same-model latency is checked in.",
+            "next_proof": "Repeat the fixed real-prompt trace with a larger prompt set and explicit warmup separation if this becomes a service-SLO claim.",
         }
     else:
         claim_boundary = [
@@ -295,6 +295,23 @@ def render_markdown(summary: dict[str, Any]) -> str:
                 f"{row['vs_cpu_serial_request_throughput']:.2f}x | "
                 f"{row['vs_cpu_decode_throughput']:.2f}x |"
             )
+    if same_model:
+        lines.extend(
+            [
+                "",
+                "## Cost, Tail, And Real Prompt Trace",
+                "",
+                "Derived cost and tail-latency columns are stored in",
+                "`cost-tail.md` and `cost-tail-summary.json`. The default rate is",
+                "an illustrative `$0.80/h` L20 rental value and can be overridden",
+                "with `scripts/build_cpu_l20_cost_tail.py --l20-hourly-usd`.",
+                "",
+                "A separate fixed code-prompt trace is stored at",
+                "`../qwen25-coder-0p5b-real-prompt-trace-v1/`. It runs the same",
+                "Qwen2.5-Coder-0.5B target through the real vLLM HTTP streaming",
+                "path instead of random-token prompts.",
+            ]
+        )
     lines.extend(
         [
             "",
