@@ -268,20 +268,20 @@ class CpuRealModelBenchmarkTest(unittest.TestCase):
         self.assertIn("run_vllm_l20_sampling_winner_matrix.sh", source)
         self.assertIn("p512-o32", source)
         self.assertIn("p512-o128", source)
-        self.assertIn("runner_ready_measurement_pending", source)
+        self.assertIn("runner_contract", source)
 
-        pending_config = __import__("json").loads(
+        final_config = __import__("json").loads(
             Path(
                 "benchmarks/results/cpu-l20-break-even/"
-                "qwen25-coder-0p5b-identical-model-pending/run-config.json"
+                "qwen25-coder-0p5b-identical-model-v1/run-config.json"
             ).read_text(encoding="utf-8")
         )
         self.assertEqual(
-            pending_config["mode"],
+            final_config["mode"],
             "l20_qwen25_coder_0p5b_same_model_break_even_runner",
         )
         self.assertEqual(
-            pending_config["expected_l20_outputs"],
+            final_config["expected_l20_outputs"],
             [
                 "p512-o32/summary.json",
                 "p512-o32/README.md",
@@ -289,7 +289,10 @@ class CpuRealModelBenchmarkTest(unittest.TestCase):
                 "p512-o128/README.md",
             ],
         )
-        self.assertEqual(pending_config["status"], "runner_ready_measurement_pending")
+        self.assertEqual(
+            final_config["status"],
+            "runner_contract",
+        )
 
     def test_llama_bench_summary_sanitizes_model_path(self):
         raw = [

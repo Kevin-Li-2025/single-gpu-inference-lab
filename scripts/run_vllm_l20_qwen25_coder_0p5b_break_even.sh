@@ -45,7 +45,7 @@ import sys
 config = {
     "schema_version": 1,
     "mode": "l20_qwen25_coder_0p5b_same_model_break_even_runner",
-    "status": "runner_ready_measurement_pending",
+    "status": "runner_contract",
     "model": os.environ["MODEL_VALUE"],
     "served_model_name": os.environ["SERVED_NAME_VALUE"],
     "slug": os.environ["SLUG_VALUE"],
@@ -88,7 +88,7 @@ config = {
         "This runner is for the L20 side of the Qwen2.5-Coder-0.5B CPU-vs-L20 break-even proof.",
         "The CPU side uses the checked-in Q4_K_M GGUF llama.cpp artifacts.",
         "The L20 side should use the same Qwen2.5-Coder-0.5B-Instruct model in vLLM serving; runtime precision may differ from the CPU GGUF.",
-        "Do not claim same-model L20 latency until the expected summary.json files exist from a real L20 run.",
+        "Do not claim same-model L20 latency unless the expected summary.json files exist from a real L20 run.",
     ],
 }
 
