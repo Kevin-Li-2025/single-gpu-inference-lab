@@ -94,6 +94,17 @@ Start here:
 - `docs/where-optimizations-stop-mattering.md`
 - `benchmarks/results/README.md`
 
+Additional evidence links:
+
+| Topic | Entry point |
+| --- | --- |
+| Logits-boundary A/B plan | `docs/logits-boundary-ab.md` |
+| Top-tier kernel gaps | `docs/l20-top-tier-kernel-gaps.md` |
+| Fused top-logprobs selection | `benchmarks/results/a100-fused-top-logprobs/` |
+| A100 top-logprobs route | dirty and clean A100 traces: `benchmarks/results/a100-vllm-top-logprobs-smoke/`, `benchmarks/results/a100-vllm-top-logprobs-clean/` |
+| L20 serving ceiling | `benchmarks/results/l20-serving-optimization-ceiling/README.md`, `benchmarks/results/l20-vllm-logits-boundary-scout/README.md` |
+| L20 logits-boundary tools | `integrations/vllm/install_l20_logits_boundary_trace.py`, `scripts/summarize_l20_logits_boundary_trace.py`, `scripts/run_vllm_l20_logits_boundary_trace_campaign.sh`, `scripts/benchmark_l20_topk_topp_sampling.py` |
+
 ## Reproduce And Validate
 
 CPU-safe regression tests:
