@@ -25,6 +25,15 @@ class CpuRealModelBenchmarkTest(unittest.TestCase):
         spec.loader.exec_module(module)
         return module
 
+    def load_break_even_script(self):
+        spec = importlib.util.spec_from_file_location(
+            "build_cpu_l20_break_even", "scripts/build_cpu_l20_break_even.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        self.assertIsNotNone(spec.loader)
+        spec.loader.exec_module(module)
+        return module
+
     def test_script_declares_real_gguf_model_path(self):
         source = Path("scripts/benchmark_cpu_real_model.py").read_text(encoding="utf-8")
         self.assertIn("bartowski/SmolLM2-135M-Instruct-GGUF", source)
@@ -104,6 +113,57 @@ class CpuRealModelBenchmarkTest(unittest.TestCase):
         self.assertEqual(sanitized[0], "build/llama.cpp/build-cpu/bin/llama-completion")
         self.assertEqual(sanitized[2], "qwen.gguf")
         self.assertEqual(sanitized[-1], "runtime.log")
+
+    def test_cpu_l20_break_even_computes_m4_equivalent(self):
+        module = self.load_break_even_script()
+        cpu_summary = {
+            "model_filename": "qwen.gguf",
+            "tests": {
+                "pp512": {
+                    "avg_ms": 1000.0,
+                    "avg_tokens_per_s": 512.0,
+                    "n_threads": 8,
+                },
+                "tg32": {
+                    "avg_ms": 200.0,
+                    "avg_tokens_per_s": 160.0,
+                    "n_threads": 6,
+                },
+                "pp512+tg32": {
+                    "avg_ms": 1250.0,
+                    "avg_tokens_per_s": 435.2,
+                    "n_threads": 6,
+                },
+            },
+        }
+        l20_summary = {
+            "pairs": [
+                {
+                    "shapes": {
+                        "c2-i512": {
+                            "flashinfer": {
+                                "runs": 3,
+                                "median_itl_ms": 3.0,
+                                "median_ttft_ms": 30.0,
+                                "p99_itl_ms": 5.0,
+                                "output_throughput": 320.0,
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+
+        cpu = module.cpu_shape(cpu_summary, prompt_tokens=512, output_tokens=32)
+        rows = module.attach_break_even(
+            cpu,
+            module.iter_l20_flashinfer_shapes(l20_summary, output_tokens=32),
+        )
+
+        self.assertEqual(cpu["serial_requests_per_s"], 0.8)
+        self.assertEqual(rows[0]["estimated_request_throughput"], 10.0)
+        self.assertEqual(rows[0]["vs_cpu_serial_request_throughput"], 12.5)
+        self.assertEqual(rows[0]["vs_cpu_decode_throughput"], 2.0)
 
     def test_llama_bench_summary_sanitizes_model_path(self):
         raw = [

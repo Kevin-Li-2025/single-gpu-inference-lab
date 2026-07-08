@@ -112,6 +112,16 @@ Summary from `qwen25-coder-0p5b-q4km-m4-inference/summary.json`:
 | Process-level elapsed | 1196.999 ms |
 | Output tokens requested | 64 |
 
+Qwen2.5-Coder p512 CPU sweeps:
+
+| Shape | Combined ms | Combined tok/s | Decode tok/s | Serial req/s |
+| --- | ---: | ---: | ---: | ---: |
+| `p512/o32` | 1759.909277 | 309.114693 | 105.372956 | 0.568211 |
+| `p512/o128` | 2849.679430 | 224.601666 | 101.846924 | 0.350917 |
+
+These p512 rows feed the CPU-vs-L20 boundary table in
+`benchmarks/results/cpu-l20-break-even/qwen-family-p512-o32-o128-v1/`.
+
 ## Claim Boundary
 
 - This is a real GGUF model run, not a synthetic mock.
@@ -120,6 +130,9 @@ Summary from `qwen25-coder-0p5b-q4km-m4-inference/summary.json`:
   tokenization and sampling by design.
 - The M4 C++ completion smoke includes llama.cpp sampling and output, while
   the process-level elapsed time also includes binary startup and model load.
+- The p512 CPU sweeps use `llama-bench`, so they exclude tokenization and
+  sampling; they are throughput controls for the break-even table, not
+  output-quality tests.
 - It is a local smoke on an Apple arm64 host, not an L20-vs-CPU break-even
   matrix.
 - No model weights, GGUF files, raw benchmark JSON, or local logs are committed.

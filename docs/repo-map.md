@@ -10,7 +10,7 @@ This file is the fastest way to orient in the repo.
 | `docs/hardware-scope.md` | Hardware claim policy: L20-first, A100 controls. |
 | `docs/experiment-status.md` | Current status map and negative-result ledger. |
 | `docs/where-optimizations-stop-mattering.md` | Paper-style one-page systems thesis. |
-| `docs/cpu-small-model-boundary.md` | CPU tiny-transformer mechanics proof, real GGUF CPU smoke, and future CPU-vs-L20 break-even scope. |
+| `docs/cpu-small-model-boundary.md` | CPU tiny-transformer mechanics proof, real GGUF CPU smoke, and CPU-vs-L20 break-even scope. |
 | `benchmarks/results/README.md` | Curated artifact index. |
 | `benchmarks/results/artifact-catalog.json` | Generated machine-readable artifact catalog. |
 | `integrations/vllm/README.md` | vLLM hook and patch status. |
@@ -60,6 +60,7 @@ serving semantics probe
 -> standalone LM-head sparse-penalty negative proof
 -> L20 sparse repetition-penalty kernel + negative processor + fused sampler matrix
 -> CPU tiny-transformer path proof and real GGUF smoke for cost/boundary control
+-> CPU-vs-L20 Qwen-family break-even table
 -> true GEMM epilogue / upstream LM-head boundary
 ```
 
@@ -77,6 +78,7 @@ Relevant files:
 - `scripts/benchmark_cpu_real_model.py`
 - `scripts/summarize_cpu_llama_bench.py`
 - `scripts/run_m4_cpu_qwen_inference.py`
+- `scripts/build_cpu_l20_break_even.py`
 - `cpp/my.cpp`
 - `src/l20_stack/epilogue/sampler_epilogue.py`
 - `src/l20_stack/ops/triton_sampling.py`
@@ -91,6 +93,7 @@ Relevant files:
 - `benchmarks/results/l20-sparse-penalty-triangle-matrix/`
 - `benchmarks/results/cpu-tiny-transformer/`
 - `benchmarks/results/cpu-real-model/`
+- `benchmarks/results/cpu-l20-break-even/`
 - `benchmarks/results/l20-vllm-gemm-epilogue-scout/`
 - `benchmarks/results/l20-vllm-gemm-epilogue-trace/`
 

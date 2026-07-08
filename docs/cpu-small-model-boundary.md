@@ -68,8 +68,17 @@ The corresponding C++ completion smoke uses the measured M4 policy
 - llama.cpp total: 454.77 ms / 79 tokens;
 - process-level elapsed: 1196.999 ms.
 
-This is the first non-mock CPU result family in the repo. It is still a smoke,
-not a CPU-vs-L20 break-even matrix.
+The Qwen CPU path now also has p512 `llama-bench` controls:
+
+- `p512/o32`: 1759.909277 ms combined, 0.568211 serial req/s;
+- `p512/o128`: 2849.679430 ms combined, 0.350917 serial req/s.
+
+Artifact: `benchmarks/results/cpu-l20-break-even/qwen-family-p512-o32-o128-v1/`
+
+The first CPU-vs-L20 boundary table compares those real M4 CPU rows against
+checked-in L20 Qwen3-0.6B FlashInfer serving artifacts. It reports 7.45x-74.63x
+serial-M4 request-throughput equivalents across the measured L20 rows. This is
+family-level evidence, not identical-model proof.
 
 ## Why This Belongs In This Repo
 
@@ -90,10 +99,9 @@ L20/vLLM baseline -> optimized L20 sampling/logits/KV paths
    on the same synthetic model.
 2. Add weight-only int8 matmul and report both latency and output drift against
    FP32.
-3. Add a short CPU-vs-L20 prompt/output matrix for the same Qwen family so the
-   CPU result is a boundary table instead of a single local smoke.
-4. Convert the result into a CPU-vs-L20 break-even table by QPS, prompt length,
-   output length, memory footprint, and operational cost.
+3. Replace the family-level L20 rows with same-model Qwen2.5-Coder-0.5B serving
+   artifacts so the break-even table becomes an identical-model comparison.
+4. Add memory footprint and operational cost columns to the CPU-vs-L20 table.
 
 ## Non-Goals
 
