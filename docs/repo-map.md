@@ -10,7 +10,7 @@ This file is the fastest way to orient in the repo.
 | `docs/hardware-scope.md` | Hardware claim policy: L20-first, A100 controls. |
 | `docs/experiment-status.md` | Current status map and negative-result ledger. |
 | `docs/where-optimizations-stop-mattering.md` | Paper-style one-page systems thesis. |
-| `docs/cpu-small-model-boundary.md` | CPU tiny-transformer path proof and future CPU-vs-L20 break-even scope. |
+| `docs/cpu-small-model-boundary.md` | CPU tiny-transformer mechanics proof, real GGUF CPU smoke, and future CPU-vs-L20 break-even scope. |
 | `benchmarks/results/README.md` | Curated artifact index. |
 | `benchmarks/results/artifact-catalog.json` | Generated machine-readable artifact catalog. |
 | `integrations/vllm/README.md` | vLLM hook and patch status. |
@@ -40,6 +40,7 @@ This file is the fastest way to orient in the repo.
 | Area | What to expect |
 | --- | --- |
 | `benchmarks/results/a100-*` | A100 controls and cross-checks. |
+| `benchmarks/results/cpu-*` | CPU synthetic and real-model controls. |
 | `benchmarks/results/l20-*` | L20 measurements and serving artifacts. |
 | `benchmarks/results/nsys/` | Compact Nsight Systems summaries and timeline-derived notes. |
 | `benchmarks/results/*/README.md` | Human-readable result interpretation. |
@@ -58,7 +59,7 @@ serving semantics probe
 -> combined sparse-sampling + top-logprobs serving matrix
 -> standalone LM-head sparse-penalty negative proof
 -> L20 sparse repetition-penalty kernel + negative processor + fused sampler matrix
--> CPU tiny-transformer path proof for cost/boundary control
+-> CPU tiny-transformer path proof and real GGUF smoke for cost/boundary control
 -> true GEMM epilogue / upstream LM-head boundary
 ```
 
@@ -71,6 +72,8 @@ Relevant files:
 - `scripts/summarize_l20_gemm_epilogue_trace.py`
 - `scripts/scout_vllm_gemm_epilogue_boundary.py`
 - `scripts/bench_cpu_tiny_transformer.sh`
+- `scripts/bench_cpu_real_model.sh`
+- `scripts/benchmark_cpu_real_model.py`
 - `cpp/my.cpp`
 - `src/l20_stack/epilogue/sampler_epilogue.py`
 - `src/l20_stack/ops/triton_sampling.py`
@@ -84,6 +87,7 @@ Relevant files:
 - `benchmarks/results/l20-sparse-repetition-penalty/`
 - `benchmarks/results/l20-sparse-penalty-triangle-matrix/`
 - `benchmarks/results/cpu-tiny-transformer/`
+- `benchmarks/results/cpu-real-model/`
 - `benchmarks/results/l20-vllm-gemm-epilogue-scout/`
 - `benchmarks/results/l20-vllm-gemm-epilogue-trace/`
 

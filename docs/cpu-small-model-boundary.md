@@ -7,7 +7,7 @@ This track answers a narrow question:
 
 The first step is deliberately small: `cpp/my.cpp` is a self-written FP32 tiny
 transformer with synthetic weights. It implements the mechanics needed for a
-decode stack before any real model format is introduced:
+decode stack without claiming real model throughput:
 
 - token embedding;
 - RMSNorm;
@@ -31,6 +31,21 @@ step, token throughput, weight bytes, KV-cache bytes, final token, and checksum.
 
 This is a path proof, not a performance claim about real CPU LLM serving.
 
+Artifact: `benchmarks/results/cpu-real-model/`
+
+The real-model control uses `llama-cpp-python` with `n_gpu_layers=0` and
+SmolLM2-135M-Instruct Q4_K_M GGUF. The checked-in local smoke runs 17 prompt
+tokens and 16 decode tokens on 4 CPU threads:
+
+- model size: 105,454,432 bytes;
+- prefill: 38.814042 ms;
+- decode: 76.238375 ms;
+- median decode step: 4.742771 ms;
+- decode throughput: 209.868062 tok/s.
+
+This is the first non-mock CPU result in the repo. It is still a smoke, not a
+CPU-vs-L20 break-even matrix.
+
 ## Why This Belongs In This Repo
 
 The L20 work shows how small kernel wins can disappear inside real serving
@@ -50,13 +65,14 @@ L20/vLLM baseline -> optimized L20 sampling/logits/KV paths
    on the same synthetic model.
 2. Add weight-only int8 matmul and report both latency and output drift against
    FP32.
-3. Add a llama.cpp/GGUF small-model control with the same prompt/decode shape.
+3. Refresh the local llama.cpp binding and rerun the Qwen2.5-Coder-0.5B GGUF
+   CPU target so the CPU model family matches the L20 Qwen serving artifacts.
 4. Convert the result into a CPU-vs-L20 break-even table by QPS, prompt length,
    output length, memory footprint, and operational cost.
 
 ## Non-Goals
 
-- No tokenizer in the first pass.
-- No GGUF parser in the first pass.
+- No claim that the self-written C++ synthetic path is a real model benchmark.
+- No in-repo model weights or GGUF files.
 - No AVX/AMX specialization until the scalar path is measured.
 - No claim that this hand-written runtime is competitive with llama.cpp.

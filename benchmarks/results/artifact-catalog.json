@@ -4,7 +4,7 @@
     "analysis": 1,
     "negative": 3,
     "other": 5,
-    "path_proof": 11,
+    "path_proof": 12,
     "positive": 10
   },
   "entries": [
@@ -73,6 +73,17 @@
       "reference": "cpu-tiny-transformer/",
       "status": "CPU path proof",
       "summary": "Adds a self-written FP32 C++ tiny-transformer decode scaffold with synthetic weights, RMSNorm, RoPE, KV cache, causal attention, greedy decode, and naive/tiled matmul; this is a mechanics and profiling baseline, not a real small-model serving claim."
+    },
+    {
+      "category": "path_proof",
+      "compact_file_count": 2,
+      "has_campaign_summary_json": false,
+      "has_readme": true,
+      "has_summary_json": true,
+      "path": "benchmarks/results/cpu-real-model",
+      "reference": "cpu-real-model/",
+      "status": "CPU real-model smoke",
+      "summary": "Adds a non-mock CPU baseline using `llama-cpp-python` and SmolLM2-135M-Instruct Q4_K_M GGUF with `n_gpu_layers=0`: 17 prompt tokens, 16 decode tokens, 4 CPU threads, 4.742771 ms median decode step, and 209.868062 decode tok/s on the checked-in local smoke."
     },
     {
       "category": "other",
@@ -383,7 +394,7 @@
       "summary": "Custom three-way serving path evidence; not yet a broad win."
     }
   ],
-  "entry_count": 34,
+  "entry_count": 35,
   "index_path": "benchmarks/results/README.md",
   "result_root": "benchmarks/results",
   "schema_version": 1
