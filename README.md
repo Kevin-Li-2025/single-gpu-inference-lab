@@ -3,196 +3,98 @@
 [![CI](https://github.com/Kevin-Li-2025/single-gpu-inference-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/Kevin-Li-2025/single-gpu-inference-lab/actions/workflows/ci.yml)
 
 Evidence-driven LLM inference systems research for single-GPU serving with
-vLLM, FlashInfer, Triton, and CUDA.
+vLLM, FlashInfer, Triton, CUDA, and CPU baselines.
 
-This repository asks one narrow question:
+This repo asks one narrow question:
 
 > Which low-level inference optimizations still matter after they are placed
 > inside a real serving stack?
 
 The project is L20-first, but not L20-only. L20 is the primary target because
 its 48 GB GDDR6 memory system exposes decode bottlenecks that HBM GPUs can hide.
-A100 runs are used as controls so claims do not depend on one local machine.
+A100 runs are used as controls, and Apple M4 CPU measurements define the local
+small-model break-even boundary.
 
-This is not a replacement for vLLM, FlashInfer, TensorRT-LLM, PEFT, TRL, or
-Megatron-LM. The useful output is the measured boundary between microkernel
-speedups, integration behavior, and end-to-end token latency.
+## Current Headline
 
-## Main Findings
+The strongest current result is the CPU-to-L20 deployment boundary for
+`Qwen2.5-Coder-0.5B-Instruct`.
 
-- Modern vLLM greedy/no-penalty decode is already hard to improve.
-- Sampling semantics are a better target than another standalone greedy kernel:
-  top-k/top-p, repetition penalties, and logprobs added a measured 37%-42%
-  median ITL tax in the current A100 control run.
-- Sparse token-history sampling has real A100 serving evidence, but the claim is
-  narrow: it beats vLLM's native PyTorch sampler path and shows a smaller
-  low-single-digit improvement versus a FlashInfer-enabled path for the measured
-  Qwen2.5-0.5B workload.
-- A standalone L20 CUDA sparse repetition-penalty kernel now proves the same
-  logits-processing boundary at the kernel level: 39 correct cases, 1.26x
-  median speedup, and up to 4.09x on Qwen-size vocabularies with throughput
-  batching. The measured dispatch policy selects sparse for 21/39 cases with
-  zero regressions; batch-one cases remain launch-bound, so the next step is
-  fusion into a larger sampler/logits boundary rather than another standalone
-  launch.
-- The L20 sparse-penalty serving work now has the full positive/negative loop:
-  the official custom logits-processor path reaches vLLM but regresses serving,
-  while moving the same idea into the fused sampler boundary gives a repeated
-  4-row L20 serving-matrix signal. Fused median ITL is positive in all 4
-  comparable Qwen3-0.6B rows; the standalone request-level processor is positive
-  in only 1/4 rows.
-- Combining sparse token-history sampling with fused generated-token
-  top-logprobs now produces a repeated A100 serving win on the richer
-  top-k/top-p + penalties + logprobs workload, with an 8-row model/logprobs
-  matrix showing the strongest gains on small models and `logprobs=20`.
-- Producer-side LM-head experiments remain boundary checks until they become a
-  true GEMM epilogue or upstream-shaped integration.
-- The CPU track is now split into mechanics and real-model controls:
-  `cpp/my.cpp` implements a synthetic FP32 tiny-transformer decode path, while
-  the real GGUF smoke uses `llama-cpp-python` CPU-only on SmolLM2-135M-Instruct
-  Q4_K_M and llama.cpp C++ on Qwen2.5-Coder-0.5B Q4_K_M. The SmolLM2
-  Python-call-path smoke reaches 209.868 decode tok/s locally. The Qwen
-  `llama-bench` thread sweep recommends 6 generation threads and reports
-  170.641 tok/s for `tg16`; the matching M4 C++ completion smoke reports
-  152.85 decode eval tok/s with `threads=6` and `threads_batch=8`. A Qwen-family
-  p512 break-even artifact now compares that CPU path against same-model L20
-  vLLM FlashInfer serving rows: M4 serial capacity is about 0.35-0.57 req/s,
-  while the measured L20 rows reach 59.906 req/s for p512/o32 and 22.382 req/s
-  for p512/o128 at c8, or 105.43x and 63.78x serial-M4 request throughput.
-  The same artifact now includes p95/p99 tail tables and illustrative
-  cost-per-1M-token columns; a separate fixed real-prompt trace completes 12/12
-  code prompts with 26.198 ms median TTFT and 2.142 ms median per-prompt ITL.
-- Negative results stay in the repo when they change the direction.
+| Workload | M4 CPU serial req/s | L20 FlashInfer req/s | L20 vs M4 | L20 cost / 1M output tokens |
+| --- | ---: | ---: | ---: | ---: |
+| p512/o32 c8 | 0.568 | 59.906 | 105.43x | `$0.1159` at `$0.80/h` |
+| p512/o128 c8 | 0.351 | 22.382 | 63.78x | `$0.0776` at `$0.80/h` |
 
-## Current Checkpoint
+The same evidence includes:
 
-The current active boundary is the LM-head / logits / sampling boundary.
+- p95/p99 tail tables for FlashInfer and torch/native sampling;
+- a fixed 12-prompt code trace through real L20 vLLM HTTP streaming;
+- 12/12 prompt completion, 26.198 ms median TTFT, and 2.142 ms median
+  per-prompt ITL.
 
-The latest A100 semantic trace shows that a producer-side epilogue target exists
-for top-k/top-p plus sparse penalties:
+Artifacts:
 
-- Model: `Qwen/Qwen2.5-0.5B-Instruct`
-- Stack: vLLM 0.10.2, FlashInfer sampling enabled, A100-SXM4-80GB
-- Trace events: 320 total, 310 decode-safe
-- Candidate target: `fused_topk_topp_sparse_penalty_lm_head_epilogue`
-- Decode-side avoidable logits materialization budget: 179.67 MiB FP32
-- Output mutation: disabled
+- `benchmarks/results/cpu-l20-break-even/`
+- `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/`
+- `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-real-prompt-trace-v1/`
 
-Interpretation: the serving stack exposes the right semantic boundary, but the
-next step must be a true producer-side epilogue or upstream-shaped integration.
-A separate standalone Triton LM-head sparse-penalty path was correct but slower
-than cuBLAS/full-logits baselines by 1.32x-1.39x on the tested A100 shapes.
+Cost uses a configurable L20 hourly rate and excludes host CPU, storage,
+network, idle time, and provider discounts. The real-prompt p95/p99 TTFT tail is
+small-sample trace evidence, not a production SLO.
+
+## What This Repo Proves
+
+- Microkernel wins are not enough. Several kernels win in isolation but shrink
+  or disappear after vLLM scheduling, CUDA Graph behavior, FlashInfer, and
+  end-to-end token latency are included.
+- Sampling semantics matter. Top-k/top-p, repetition penalties, and logprobs
+  add a measurable serving tax and are better targets than plain greedy decode.
+- Negative results are useful. The standalone vLLM logits-processor route for
+  sparse repetition penalty reached real serving but regressed ITL, which pushed
+  the work toward fused sampler and LM-head/logits boundaries.
+- The next high-leverage GPU target is producer-side LM-head/logits work, not
+  another standalone sampler launch.
+- The CPU track is a real control, not a mock: `cpp/my.cpp` is a self-written
+  decode mechanics scaffold, while Qwen/SmolLM GGUF runs provide real CPU
+  baselines.
 
 ## Best Evidence
 
-| Boundary | Result | Artifact |
+| Area | Result | Artifact |
 | --- | --- | --- |
-| Sampling semantics tax | Greedy 6.720 ms median ITL; top-k/top-p + penalties 9.562 ms, or +42.29% | `benchmarks/results/a100-vllm-sampling-semantics-qwen25-05b/` |
-| Dense top-k/top-p + penalties | 1.36x-1.42x A100 microbenchmark speedup versus apply-then-sample | `benchmarks/results/a100-fused-topk-topp-penalty/` |
-| Sparse token-history penalties | 1.27x-1.31x A100 microbenchmark speedup without dense `[batch, vocab]` counts | `benchmarks/results/a100-sparse-topk-topp-penalty/` |
-| L20 sparse repetition penalty | Standalone CUDA kernel: 39 correct L20 cases, 1.26x median speedup, up to 4.09x when full-vocab penalty scans dominate launch overhead; calibrated policy chooses sparse for 21/39 cases with zero measured regressions | `benchmarks/results/l20-sparse-repetition-penalty/` |
-| L20 standalone logits-processor A/B | Real vLLM path proof but negative serving result: the CUDA op is hit 65 times, while median ITL regresses 14.33 ms -> 15.67 ms | `benchmarks/results/l20-sparse-repetition-penalty-serving/` |
-| L20 fused sparse sampler | FlashInfer-enabled L20 smoke moves median ITL 2.609 ms -> 2.575 ms with 48/50 traced sampler events eligible; formal 4-row triangle matrix then keeps fused median ITL positive in 4/4 comparable rows | `benchmarks/results/l20-vllm-fused-sparse-sampling/`, `benchmarks/results/l20-sparse-penalty-triangle-matrix/` |
-| L20 sparse penalty triangle | Native-vs-standalone-vs-fused Qwen3-0.6B matrix: fused median ITL is positive in 4/4 rows (+0.562%, +5.859%, +4.092%, +2.430%), fused median E2E is positive in 4/4 rows, and standalone logits processor is positive in only 1/4 rows | `benchmarks/results/l20-sparse-penalty-triangle-matrix/` |
-| CPU tiny transformer scaffold | Self-written C++ FP32 synthetic decode path with RMSNorm, RoPE, KV cache, causal attention, greedy decode, and naive/tiled matmul; path proof only, not a real CPU small-model serving claim | `benchmarks/results/cpu-tiny-transformer/` |
-| CPU real-model smoke | SmolLM2-135M-Instruct Q4_K_M GGUF CPU-only: Python-call-path decode reaches 209.868 tok/s, and standard `llama-bench` reports `tg16` 359.429 tok/s / `pp17+tg16` 412.213 tok/s. Qwen2.5-Coder-0.5B Q4_K_M cache is now valid; the M4 thread sweep reports `tg16` 170.641 tok/s at 6 threads and the C++ completion smoke reports 152.85 decode eval tok/s with `threads=6`, `threads_batch=8`. | `benchmarks/results/cpu-real-model/` |
-| CPU vs L20 break-even | Same-model Qwen2.5-Coder-0.5B p512 boundary table: M4 CPU serial `p512/o32` is 0.568 req/s and `p512/o128` is 0.351 req/s; L20/vLLM FlashInfer serving reaches 59.906 req/s at p512/o32 c8 and 22.382 req/s at p512/o128 c8, or 105.43x and 63.78x serial-M4 request throughput. FlashInfer also beats torch/native sampling in 8/8 paired L20 rows. At an illustrative `$0.80/h` L20 rate, the best FlashInfer rows are `$0.1159/1M` output tokens for p512/o32 and `$0.0776/1M` output tokens for p512/o128. | `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/` |
-| L20 real prompt trace | Fixed Qwen2.5-Coder-0.5B code-prompt trace through real vLLM HTTP streaming: 12/12 prompts complete, 9.233 req/s, 914.022 output tok/s, 26.198 ms median TTFT, 2.142 ms median per-prompt ITL, with p95/p99 TTFT exposed by the first concurrency wave. | `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-real-prompt-trace-v1/` |
-| CPU vs L20 family control | Earlier Qwen-family p512 boundary table: checked-in L20 Qwen3-0.6B FlashInfer rows range from 7.45x to 74.63x serial-M4 request throughput equivalent. | `benchmarks/results/cpu-l20-break-even/qwen-family-p512-o32-o128-v1/` |
-| Sparse sampler vs native PyTorch path | Median ITL 9.544 ms -> 4.093 ms on A100/Qwen2.5-0.5B | `benchmarks/results/a100-vllm-sparse-penalty-sampling/` |
-| Sparse sampler vs FlashInfer path | Median ITL 4.468 ms -> 4.346 ms on the same A100 workload | `benchmarks/results/a100-vllm-flashinfer-sparse-penalty-sampling/` |
-| Fused top-logprobs selection | 8.04x-9.17x A100 microbenchmark speedup; dirty and clean A100 serving artifacts show path validation, while clean request-level total time stayed flat | `benchmarks/results/a100-fused-top-logprobs/`, `benchmarks/results/a100-vllm-top-logprobs-clean/` |
-| Combined sparse sampling + fused top-logprobs | A100 multi-model serving matrix: 8 paired 30-run rows across Qwen2.5-0.5B, Qwen2.5-Coder-1.5B, Qwen3-0.6B, and Qwen3-1.7B. `logprobs=20` wins on all four models, with best median ITL 4.486 ms -> 4.254 ms (-5.18%) on Qwen2.5-0.5B and 5.053 ms -> 4.845 ms (-4.11%) on Qwen3-0.6B. | `benchmarks/results/a100-vllm-combined-sampling-logprobs-matrix/` |
-| GEMM epilogue semantic trace | 310/320 decode-safe events; 179.67 MiB FP32 logits budget | `benchmarks/results/a100-vllm-gemm-epilogue-semantic-trace/` |
-| Standalone LM-head sparse penalties | Correct but 1.32x-1.39x slower than cuBLAS/full-logits baselines | `benchmarks/results/a100-lm-head-sparse-penalty-boundary/` |
-| L20 residual RMSNorm boundary | 24-shape L20 matrix with cache flush: all providers correct; fused residual RMSNorm often wins on decode/medium shapes, while large prefill mostly collapses to parity or small wins | `benchmarks/results/l20-residual-rmsnorm-v3/` |
+| CPU vs L20 break-even | Same-model Qwen2.5-Coder-0.5B boundary, cost/tail table, and real prompt trace | `benchmarks/results/cpu-l20-break-even/` |
+| L20 sparse repetition penalty | 39 correct CUDA cases, 1.26x median kernel speedup, zero-regression dispatch policy | `benchmarks/results/l20-sparse-repetition-penalty/` |
+| L20 fused sparse sampler | Fused sampler wins 4/4 comparable Qwen3-0.6B rows; standalone logits processor wins only 1/4 | `benchmarks/results/l20-sparse-penalty-triangle-matrix/` |
+| A100 sampling semantics | Top-k/top-p + penalties adds about +42% median ITL over greedy/no-penalty | `benchmarks/results/a100-vllm-sampling-semantics-qwen25-05b/` |
+| A100 sparse sampling | Sparse token-history path improves real vLLM serving versus native PyTorch and FlashInfer baselines | `benchmarks/results/a100-vllm-sparse-penalty-sampling/`, `benchmarks/results/a100-vllm-flashinfer-sparse-penalty-sampling/` |
+| A100 sampling + logprobs | Combined sparse sampling and fused top-logprobs wins the richer logprobs workload across an 8-row matrix | `benchmarks/results/a100-vllm-combined-sampling-logprobs-matrix/` |
+| LM-head boundary | Semantic trace exposes 310/320 decode-safe events and 179.67 MiB FP32 logits materialization budget | `benchmarks/results/a100-vllm-gemm-epilogue-semantic-trace/` |
+| CPU mechanics | Self-written C++ tiny-transformer path plus real GGUF CPU baselines | `benchmarks/results/cpu-tiny-transformer/`, `benchmarks/results/cpu-real-model/` |
 
-## Boundary Diagram
+For the full status map, use `docs/experiment-status.md`.
 
-```mermaid
-flowchart LR
-    A["vLLM decode step"] --> B["hidden states"]
-    B --> C["LM head / logits"]
-    C --> D["sampling semantics"]
-    D --> E["top-k / top-p"]
-    D --> F["penalties"]
-    D --> G["logprobs"]
-    E --> H["measured ITL tax"]
-    F --> H
-    G --> H
-    H --> I["fused sampling or LM-head epilogue boundary"]
-    I --> J["paired serving A/B"]
-```
+## Repository Map
 
-## Hardware Scope
-
-| Hardware | Role |
+| Path | Purpose |
 | --- | --- |
-| L20 / Ada SM89 / 48 GB GDDR6 | Primary target for bandwidth-limited single-card decode serving. |
-| A100 / SM80 / HBM | Control target for portability and claim discipline. |
-| H100/H200/Blackwell | Reference ecosystem only unless this repo contains measured artifacts. |
+| `src/l20_stack/` | Compatibility namespace for policy gates, CLI checks, memory calculators, and operator wrappers. |
+| `cpp/` | Self-contained C++ CPU inference experiments, including `cpp/my.cpp`. |
+| `integrations/vllm/` | Local vLLM patch installers and guarded dispatch helpers. |
+| `scripts/` | Benchmarks, serving campaigns, profilers, scouts, and summarizers. |
+| `benchmarks/results/` | Compact checked-in evidence: JSON summaries, serving reports, and short Markdown notes. |
+| `benchmarks/prompt_traces/` | Fixed public prompt traces used for real workload checks. |
+| `docs/` | Research narrative, hardware scope, experiment status, and upstream/RFC notes. |
+| `tests/` | CPU-safe and source-level regression tests. GPU benchmarks live under `scripts/`. |
 
-See `docs/hardware-scope.md` for the full claim policy.
+Start here:
 
-## What Is Not Claimed
+- `docs/repo-map.md`
+- `docs/experiment-status.md`
+- `docs/hardware-scope.md`
+- `docs/where-optimizations-stop-mattering.md`
+- `benchmarks/results/README.md`
 
-- A microbenchmark speedup is not treated as an end-to-end serving result.
-- The RoPE/KV and QK fusion work is valuable case-study evidence, but its
-  serving impact is Amdahl-limited in current vLLM stacks.
-- The standalone top-logprobs hook reached serving and was correct, but its
-  clean A100 request-level result was flat. The new positive A100 result comes
-  from combining it with sparse sampling on a richer sampling workload.
-- The GEMM epilogue semantic trace proves eligibility and budget, not latency.
-- Cross-GPU conclusions require measured artifacts on that GPU.
-
-## Result Map
-
-| Boundary | Status | Decision |
-| --- | --- | --- |
-| RoPE + paged KV append | Kernel-level positive | Keep as a case study; not the main current target. |
-| Q/K norm + Q/K RoPE + KV write | Path validation | Useful integration proof, too small alone for a broad serving claim. |
-| FlashInfer sampling route | Production comparator | Prewarm and compare against it when available. |
-| Sparse top-k/top-p + penalties | Active positive path | Continue only through real vLLM serving A/B and upstream-shaped gates. |
-| L20 sparse repetition penalty | Positive standalone CUDA boundary / negative standalone serving path | Keep as a kernel boundary and correctness oracle; do not claim serving win from the request-level logits processor. |
-| L20 fused sparse penalty sampler | Positive 4-row L20 serving matrix | Keep the claim scoped to Qwen3-0.6B/c2-c8 shapes: fused median ITL wins in 4/4 comparable rows, while standalone request-level processor wins in only 1/4. |
-| CPU tiny transformer | Path proof | Keep as a scalar C++ control for CPU decode mechanics and future CPU-vs-L20 break-even analysis. |
-| Fused top-logprobs | Correct standalone path, flat request time | Useful only when folded into a larger sampling/logits boundary. |
-| Combined sparse sampling + fused top-logprobs | Positive A100 serving matrix | First repeated combined-boundary serving win: 8 paired rows, 6/8 median ITL positives, and 4/4 positives at `logprobs=20`; every row proves `borrowed` raw logits and sparse-sampler trace coverage. |
-| LM-head / GEMM epilogue | Current P0 boundary | Implement producer-side semantics instead of external standalone GEMM. |
-| FP8 KV fused attention | Experimental | Keep disabled until repeated serving ITL beats BF16/FlashInfer. |
-| Speculative/tree attention | Experimental | Research branch, not a stable serving result yet. |
-| Kernel-coding QLoRA | Negative so far | Training stack works, but held-out KernelBench `fast_0` remains zero. |
-
-Full status map: `docs/experiment-status.md`
-
-## Docs
-
-| Item | Path |
-| --- | --- |
-| Hardware and claim scope | `docs/hardware-scope.md` |
-| Logits-boundary A/B plan | `docs/logits-boundary-ab.md` |
-| Where optimizations stop mattering | `docs/where-optimizations-stop-mattering.md` |
-| Experiment status map | `docs/experiment-status.md` |
-| Top-tier kernel gaps | `docs/l20-top-tier-kernel-gaps.md` |
-| KV/decode pipeline blueprint | `docs/l20-kv-decode-pipeline-blueprint.md` |
-| L20 sparse penalty case study | `docs/l20-sparse-penalty-case-study.md` |
-| CPU small-model boundary | `docs/cpu-small-model-boundary.md` |
-| CPU vs L20 case study | `docs/cpu-l20-break-even-case-study.md` |
-| vLLM integration notes | `integrations/vllm/README.md` |
-| Artifact index | `benchmarks/results/README.md` |
-| Artifact catalog JSON | `benchmarks/results/artifact-catalog.json` |
-| L20 sparse penalty triangle matrix | `benchmarks/results/l20-sparse-penalty-triangle-matrix/qwen3-0p6b-c2c4c8-o32o64-r64-v1/README.md` |
-| CPU tiny transformer artifact | `benchmarks/results/cpu-tiny-transformer/README.md` |
-| CPU vs L20 break-even | `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/README.md` |
-| CPU vs L20 cost/tail | `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/cost-tail.md` |
-| L20 real prompt trace | `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-real-prompt-trace-v1/README.md` |
-| CPU vs L20 family control | `benchmarks/results/cpu-l20-break-even/qwen-family-p512-o32-o128-v1/README.md` |
-| Combined A100 sampling/logprobs A/B | `benchmarks/results/a100-vllm-combined-sampling-logprobs/README.md` |
-| Combined A100 sampling/logprobs matrix | `benchmarks/results/a100-vllm-combined-sampling-logprobs-matrix/README.md` |
-| Serving optimization ceiling | `benchmarks/results/l20-serving-optimization-ceiling/README.md` |
-| Logits-boundary scout artifact | `benchmarks/results/l20-vllm-logits-boundary-scout/README.md` |
-
-## Reproduce
+## Reproduce And Validate
 
 CPU-safe regression tests:
 
@@ -200,26 +102,26 @@ CPU-safe regression tests:
 PYTHONPATH=src python -m unittest discover -s tests
 ```
 
-Checked-in benchmark artifact index validation:
+Checked-in artifact index:
 
 ```bash
-PYTHONPATH=src single-gpu-infer artifact-index
+PYTHONPATH=src single-gpu-infer artifact-index --strict-warnings
 ```
 
-Local Markdown path validation:
+Markdown link validation:
 
 ```bash
 PYTHONPATH=src single-gpu-infer doc-links
 ```
 
-Machine-readable benchmark artifact catalog:
+Artifact catalog regeneration:
 
 ```bash
 PYTHONPATH=src single-gpu-infer artifact-catalog \
   --output benchmarks/results/artifact-catalog.json
 ```
 
-Self-written CPU tiny-transformer smoke:
+CPU tiny-transformer smoke:
 
 ```bash
 scripts/bench_cpu_tiny_transformer.sh \
@@ -240,115 +142,34 @@ Real Qwen CPU completion smoke on Apple M4:
 scripts/run_m4_cpu_qwen_inference.py
 ```
 
-Sampling-semantics probe against an OpenAI-compatible vLLM server:
+CPU/L20 break-even tables:
 
 ```bash
-PYTHONPATH=src python scripts/probe_vllm_sampling_semantics.py \
-  --url http://127.0.0.1:18080/v1/completions \
-  --model Qwen/Qwen2.5-0.5B-Instruct \
-  --output-dir /tmp/sampling-semantics \
-  --warmup 2 \
-  --runs 10 \
-  --max-tokens 64
+/usr/bin/python3 scripts/build_cpu_l20_break_even.py \
+  --mode cpu_l20_same_model_break_even \
+  --title "CPU vs L20 Break-Even: Qwen2.5-Coder-0.5B p512" \
+  --l20-model Qwen2.5-Coder-0.5B-Instruct \
+  --l20-o32 benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/p512-o32/summary.json \
+  --l20-o128 benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/p512-o128/summary.json \
+  --output-dir benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1
+
+/usr/bin/python3 scripts/build_cpu_l20_cost_tail.py \
+  --artifact-dir benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1 \
+  --l20-hourly-usd 0.80
 ```
 
-Fused top-k/top-p + dense-penalty microbenchmark:
+GPU serving campaigns require the target model, vLLM source tree, and an L20 or
+A100 host. Individual artifact READMEs contain the exact commands used for each
+run.
 
-```bash
-PYTHONPATH=src python scripts/benchmark_l20_topk_topp_penalty_sampling.py \
-  --batch 1 \
-  --vocab 151936 \
-  --top-k 50 \
-  --top-p 0.9 \
-  --warmup 30 \
-  --rounds 60 \
-  --output /tmp/fused-topk-topp-penalty-b1.json
-```
-
-L20 CUDA sparse repetition-penalty benchmark:
-
-```bash
-scripts/run_l20_sparse_repetition_penalty.sh
-```
-
-L20 dispatcher-op smoke for the vLLM custom logits-processor scaffold:
-
-```bash
-python scripts/smoke_cuda_sparse_repetition_penalty_op.py
-```
-
-L20 paired serving A/B entrypoint for native vs custom sparse repetition
-penalty:
-
-```bash
-EXECUTION_MODE=eager INPUT_TOKENS=512 MAX_CONCURRENCY=8 NUM_PROMPTS=32 \
-scripts/run_vllm_l20_sparse_repetition_penalty_serving_ab.sh \
-  /home/hhai/models/Qwen2.5-Coder-1.5B qwen25-coder-1p5b \
-  benchmarks/results/l20-sparse-repetition-penalty-serving/eager-b8-i512 \
-  /home/hhai/vllm-l20-rfc
-```
-
-L20 native-vs-standalone-vs-fused sparse-penalty triangle matrix:
-
-```bash
-MATRIX_ROWS="c2_i512_o32_r64 c4_i512_o32_r64 c8_i512_o32_r64 c4_i512_o64_r64" \
-scripts/run_vllm_l20_sparse_penalty_triangle_matrix.sh \
-  /home/hhai/models/Qwen3-0.6B qwen3-0p6b \
-  benchmarks/results/l20-sparse-penalty-triangle-matrix/qwen3-0p6b-c2c4c8-o32o64-r64-v1 \
-  /home/hhai/vllm-l20-rfc
-```
-
-GEMM epilogue semantic trace summary:
-
-```bash
-PYTHONPATH=src python scripts/summarize_l20_gemm_epilogue_trace.py \
-  benchmarks/results/a100-vllm-gemm-epilogue-semantic-trace/qwen25-05b-topk-topp-penalty-r8/gemm_epilogue_trace.jsonl \
-  --output /tmp/gemm-epilogue-semantic-summary.json
-```
-
-RMSNorm benchmark summary:
-
-```bash
-PYTHONPATH=src single-gpu-infer rmsnorm-summary \
-  benchmarks/results/l20-residual-rmsnorm-v3/full-matrix-cacheflush64.json \
-  --output /tmp/rmsnorm-summary.json
-```
-
-More commands and raw summaries are listed in `benchmarks/results/README.md`.
-
-Boundary scripts:
-
-- `integrations/vllm/install_l20_logits_boundary_trace.py`
-- `scripts/summarize_l20_logits_boundary_trace.py`
-- `scripts/run_vllm_l20_logits_boundary_trace_campaign.sh`
-- `scripts/benchmark_l20_topk_topp_sampling.py`
-
-## Repository Map
-
-| Area | Purpose |
-| --- | --- |
-| `src/l20_stack/` | Legacy implementation namespace for CPU-safe planners, policy gates, memory calculators, and Triton/CUDA operator wrappers. |
-| `cpp/` | Self-contained C++ CPU inference experiments such as `cpp/my.cpp`. |
-| `integrations/vllm/` | Local vLLM patch installers and guarded dispatch helpers. |
-| `scripts/` | Benchmarks, profiling wrappers, serving campaigns, scouts, and summarizers. |
-| `benchmarks/results/` | Compact checked-in evidence: JSON summaries, serving reports, and short Markdown notes. |
-| `docs/` | Research narrative, status map, hardware scope, and upstream/RFC notes. |
-| `tests/` | CPU-safe and source-level regression tests. GPU benchmarks live under `scripts/`. |
-
-Start with `docs/repo-map.md`, `docs/hardware-scope.md`,
-`docs/where-optimizations-stop-mattering.md`, and
-`benchmarks/results/README.md`.
-
-## Evidence Policy
+## Claim Policy
 
 - Every performance claim must name hardware, model, command, and artifact.
 - Microbenchmark wins are not serving results.
 - Negative results stay when they change the direction.
+- Cross-GPU conclusions require measured artifacts on that GPU.
 - Checked-in artifacts should be compact and reviewable: `README.md`,
   `summary.json`, campaign summaries, and small serving JSON reports.
-- Keep `benchmarks/results/README.md` machine-checkable with
-  `single-gpu-infer artifact-index` whenever adding or renaming result
-  directories.
 - Do not commit model weights, checkpoints, datasets, secrets, `server.log`,
   `.nsys-rep`, SQLite exports, or large raw profiler captures.
 
@@ -356,6 +177,6 @@ Start with `docs/repo-map.md`, `docs/hardware-scope.md`,
 
 The public project name is **Single-GPU Inference Lab**.
 
-The original Python namespace remains `l20_stack` for compatibility with
-existing scripts and checked-in artifacts. New public references should use
-`Single-GPU Inference Lab` and the CLI entry point `single-gpu-infer`.
+The Python namespace remains `l20_stack` for compatibility with existing
+scripts and checked-in artifacts. New public references should use the project
+name and the CLI entry point `single-gpu-infer`.
