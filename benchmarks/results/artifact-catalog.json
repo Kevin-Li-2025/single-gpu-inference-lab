@@ -87,14 +87,14 @@
     },
     {
       "category": "other",
-      "compact_file_count": 2,
+      "compact_file_count": 4,
       "has_campaign_summary_json": false,
       "has_readme": true,
       "has_summary_json": true,
       "path": "benchmarks/results/cpu-l20-break-even",
       "reference": "cpu-l20-break-even/",
       "status": "CPU-vs-L20 boundary table",
-      "summary": "Converts real M4 CPU Qwen2.5-Coder GGUF p512 measurements and checked-in L20 Qwen3 FlashInfer serving rows into a scoped break-even table: M4 serial capacity is 0.568 req/s for p512/o32 and 0.351 req/s for p512/o128, while the measured L20 rows span 7.45x-74.63x serial-M4 request throughput equivalent."
+      "summary": "Converts real M4 CPU Qwen2.5-Coder GGUF p512 measurements and checked-in L20 Qwen3 FlashInfer serving rows into a scoped break-even table: M4 serial capacity is 0.568 req/s for p512/o32 and 0.351 req/s for p512/o128, while the measured L20 rows span 7.45x-74.63x serial-M4 request throughput equivalent. The same-model Qwen2.5-Coder-0.5B L20 runner is checked in as a pending artifact, but has no L20 latency claim yet."
     },
     {
       "category": "other",

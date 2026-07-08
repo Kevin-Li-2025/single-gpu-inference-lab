@@ -80,6 +80,15 @@ checked-in L20 Qwen3-0.6B FlashInfer serving artifacts. It reports 7.45x-74.63x
 serial-M4 request-throughput equivalents across the measured L20 rows. This is
 family-level evidence, not identical-model proof.
 
+Artifact: `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-pending/`
+
+The same-model L20 proof is now an execution gate rather than an open-ended
+TODO. `scripts/run_vllm_l20_qwen25_coder_0p5b_break_even.sh` runs the existing
+L20 FlashInfer-vs-torch serving campaign for Qwen2.5-Coder-0.5B at p512/o32 and
+p512/o128, then writes the compact L20 summaries needed to replace the
+family-level table. This pending artifact has no latency claim until those
+summaries exist from a real L20 run.
+
 ## Why This Belongs In This Repo
 
 The L20 work shows how small kernel wins can disappear inside real serving
@@ -99,8 +108,8 @@ L20/vLLM baseline -> optimized L20 sampling/logits/KV paths
    on the same synthetic model.
 2. Add weight-only int8 matmul and report both latency and output drift against
    FP32.
-3. Replace the family-level L20 rows with same-model Qwen2.5-Coder-0.5B serving
-   artifacts so the break-even table becomes an identical-model comparison.
+3. Run the checked-in same-model L20 runner on the L20 host and replace the
+   family-level rows with Qwen2.5-Coder-0.5B serving artifacts.
 4. Add memory footprint and operational cost columns to the CPU-vs-L20 table.
 
 ## Non-Goals

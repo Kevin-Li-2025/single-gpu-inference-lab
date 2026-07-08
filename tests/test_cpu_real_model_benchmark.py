@@ -165,6 +165,40 @@ class CpuRealModelBenchmarkTest(unittest.TestCase):
         self.assertEqual(rows[0]["vs_cpu_serial_request_throughput"], 12.5)
         self.assertEqual(rows[0]["vs_cpu_decode_throughput"], 2.0)
 
+    def test_l20_qwen25_coder_break_even_runner_contract(self):
+        source = Path(
+            "scripts/run_vllm_l20_qwen25_coder_0p5b_break_even.sh"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("Qwen2.5-Coder-0.5B-Instruct", source)
+        self.assertIn("qwen25-coder-0p5b", source)
+        self.assertIn("OUTPUT_TOKENS=\"$output_tokens\"", source)
+        self.assertIn("run_vllm_l20_sampling_winner_matrix.sh", source)
+        self.assertIn("p512-o32", source)
+        self.assertIn("p512-o128", source)
+        self.assertIn("runner_ready_measurement_pending", source)
+
+        pending_config = __import__("json").loads(
+            Path(
+                "benchmarks/results/cpu-l20-break-even/"
+                "qwen25-coder-0p5b-identical-model-pending/run-config.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            pending_config["mode"],
+            "l20_qwen25_coder_0p5b_same_model_break_even_runner",
+        )
+        self.assertEqual(
+            pending_config["expected_l20_outputs"],
+            [
+                "p512-o32/summary.json",
+                "p512-o32/README.md",
+                "p512-o128/summary.json",
+                "p512-o128/README.md",
+            ],
+        )
+        self.assertEqual(pending_config["status"], "runner_ready_measurement_pending")
+
     def test_llama_bench_summary_sanitizes_model_path(self):
         raw = [
             {

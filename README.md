@@ -58,6 +58,8 @@ speedups, integration behavior, and end-to-end token latency.
   p512 break-even artifact now compares that CPU path against checked-in L20
   FlashInfer serving rows: M4 serial capacity is about 0.35-0.57 req/s, while
   the measured L20 rows span about 7.45x-74.63x serial-M4 request throughput.
+  The same-model Qwen2.5-Coder-0.5B L20 runner is checked in, but its serving
+  summaries are still pending a real L20 run.
 - Negative results stay in the repo when they change the direction.
 
 ## Current Checkpoint
@@ -93,6 +95,7 @@ than cuBLAS/full-logits baselines by 1.32x-1.39x on the tested A100 shapes.
 | CPU tiny transformer scaffold | Self-written C++ FP32 synthetic decode path with RMSNorm, RoPE, KV cache, causal attention, greedy decode, and naive/tiled matmul; path proof only, not a real CPU small-model serving claim | `benchmarks/results/cpu-tiny-transformer/` |
 | CPU real-model smoke | SmolLM2-135M-Instruct Q4_K_M GGUF CPU-only: Python-call-path decode reaches 209.868 tok/s, and standard `llama-bench` reports `tg16` 359.429 tok/s / `pp17+tg16` 412.213 tok/s. Qwen2.5-Coder-0.5B Q4_K_M cache is now valid; the M4 thread sweep reports `tg16` 170.641 tok/s at 6 threads and the C++ completion smoke reports 152.85 decode eval tok/s with `threads=6`, `threads_batch=8`. | `benchmarks/results/cpu-real-model/` |
 | CPU vs L20 break-even | Qwen-family p512 boundary table: M4 CPU serial `p512/o32` is 0.568 req/s and `p512/o128` is 0.351 req/s; checked-in L20 FlashInfer serving rows range from 7.45x to 74.63x serial-M4 request throughput equivalent. This is family-level evidence, not identical-model proof. | `benchmarks/results/cpu-l20-break-even/qwen-family-p512-o32-o128-v1/` |
+| Pending same-model L20 break-even | Runner contract for Qwen2.5-Coder-0.5B on L20 at p512/o32 and p512/o128. It reuses the existing vLLM FlashInfer-vs-torch campaign and has no latency claim until real L20 summaries exist. | `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-pending/` |
 | Sparse sampler vs native PyTorch path | Median ITL 9.544 ms -> 4.093 ms on A100/Qwen2.5-0.5B | `benchmarks/results/a100-vllm-sparse-penalty-sampling/` |
 | Sparse sampler vs FlashInfer path | Median ITL 4.468 ms -> 4.346 ms on the same A100 workload | `benchmarks/results/a100-vllm-flashinfer-sparse-penalty-sampling/` |
 | Fused top-logprobs selection | 8.04x-9.17x A100 microbenchmark speedup; dirty and clean A100 serving artifacts show path validation, while clean request-level total time stayed flat | `benchmarks/results/a100-fused-top-logprobs/`, `benchmarks/results/a100-vllm-top-logprobs-clean/` |
@@ -177,6 +180,7 @@ Full status map: `docs/experiment-status.md`
 | L20 sparse penalty triangle matrix | `benchmarks/results/l20-sparse-penalty-triangle-matrix/qwen3-0p6b-c2c4c8-o32o64-r64-v1/README.md` |
 | CPU tiny transformer artifact | `benchmarks/results/cpu-tiny-transformer/README.md` |
 | CPU vs L20 break-even | `benchmarks/results/cpu-l20-break-even/qwen-family-p512-o32-o128-v1/README.md` |
+| Pending same-model L20 break-even | `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-pending/README.md` |
 | Combined A100 sampling/logprobs A/B | `benchmarks/results/a100-vllm-combined-sampling-logprobs/README.md` |
 | Combined A100 sampling/logprobs matrix | `benchmarks/results/a100-vllm-combined-sampling-logprobs-matrix/README.md` |
 | Serving optimization ceiling | `benchmarks/results/l20-serving-optimization-ceiling/README.md` |
