@@ -26,22 +26,41 @@ def test_name(row: dict[str, Any]) -> str:
     return f"tg{n_gen}"
 
 
+def row_summary(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "n_prompt": row["n_prompt"],
+        "n_gen": row["n_gen"],
+        "n_threads": row["n_threads"],
+        "avg_ms": row["avg_ns"] / 1_000_000.0,
+        "stddev_ms": row["stddev_ns"] / 1_000_000.0,
+        "avg_tokens_per_s": row["avg_ts"],
+        "stddev_tokens_per_s": row["stddev_ts"],
+        "samples_tokens_per_s": row.get("samples_ts", []),
+    }
+
+
 def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     if not rows:
         raise ValueError("llama-bench JSON contains no rows")
 
     first = rows[0]
-    tests = {}
+    thread_sweep: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
-        tests[test_name(row)] = {
-            "n_prompt": row["n_prompt"],
-            "n_gen": row["n_gen"],
-            "avg_ms": row["avg_ns"] / 1_000_000.0,
-            "stddev_ms": row["stddev_ns"] / 1_000_000.0,
-            "avg_tokens_per_s": row["avg_ts"],
-            "stddev_tokens_per_s": row["stddev_ts"],
-            "samples_tokens_per_s": row.get("samples_ts", []),
-        }
+        thread_sweep.setdefault(test_name(row), []).append(row_summary(row))
+
+    for entries in thread_sweep.values():
+        entries.sort(key=lambda item: item["n_threads"])
+
+    best_tests = {
+        name: max(entries, key=lambda item: item["avg_tokens_per_s"])
+        for name, entries in sorted(thread_sweep.items())
+    }
+    generation_tests = [
+        entry
+        for entry in best_tests.values()
+        if int(entry["n_prompt"]) == 0 and int(entry["n_gen"]) > 0
+    ]
+    recommended = max(generation_tests or best_tests.values(), key=lambda item: item["avg_tokens_per_s"])
 
     return {
         "schema_version": 1,
@@ -63,10 +82,12 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "model_n_params": first.get("model_n_params"),
         "n_batch": first.get("n_batch"),
         "n_ubatch": first.get("n_ubatch"),
-        "n_threads": first.get("n_threads"),
+        "thread_values": sorted({row.get("n_threads") for row in rows}),
+        "recommended_generation_threads": recommended["n_threads"],
         "n_gpu_layers": first.get("n_gpu_layers"),
         "repetition_count": len(first.get("samples_ts", [])),
-        "tests": tests,
+        "tests": best_tests,
+        "thread_sweep": thread_sweep,
     }
 
 

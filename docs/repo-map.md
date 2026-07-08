@@ -76,6 +76,7 @@ Relevant files:
 - `scripts/bench_cpu_llama_bench.sh`
 - `scripts/benchmark_cpu_real_model.py`
 - `scripts/summarize_cpu_llama_bench.py`
+- `scripts/run_m4_cpu_qwen_inference.py`
 - `cpp/my.cpp`
 - `src/l20_stack/epilogue/sampler_epilogue.py`
 - `src/l20_stack/ops/triton_sampling.py`

@@ -51,8 +51,25 @@ than the Python-call-path smoke:
 - `tg16`: 359.429002 tok/s;
 - `pp17+tg16`: 412.212899 tok/s.
 
-This is the first non-mock CPU result in the repo. It is still a smoke, not a
-CPU-vs-L20 break-even matrix.
+The Qwen2.5-Coder-0.5B Q4_K_M cache entry is now a valid GGUF after
+redownload. The checked-in M4 CPU thread sweep uses llama.cpp `llama-bench`
+over `threads=2,4,6,8,10`:
+
+- `pp17`: 477.700357 tok/s at 8 threads;
+- `tg16`: 170.641218 tok/s at 6 threads;
+- `pp17+tg16`: 245.527152 tok/s at 6 threads.
+
+The corresponding C++ completion smoke uses the measured M4 policy
+(`threads=6`, `threads_batch=8`) and runs the real Qwen GGUF through
+`llama-completion`:
+
+- prompt eval: 467.84 tok/s;
+- decode eval: 152.85 tok/s;
+- llama.cpp total: 454.77 ms / 79 tokens;
+- process-level elapsed: 1196.999 ms.
+
+This is the first non-mock CPU result family in the repo. It is still a smoke,
+not a CPU-vs-L20 break-even matrix.
 
 ## Why This Belongs In This Repo
 
@@ -73,9 +90,8 @@ L20/vLLM baseline -> optimized L20 sampling/logits/KV paths
    on the same synthetic model.
 2. Add weight-only int8 matmul and report both latency and output drift against
    FP32.
-3. Remove and redownload the invalid local Qwen2.5-Coder-0.5B GGUF cache entry,
-   then rerun the CPU target so the CPU model family matches the L20 Qwen
-   serving artifacts.
+3. Add a short CPU-vs-L20 prompt/output matrix for the same Qwen family so the
+   CPU result is a boundary table instead of a single local smoke.
 4. Convert the result into a CPU-vs-L20 break-even table by QPS, prompt length,
    output length, memory footprint, and operational cost.
 

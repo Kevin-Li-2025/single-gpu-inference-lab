@@ -1,0 +1,13 @@
+ The function should be well-documented and include examples to illustrate its usage.
+
+```python
+def add_numbers(a, b):
+    """
+    Adds two integers and returns the result.
+
+    Parameters:
+    a (int): The first integer.
+    b (int): The second integer.
+
+    Returns:
+    int: The

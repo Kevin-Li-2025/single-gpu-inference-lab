@@ -13,8 +13,8 @@
   "model_type": "llama 256M Q4_K - Medium",
   "n_batch": 128,
   "n_gpu_layers": 0,
-  "n_threads": 4,
   "n_ubatch": 128,
+  "recommended_generation_threads": 4,
   "repetition_count": 5,
   "schema_version": 1,
   "summary_tool": "scripts/summarize_cpu_llama_bench.py",
@@ -24,6 +24,7 @@
       "avg_tokens_per_s": 596.351643,
       "n_gen": 0,
       "n_prompt": 17,
+      "n_threads": 4,
       "samples_tokens_per_s": [
         598.3,
         569.112,
@@ -39,6 +40,7 @@
       "avg_tokens_per_s": 412.212899,
       "n_gen": 16,
       "n_prompt": 17,
+      "n_threads": 4,
       "samples_tokens_per_s": [
         411.427,
         403.758,
@@ -54,6 +56,7 @@
       "avg_tokens_per_s": 359.429002,
       "n_gen": 16,
       "n_prompt": 0,
+      "n_threads": 4,
       "samples_tokens_per_s": [
         357.04,
         369.853,
@@ -64,5 +67,64 @@
       "stddev_ms": 2.335874,
       "stddev_tokens_per_s": 17.981198
     }
-  }
+  },
+  "thread_sweep": {
+    "pp17": [
+      {
+        "avg_ms": 28.540725,
+        "avg_tokens_per_s": 596.351643,
+        "n_gen": 0,
+        "n_prompt": 17,
+        "n_threads": 4,
+        "samples_tokens_per_s": [
+          598.3,
+          569.112,
+          581.477,
+          630.046,
+          602.824
+        ],
+        "stddev_ms": 1.09705,
+        "stddev_tokens_per_s": 23.152914
+      }
+    ],
+    "pp17+tg16": [
+      {
+        "avg_ms": 80.080041,
+        "avg_tokens_per_s": 412.212899,
+        "n_gen": 16,
+        "n_prompt": 17,
+        "n_threads": 4,
+        "samples_tokens_per_s": [
+          411.427,
+          403.758,
+          412.847,
+          425.236,
+          407.796
+        ],
+        "stddev_ms": 1.549934,
+        "stddev_tokens_per_s": 8.087216
+      }
+    ],
+    "tg16": [
+      {
+        "avg_ms": 44.608475,
+        "avg_tokens_per_s": 359.429002,
+        "n_gen": 16,
+        "n_prompt": 0,
+        "n_threads": 4,
+        "samples_tokens_per_s": [
+          357.04,
+          369.853,
+          376.244,
+          364.142,
+          329.866
+        ],
+        "stddev_ms": 2.335874,
+        "stddev_tokens_per_s": 17.981198
+      }
+    ]
+  },
+  "thread_values": [
+    4
+  ]
 }

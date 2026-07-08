@@ -5,7 +5,7 @@
   "model_filename": "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf",
   "local_cache_size_bytes": 491400064,
   "expected_magic_hex": "47475546",
-  "observed_magic_hex": "00000000",
-  "status": "invalid_local_cache",
-  "decision": "Do not report Qwen CPU throughput from this cache entry; remove and redownload the GGUF before benchmarking."
+  "observed_magic_hex": "47475546",
+  "status": "valid_local_cache_after_redownload",
+  "decision": "Qwen CPU benchmarking is valid from this cache entry; report throughput from qwen25-coder-0p5b-q4km-llama-bench."
 }

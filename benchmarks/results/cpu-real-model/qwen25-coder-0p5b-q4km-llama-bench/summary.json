@@ -1,0 +1,326 @@
+{
+  "backends": "BLAS",
+  "benchmark_semantics": "llama-bench excludes tokenization and sampling; use the llama_cpp_python smoke for a Python-call-path measurement.",
+  "build_commit": "bec4772",
+  "build_number": 1,
+  "cpu_info": "Accelerate, Apple M4",
+  "gpu_info": "",
+  "implementation": "scripts/bench_cpu_llama_bench.sh",
+  "mode": "llama_bench_real_gguf_cpu",
+  "model_filename": "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf",
+  "model_n_params": 630167424,
+  "model_size_bytes": 485452288,
+  "model_type": "qwen2 1B Q4_K - Medium",
+  "n_batch": 128,
+  "n_gpu_layers": 0,
+  "n_ubatch": 128,
+  "recommended_generation_threads": 6,
+  "repetition_count": 5,
+  "schema_version": 1,
+  "summary_tool": "scripts/summarize_cpu_llama_bench.py",
+  "tests": {
+    "pp17": {
+      "avg_ms": 35.592842,
+      "avg_tokens_per_s": 477.700357,
+      "n_gen": 0,
+      "n_prompt": 17,
+      "n_threads": 8,
+      "samples_tokens_per_s": [
+        481.002,
+        466.047,
+        478.66,
+        479.959,
+        482.835
+      ],
+      "stddev_ms": 0.506886,
+      "stddev_tokens_per_s": 6.69133
+    },
+    "pp17+tg16": {
+      "avg_ms": 134.408783,
+      "avg_tokens_per_s": 245.527152,
+      "n_gen": 16,
+      "n_prompt": 17,
+      "n_threads": 6,
+      "samples_tokens_per_s": [
+        245.818,
+        243.1,
+        245.506,
+        247.257,
+        245.955
+      ],
+      "stddev_ms": 0.83145,
+      "stddev_tokens_per_s": 1.512433
+    },
+    "tg16": {
+      "avg_ms": 93.770583,
+      "avg_tokens_per_s": 170.641218,
+      "n_gen": 16,
+      "n_prompt": 0,
+      "n_threads": 6,
+      "samples_tokens_per_s": [
+        169.95,
+        168.533,
+        170.617,
+        171.233,
+        172.874
+      ],
+      "stddev_ms": 0.879306,
+      "stddev_tokens_per_s": 1.601437
+    }
+  },
+  "thread_sweep": {
+    "pp17": [
+      {
+        "avg_ms": 79.174825,
+        "avg_tokens_per_s": 214.715238,
+        "n_gen": 0,
+        "n_prompt": 17,
+        "n_threads": 2,
+        "samples_tokens_per_s": [
+          214.958,
+          214.137,
+          215.024,
+          214.54,
+          214.919
+        ],
+        "stddev_ms": 0.13824,
+        "stddev_tokens_per_s": 0.374438
+      },
+      {
+        "avg_ms": 45.799266,
+        "avg_tokens_per_s": 372.682612,
+        "n_gen": 0,
+        "n_prompt": 17,
+        "n_threads": 4,
+        "samples_tokens_per_s": [
+          389.903,
+          332.953,
+          360.11,
+          389.72,
+          390.727
+        ],
+        "stddev_ms": 3.334176,
+        "stddev_tokens_per_s": 25.733835
+      },
+      {
+        "avg_ms": 39.539558,
+        "avg_tokens_per_s": 429.987965,
+        "n_gen": 0,
+        "n_prompt": 17,
+        "n_threads": 6,
+        "samples_tokens_per_s": [
+          424.791,
+          425.325,
+          433.982,
+          433.71,
+          432.132
+        ],
+        "stddev_ms": 0.420713,
+        "stddev_tokens_per_s": 4.559468
+      },
+      {
+        "avg_ms": 35.592842,
+        "avg_tokens_per_s": 477.700357,
+        "n_gen": 0,
+        "n_prompt": 17,
+        "n_threads": 8,
+        "samples_tokens_per_s": [
+          481.002,
+          466.047,
+          478.66,
+          479.959,
+          482.835
+        ],
+        "stddev_ms": 0.506886,
+        "stddev_tokens_per_s": 6.69133
+      },
+      {
+        "avg_ms": 60.6418,
+        "avg_tokens_per_s": 335.195087,
+        "n_gen": 0,
+        "n_prompt": 17,
+        "n_threads": 10,
+        "samples_tokens_per_s": [
+          383.503,
+          369.674,
+          134.22,
+          397.406,
+          391.172
+        ],
+        "stddev_ms": 36.923607,
+        "stddev_tokens_per_s": 112.824163
+      }
+    ],
+    "pp17+tg16": [
+      {
+        "avg_ms": 220.557308,
+        "avg_tokens_per_s": 149.626495,
+        "n_gen": 16,
+        "n_prompt": 17,
+        "n_threads": 2,
+        "samples_tokens_per_s": [
+          148.217,
+          149.237,
+          150.972,
+          149.661,
+          150.046
+        ],
+        "stddev_ms": 1.498068,
+        "stddev_tokens_per_s": 1.015606
+      },
+      {
+        "avg_ms": 146.587083,
+        "avg_tokens_per_s": 225.12357,
+        "n_gen": 16,
+        "n_prompt": 17,
+        "n_threads": 4,
+        "samples_tokens_per_s": [
+          224.369,
+          224.723,
+          225.771,
+          224.98,
+          225.775
+        ],
+        "stddev_ms": 0.411209,
+        "stddev_tokens_per_s": 0.631336
+      },
+      {
+        "avg_ms": 134.408783,
+        "avg_tokens_per_s": 245.527152,
+        "n_gen": 16,
+        "n_prompt": 17,
+        "n_threads": 6,
+        "samples_tokens_per_s": [
+          245.818,
+          243.1,
+          245.506,
+          247.257,
+          245.955
+        ],
+        "stddev_ms": 0.83145,
+        "stddev_tokens_per_s": 1.512433
+      },
+      {
+        "avg_ms": 135.04275,
+        "avg_tokens_per_s": 244.870635,
+        "n_gen": 16,
+        "n_prompt": 17,
+        "n_threads": 8,
+        "samples_tokens_per_s": [
+          252.07,
+          247.607,
+          223.87,
+          253.487,
+          247.319
+        ],
+        "stddev_ms": 7.057533,
+        "stddev_tokens_per_s": 12.047775
+      },
+      {
+        "avg_ms": 185.516333,
+        "avg_tokens_per_s": 177.967607,
+        "n_gen": 16,
+        "n_prompt": 17,
+        "n_threads": 10,
+        "samples_tokens_per_s": [
+          174.278,
+          174.932,
+          185.305,
+          176.915,
+          178.408
+        ],
+        "stddev_ms": 4.501726,
+        "stddev_tokens_per_s": 4.415023
+      }
+    ],
+    "tg16": [
+      {
+        "avg_ms": 139.378125,
+        "avg_tokens_per_s": 114.904895,
+        "n_gen": 16,
+        "n_prompt": 0,
+        "n_threads": 2,
+        "samples_tokens_per_s": [
+          118.172,
+          117.142,
+          116.954,
+          108.619,
+          113.638
+        ],
+        "stddev_ms": 4.875957,
+        "stddev_tokens_per_s": 3.904913
+      },
+      {
+        "avg_ms": 102.62805,
+        "avg_tokens_per_s": 155.906174,
+        "n_gen": 16,
+        "n_prompt": 0,
+        "n_threads": 4,
+        "samples_tokens_per_s": [
+          156.483,
+          156.75,
+          154.809,
+          155.34,
+          156.149
+        ],
+        "stddev_ms": 0.534492,
+        "stddev_tokens_per_s": 0.810576
+      },
+      {
+        "avg_ms": 93.770583,
+        "avg_tokens_per_s": 170.641218,
+        "n_gen": 16,
+        "n_prompt": 0,
+        "n_threads": 6,
+        "samples_tokens_per_s": [
+          169.95,
+          168.533,
+          170.617,
+          171.233,
+          172.874
+        ],
+        "stddev_ms": 0.879306,
+        "stddev_tokens_per_s": 1.601437
+      },
+      {
+        "avg_ms": 94.974308,
+        "avg_tokens_per_s": 168.473807,
+        "n_gen": 16,
+        "n_prompt": 0,
+        "n_threads": 8,
+        "samples_tokens_per_s": [
+          169.329,
+          167.651,
+          169.583,
+          169.075,
+          166.731
+        ],
+        "stddev_ms": 0.695177,
+        "stddev_tokens_per_s": 1.228665
+      },
+      {
+        "avg_ms": 138.569825,
+        "avg_tokens_per_s": 115.653157,
+        "n_gen": 16,
+        "n_prompt": 0,
+        "n_threads": 10,
+        "samples_tokens_per_s": [
+          118.661,
+          115.577,
+          115.323,
+          121.169,
+          107.536
+        ],
+        "stddev_ms": 6.342747,
+        "stddev_tokens_per_s": 5.135044
+      }
+    ]
+  },
+  "thread_values": [
+    2,
+    4,
+    6,
+    8,
+    10
+  ]
+}
