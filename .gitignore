@@ -34,6 +34,7 @@ mlruns/
 *.gguf
 *.npy
 *.npz
+benchmarks/results/cpu-real-model/*/raw.json
 
 hf_cache/
 tokenizers_cache/

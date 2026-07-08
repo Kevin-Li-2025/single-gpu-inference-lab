@@ -73,7 +73,9 @@ Relevant files:
 - `scripts/scout_vllm_gemm_epilogue_boundary.py`
 - `scripts/bench_cpu_tiny_transformer.sh`
 - `scripts/bench_cpu_real_model.sh`
+- `scripts/bench_cpu_llama_bench.sh`
 - `scripts/benchmark_cpu_real_model.py`
+- `scripts/summarize_cpu_llama_bench.py`
 - `cpp/my.cpp`
 - `src/l20_stack/epilogue/sampler_epilogue.py`
 - `src/l20_stack/ops/triton_sampling.py`

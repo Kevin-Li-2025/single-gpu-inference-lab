@@ -76,14 +76,14 @@
     },
     {
       "category": "path_proof",
-      "compact_file_count": 2,
+      "compact_file_count": 4,
       "has_campaign_summary_json": false,
       "has_readme": true,
       "has_summary_json": true,
       "path": "benchmarks/results/cpu-real-model",
       "reference": "cpu-real-model/",
       "status": "CPU real-model smoke",
-      "summary": "Adds a non-mock CPU baseline using `llama-cpp-python` and SmolLM2-135M-Instruct Q4_K_M GGUF with `n_gpu_layers=0`: 17 prompt tokens, 16 decode tokens, 4 CPU threads, 4.742771 ms median decode step, and 209.868062 decode tok/s on the checked-in local smoke."
+      "summary": "Adds a non-mock CPU baseline using SmolLM2-135M-Instruct Q4_K_M GGUF with `n_gpu_layers=0`: the Python-call-path smoke reaches 209.868062 decode tok/s, while the standard `llama-bench` control reports `pp17` 596.351643 tok/s, `tg16` 359.429002 tok/s, and `pp17+tg16` 412.212899 tok/s. The cached Qwen2.5-Coder-0.5B GGUF is recorded as invalid local cache, not a benchmark."
     },
     {
       "category": "other",

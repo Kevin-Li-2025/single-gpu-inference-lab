@@ -43,6 +43,14 @@ tokens and 16 decode tokens on 4 CPU threads:
 - median decode step: 4.742771 ms;
 - decode throughput: 209.868062 tok/s.
 
+The same model also has a standard `llama-bench` control. That benchmark
+excludes tokenization and sampling, so it is expected to report higher numbers
+than the Python-call-path smoke:
+
+- `pp17`: 596.351643 tok/s;
+- `tg16`: 359.429002 tok/s;
+- `pp17+tg16`: 412.212899 tok/s.
+
 This is the first non-mock CPU result in the repo. It is still a smoke, not a
 CPU-vs-L20 break-even matrix.
 
@@ -65,8 +73,9 @@ L20/vLLM baseline -> optimized L20 sampling/logits/KV paths
    on the same synthetic model.
 2. Add weight-only int8 matmul and report both latency and output drift against
    FP32.
-3. Refresh the local llama.cpp binding and rerun the Qwen2.5-Coder-0.5B GGUF
-   CPU target so the CPU model family matches the L20 Qwen serving artifacts.
+3. Remove and redownload the invalid local Qwen2.5-Coder-0.5B GGUF cache entry,
+   then rerun the CPU target so the CPU model family matches the L20 Qwen
+   serving artifacts.
 4. Convert the result into a CPU-vs-L20 break-even table by QPS, prompt length,
    output length, memory footprint, and operational cost.
 

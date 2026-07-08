@@ -11,7 +11,7 @@ It is not a replacement for the hand-written C++ scaffold. The split is:
 
 ## Local Smoke
 
-Command:
+Python-call-path command:
 
 ```bash
 scripts/bench_cpu_real_model.sh \
@@ -40,12 +40,29 @@ Summary from `smollm2-135m-q4km-local/summary.json`:
 | Decode throughput | 209.868062 tok/s |
 | Total eval throughput | 286.825787 tok/s |
 
+Standard `llama-bench` command:
+
+```bash
+scripts/bench_cpu_llama_bench.sh
+```
+
+Summary from `smollm2-135m-q4km-llama-bench/summary.json`:
+
+| Test | Tokens/s | Mean time |
+| --- | ---: | ---: |
+| `pp17` | 596.351643 | 28.540725 ms |
+| `tg16` | 359.429002 | 44.608475 ms |
+| `pp17+tg16` | 412.212899 | 80.080041 ms |
+
 ## Claim Boundary
 
 - This is a real GGUF model run, not a synthetic mock.
 - It is CPU-only through `llama-cpp-python` with `n_gpu_layers=0`.
+- The `llama-bench` result is a standard pp/tg/pg benchmark, but it excludes
+  tokenization and sampling by design.
 - It is a local smoke on an Apple arm64 host, not an L20-vs-CPU break-even
   matrix.
-- The Qwen2.5-Coder-0.5B GGUF target downloaded successfully on this host, but
-  the installed `llama_cpp` binding failed to load that GGUF. Keep Qwen as a
-  follow-up after refreshing the local llama.cpp binding.
+- The cached Qwen2.5-Coder-0.5B Q4_K_M file is not a valid local GGUF on this
+  host: it is 491,400,064 bytes, but the first four bytes are `00000000`
+  instead of the required `GGUF` magic (`47475546`). Do not report Qwen CPU
+  throughput until that cache entry is removed and redownloaded.

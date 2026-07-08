@@ -1,0 +1,68 @@
+{
+  "backends": "BLAS",
+  "benchmark_semantics": "llama-bench excludes tokenization and sampling; use the llama_cpp_python smoke for a Python-call-path measurement.",
+  "build_commit": "bec4772",
+  "build_number": 1,
+  "cpu_info": "Accelerate, Apple M4",
+  "gpu_info": "",
+  "implementation": "scripts/bench_cpu_llama_bench.sh",
+  "mode": "llama_bench_real_gguf_cpu",
+  "model_filename": "SmolLM2-135M-Instruct-Q4_K_M.gguf",
+  "model_n_params": 134515008,
+  "model_size_bytes": 103668480,
+  "model_type": "llama 256M Q4_K - Medium",
+  "n_batch": 128,
+  "n_gpu_layers": 0,
+  "n_threads": 4,
+  "n_ubatch": 128,
+  "repetition_count": 5,
+  "schema_version": 1,
+  "summary_tool": "scripts/summarize_cpu_llama_bench.py",
+  "tests": {
+    "pp17": {
+      "avg_ms": 28.540725,
+      "avg_tokens_per_s": 596.351643,
+      "n_gen": 0,
+      "n_prompt": 17,
+      "samples_tokens_per_s": [
+        598.3,
+        569.112,
+        581.477,
+        630.046,
+        602.824
+      ],
+      "stddev_ms": 1.09705,
+      "stddev_tokens_per_s": 23.152914
+    },
+    "pp17+tg16": {
+      "avg_ms": 80.080041,
+      "avg_tokens_per_s": 412.212899,
+      "n_gen": 16,
+      "n_prompt": 17,
+      "samples_tokens_per_s": [
+        411.427,
+        403.758,
+        412.847,
+        425.236,
+        407.796
+      ],
+      "stddev_ms": 1.549934,
+      "stddev_tokens_per_s": 8.087216
+    },
+    "tg16": {
+      "avg_ms": 44.608475,
+      "avg_tokens_per_s": 359.429002,
+      "n_gen": 16,
+      "n_prompt": 0,
+      "samples_tokens_per_s": [
+        357.04,
+        369.853,
+        376.244,
+        364.142,
+        329.866
+      ],
+      "stddev_ms": 2.335874,
+      "stddev_tokens_per_s": 17.981198
+    }
+  }
+}

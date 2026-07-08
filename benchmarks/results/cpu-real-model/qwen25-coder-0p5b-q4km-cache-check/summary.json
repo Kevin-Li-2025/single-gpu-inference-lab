@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "mode": "gguf_cache_validation",
+  "model_repo_id": "Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF",
+  "model_filename": "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf",
+  "local_cache_size_bytes": 491400064,
+  "expected_magic_hex": "47475546",
+  "observed_magic_hex": "00000000",
+  "status": "invalid_local_cache",
+  "decision": "Do not report Qwen CPU throughput from this cache entry; remove and redownload the GGUF before benchmarking."
+}

@@ -60,6 +60,7 @@ def resolve_model_path(args: argparse.Namespace) -> Path:
         path = Path(args.model_path).expanduser()
         if not path.exists():
             raise FileNotFoundError(f"GGUF model path does not exist: {path}")
+        validate_gguf(path)
         return path
 
     try:
@@ -69,7 +70,7 @@ def resolve_model_path(args: argparse.Namespace) -> Path:
             "huggingface_hub is required when --model-path is not provided"
         ) from error
 
-    return Path(
+    path = Path(
         hf_hub_download(
             repo_id=args.repo_id,
             filename=args.filename,
@@ -77,6 +78,17 @@ def resolve_model_path(args: argparse.Namespace) -> Path:
             local_files_only=args.local_files_only,
         )
     )
+    validate_gguf(path)
+    return path
+
+
+def validate_gguf(path: Path) -> None:
+    with path.open("rb") as handle:
+        magic = handle.read(4)
+    if magic != b"GGUF":
+        raise ValueError(
+            f"not a valid GGUF file: {path} is missing the GGUF magic header"
+        )
 
 
 def percentile(values: list[float], fraction: float) -> float:

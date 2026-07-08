@@ -51,7 +51,9 @@ speedups, integration behavior, and end-to-end token latency.
   `cpp/my.cpp` implements a synthetic FP32 tiny-transformer decode path, while
   the real GGUF smoke uses `llama-cpp-python` CPU-only on SmolLM2-135M-Instruct
   Q4_K_M. The real-model smoke reaches 209.868 decode tok/s locally, but it is
-  not yet a CPU-vs-L20 break-even matrix.
+  not yet a CPU-vs-L20 break-even matrix. A standard `llama-bench` control on
+  the same GGUF reports 359.429 tok/s for `tg16`; this excludes tokenization and
+  sampling, so it is a different measurement boundary.
 - Negative results stay in the repo when they change the direction.
 
 ## Current Checkpoint
@@ -85,7 +87,7 @@ than cuBLAS/full-logits baselines by 1.32x-1.39x on the tested A100 shapes.
 | L20 fused sparse sampler | FlashInfer-enabled L20 smoke moves median ITL 2.609 ms -> 2.575 ms with 48/50 traced sampler events eligible; formal 4-row triangle matrix then keeps fused median ITL positive in 4/4 comparable rows | `benchmarks/results/l20-vllm-fused-sparse-sampling/`, `benchmarks/results/l20-sparse-penalty-triangle-matrix/` |
 | L20 sparse penalty triangle | Native-vs-standalone-vs-fused Qwen3-0.6B matrix: fused median ITL is positive in 4/4 rows (+0.562%, +5.859%, +4.092%, +2.430%), fused median E2E is positive in 4/4 rows, and standalone logits processor is positive in only 1/4 rows | `benchmarks/results/l20-sparse-penalty-triangle-matrix/` |
 | CPU tiny transformer scaffold | Self-written C++ FP32 synthetic decode path with RMSNorm, RoPE, KV cache, causal attention, greedy decode, and naive/tiled matmul; path proof only, not a real CPU small-model serving claim | `benchmarks/results/cpu-tiny-transformer/` |
-| CPU real-model smoke | `llama-cpp-python` CPU-only run on SmolLM2-135M-Instruct Q4_K_M GGUF: 17 prompt tokens, 16 decode tokens, 4 CPU threads, 4.742771 ms median decode step, 209.868 decode tok/s; smoke only, not a CPU-vs-L20 break-even claim | `benchmarks/results/cpu-real-model/` |
+| CPU real-model smoke | SmolLM2-135M-Instruct Q4_K_M GGUF CPU-only: Python-call-path decode reaches 209.868 tok/s, and standard `llama-bench` reports `tg16` 359.429 tok/s / `pp17+tg16` 412.213 tok/s. Qwen2.5-Coder-0.5B is blocked by invalid local GGUF cache, not benchmarked. | `benchmarks/results/cpu-real-model/` |
 | Sparse sampler vs native PyTorch path | Median ITL 9.544 ms -> 4.093 ms on A100/Qwen2.5-0.5B | `benchmarks/results/a100-vllm-sparse-penalty-sampling/` |
 | Sparse sampler vs FlashInfer path | Median ITL 4.468 ms -> 4.346 ms on the same A100 workload | `benchmarks/results/a100-vllm-flashinfer-sparse-penalty-sampling/` |
 | Fused top-logprobs selection | 8.04x-9.17x A100 microbenchmark speedup; dirty and clean A100 serving artifacts show path validation, while clean request-level total time stayed flat | `benchmarks/results/a100-fused-top-logprobs/`, `benchmarks/results/a100-vllm-top-logprobs-clean/` |
