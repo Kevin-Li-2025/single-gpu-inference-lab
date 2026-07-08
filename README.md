@@ -15,6 +15,30 @@ its 48 GB GDDR6 memory system exposes decode bottlenecks that HBM GPUs can hide.
 A100 runs are used as controls, and Apple M4 CPU measurements define the local
 small-model break-even boundary.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    Prompts["Prompt traces and synthetic workloads"]
+    CPU["Apple M4 CPU path\ncpp/my.cpp + GGUF baselines"]
+    VLLM["vLLM HTTP serving\nQwen / SmolLM workloads"]
+    Sampler["Sampling boundary\ntop-k/top-p, penalties, logprobs"]
+    Kernels["Custom kernels and dispatch gates\nCUDA, Triton, TORCH_LIBRARY"]
+    FlashInfer["FlashInfer / native PyTorch baselines"]
+    Metrics["Evidence artifacts\nTTFT, ITL, req/s, p95/p99, cost/token"]
+    Docs["Case studies and claim boundaries"]
+
+    Prompts --> CPU
+    Prompts --> VLLM
+    CPU --> Metrics
+    VLLM --> Sampler
+    Sampler --> Kernels
+    Sampler --> FlashInfer
+    Kernels --> Metrics
+    FlashInfer --> Metrics
+    Metrics --> Docs
+```
+
 ## Current Headline
 
 The strongest current result is the CPU-to-L20 deployment boundary for
@@ -57,6 +81,22 @@ small-sample trace evidence, not a production SLO.
 - The CPU track is a real control, not a mock: `cpp/my.cpp` is a self-written
   decode mechanics scaffold, while Qwen/SmolLM GGUF runs provide real CPU
   baselines.
+
+## What I Implemented
+
+I personally implemented the code paths, integration scaffolding, and evidence
+generators in this repo. The checked-in model weights and third-party serving
+engines are external dependencies; the benchmark harnesses, dispatch policy,
+custom kernels, vLLM patch points, summaries, and claim checks are the work
+product here.
+
+| Layer | What I built | Representative files |
+| --- | --- | --- |
+| CUDA operator | Sparse repetition-penalty kernel, policy gate, and PyTorch `TORCH_LIBRARY` registration path for vLLM-shaped logits workloads. | `cuda/sparse_repetition_penalty/`, `integrations/vllm/cuda/`, `scripts/smoke_cuda_sparse_repetition_penalty_op.py` |
+| vLLM integration | Opt-in logits processor and fused sampler patch routes that compare standalone request-level hooks against sampler-boundary integration. | `integrations/vllm/l20_sparse_repetition_penalty_logits_processor.py`, `integrations/vllm/install_l20_topk_topp_sampler.py`, `scripts/run_vllm_l20_sparse_penalty_triangle_matrix.sh` |
+| CPU inference path | Self-written C++ transformer decode scaffold with tiled matmul modes, plus Apple M4 real-model runners for Qwen/SmolLM GGUF baselines. | `cpp/my.cpp`, `scripts/bench_cpu_tiny_transformer.sh`, `scripts/run_m4_cpu_qwen_inference.py` |
+| Benchmark system | Reproducible CPU/L20/A100 campaign scripts, result summarizers, cost-per-token and p95/p99 tail calculators, and real prompt trace clients. | `scripts/build_cpu_l20_break_even.py`, `scripts/build_cpu_l20_cost_tail.py`, `scripts/run_real_prompt_trace_client.py` |
+| Evidence hygiene | Artifact index, public doc-link checker, compact artifact catalog, CPU-safe tests, and claim-policy docs to keep benchmark claims bounded. | `src/l20_stack/`, `tests/`, `benchmarks/results/artifact-catalog.json`, `docs/experiment-status.md` |
 
 ## Best Evidence
 
