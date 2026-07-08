@@ -34,6 +34,18 @@ and writes:
 - `p512-o128/README.md`
 - top-level `run-config.json`
 
+Then build the final same-model break-even artifact:
+
+```bash
+scripts/build_cpu_l20_break_even.py \
+  --mode cpu_l20_same_model_break_even \
+  --title "CPU vs L20 Break-Even: Qwen2.5-Coder-0.5B p512" \
+  --l20-model Qwen2.5-Coder-0.5B-Instruct \
+  --l20-o32 benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/p512-o32/summary.json \
+  --l20-o128 benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/p512-o128/summary.json \
+  --output-dir benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1
+```
+
 ## Claim Boundary
 
 - This is a real-model serving gate, not a mock or synthetic benchmark.

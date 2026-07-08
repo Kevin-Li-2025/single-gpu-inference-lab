@@ -174,6 +174,7 @@ Full status map: `docs/experiment-status.md`
 | KV/decode pipeline blueprint | `docs/l20-kv-decode-pipeline-blueprint.md` |
 | L20 sparse penalty case study | `docs/l20-sparse-penalty-case-study.md` |
 | CPU small-model boundary | `docs/cpu-small-model-boundary.md` |
+| CPU vs L20 case study | `docs/cpu-l20-break-even-case-study.md` |
 | vLLM integration notes | `integrations/vllm/README.md` |
 | Artifact index | `benchmarks/results/README.md` |
 | Artifact catalog JSON | `benchmarks/results/artifact-catalog.json` |

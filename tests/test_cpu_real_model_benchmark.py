@@ -129,9 +129,19 @@ class CpuRealModelBenchmarkTest(unittest.TestCase):
                     "avg_tokens_per_s": 160.0,
                     "n_threads": 6,
                 },
+                "tg128": {
+                    "avg_ms": 800.0,
+                    "avg_tokens_per_s": 160.0,
+                    "n_threads": 6,
+                },
                 "pp512+tg32": {
                     "avg_ms": 1250.0,
                     "avg_tokens_per_s": 435.2,
+                    "n_threads": 6,
+                },
+                "pp512+tg128": {
+                    "avg_ms": 1800.0,
+                    "avg_tokens_per_s": 355.6,
                     "n_threads": 6,
                 },
             },
@@ -164,6 +174,88 @@ class CpuRealModelBenchmarkTest(unittest.TestCase):
         self.assertEqual(rows[0]["estimated_request_throughput"], 10.0)
         self.assertEqual(rows[0]["vs_cpu_serial_request_throughput"], 12.5)
         self.assertEqual(rows[0]["vs_cpu_decode_throughput"], 2.0)
+
+    def test_cpu_l20_break_even_supports_same_model_mode(self):
+        module = self.load_break_even_script()
+        cpu_summary = {
+            "model_filename": "qwen.gguf",
+            "tests": {
+                "pp512": {
+                    "avg_ms": 1000.0,
+                    "avg_tokens_per_s": 512.0,
+                    "n_threads": 8,
+                },
+                "tg32": {
+                    "avg_ms": 200.0,
+                    "avg_tokens_per_s": 160.0,
+                    "n_threads": 6,
+                },
+                "tg128": {
+                    "avg_ms": 800.0,
+                    "avg_tokens_per_s": 160.0,
+                    "n_threads": 6,
+                },
+                "pp512+tg32": {
+                    "avg_ms": 1250.0,
+                    "avg_tokens_per_s": 435.2,
+                    "n_threads": 6,
+                },
+                "pp512+tg128": {
+                    "avg_ms": 1800.0,
+                    "avg_tokens_per_s": 355.6,
+                    "n_threads": 6,
+                },
+            },
+        }
+        l20_summary = {
+            "pairs": [
+                {
+                    "shapes": {
+                        "c1-i512": {
+                            "flashinfer": {
+                                "runs": 5,
+                                "median_itl_ms": 4.0,
+                                "median_ttft_ms": 20.0,
+                                "p99_itl_ms": 6.0,
+                                "output_throughput": 160.0,
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            cpu_o32 = root / "cpu-o32.json"
+            cpu_o128 = root / "cpu-o128.json"
+            l20_o32 = root / "l20-o32.json"
+            l20_o128 = root / "l20-o128.json"
+            cpu_o32.write_text(__import__("json").dumps(cpu_summary), encoding="utf-8")
+            cpu_o128.write_text(__import__("json").dumps(cpu_summary), encoding="utf-8")
+            l20_o32.write_text(__import__("json").dumps(l20_summary), encoding="utf-8")
+            l20_o128.write_text(__import__("json").dumps(l20_summary), encoding="utf-8")
+
+            summary = module.build_summary(
+                cpu_o32,
+                cpu_o128,
+                l20_o32,
+                l20_o128,
+                mode="cpu_l20_same_model_break_even",
+                title="CPU vs L20 Break-Even: Qwen2.5-Coder-0.5B",
+                l20_model="Qwen2.5-Coder-0.5B-Instruct",
+                l20_source="vLLM FlashInfer serving, NVIDIA L20",
+            )
+
+        self.assertEqual(summary["mode"], "cpu_l20_same_model_break_even")
+        self.assertEqual(
+            summary["l20"]["p512_o32"][0]["model"],
+            "Qwen2.5-Coder-0.5B-Instruct",
+        )
+        self.assertIn("same Qwen2.5-Coder", summary["claim_boundary"][0])
+        markdown = module.render_markdown(summary)
+        self.assertIn("same-model L20 vLLM FlashInfer", markdown)
+        self.assertIn("Qwen2.5-Coder-0.5B vLLM FlashInfer", markdown)
 
     def test_l20_qwen25_coder_break_even_runner_contract(self):
         source = Path(

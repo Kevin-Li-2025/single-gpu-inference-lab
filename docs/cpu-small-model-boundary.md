@@ -89,6 +89,9 @@ p512/o128, then writes the compact L20 summaries needed to replace the
 family-level table. This pending artifact has no latency claim until those
 summaries exist from a real L20 run.
 
+The resume-ready narrative and final same-model gate are in
+`docs/cpu-l20-break-even-case-study.md`.
+
 ## Why This Belongs In This Repo
 
 The L20 work shows how small kernel wins can disappear inside real serving

@@ -11,6 +11,7 @@ This file is the fastest way to orient in the repo.
 | `docs/experiment-status.md` | Current status map and negative-result ledger. |
 | `docs/where-optimizations-stop-mattering.md` | Paper-style one-page systems thesis. |
 | `docs/cpu-small-model-boundary.md` | CPU tiny-transformer mechanics proof, real GGUF CPU smoke, and CPU-vs-L20 break-even scope. |
+| `docs/cpu-l20-break-even-case-study.md` | Resume-ready CPU-vs-L20 deployment boundary narrative and final same-model gate. |
 | `benchmarks/results/README.md` | Curated artifact index. |
 | `benchmarks/results/artifact-catalog.json` | Generated machine-readable artifact catalog. |
 | `integrations/vllm/README.md` | vLLM hook and patch status. |

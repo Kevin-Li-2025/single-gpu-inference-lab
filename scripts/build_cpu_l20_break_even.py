@@ -51,6 +51,26 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument("--output-dir", type=Path, default=Path(DEFAULT_OUTPUT_DIR))
+    parser.add_argument(
+        "--mode",
+        default="cpu_l20_qwen_family_break_even",
+        choices=(
+            "cpu_l20_qwen_family_break_even",
+            "cpu_l20_same_model_break_even",
+        ),
+    )
+    parser.add_argument(
+        "--title",
+        default="CPU vs L20 Break-Even: Qwen-Family p512",
+    )
+    parser.add_argument(
+        "--l20-model",
+        default="Qwen3-0.6B",
+    )
+    parser.add_argument(
+        "--l20-source",
+        default="vLLM FlashInfer serving, NVIDIA L20",
+    )
     return parser.parse_args()
 
 
@@ -81,7 +101,13 @@ def cpu_shape(summary: dict[str, Any], prompt_tokens: int, output_tokens: int) -
     }
 
 
-def iter_l20_flashinfer_shapes(summary: dict[str, Any], output_tokens: int) -> list[dict[str, Any]]:
+def iter_l20_flashinfer_shapes(
+    summary: dict[str, Any],
+    output_tokens: int,
+    *,
+    model: str = "Qwen3-0.6B",
+    source: str = "vLLM FlashInfer serving, NVIDIA L20",
+) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for pair in summary["pairs"]:
         for shape, result in sorted(pair["shapes"].items()):
@@ -92,8 +118,8 @@ def iter_l20_flashinfer_shapes(summary: dict[str, Any], output_tokens: int) -> l
             output_throughput = float(flashinfer["output_throughput"])
             rows.append(
                 {
-                    "model": "Qwen3-0.6B",
-                    "source": "vLLM FlashInfer serving, NVIDIA L20",
+                    "model": model,
+                    "source": source,
                     "shape": shape,
                     "concurrency": int(match.group("concurrency")),
                     "prompt_tokens": int(match.group("input_tokens")),
@@ -128,27 +154,64 @@ def build_summary(
     cpu_o128_path: Path,
     l20_o32_path: Path,
     l20_o128_path: Path,
+    *,
+    mode: str = "cpu_l20_qwen_family_break_even",
+    title: str = "CPU vs L20 Break-Even: Qwen-Family p512",
+    l20_model: str = "Qwen3-0.6B",
+    l20_source: str = "vLLM FlashInfer serving, NVIDIA L20",
 ) -> dict[str, Any]:
     cpu_o32 = cpu_shape(load_json(cpu_o32_path), prompt_tokens=512, output_tokens=32)
     cpu_o128 = cpu_shape(load_json(cpu_o128_path), prompt_tokens=512, output_tokens=128)
     l20_o32 = attach_break_even(
         cpu_o32,
-        iter_l20_flashinfer_shapes(load_json(l20_o32_path), output_tokens=32),
+        iter_l20_flashinfer_shapes(
+            load_json(l20_o32_path),
+            output_tokens=32,
+            model=l20_model,
+            source=l20_source,
+        ),
     )
     l20_o128 = attach_break_even(
         cpu_o128,
-        iter_l20_flashinfer_shapes(load_json(l20_o128_path), output_tokens=128),
+        iter_l20_flashinfer_shapes(
+            load_json(l20_o128_path),
+            output_tokens=128,
+            model=l20_model,
+            source=l20_source,
+        ),
     )
-    return {
-        "schema_version": 1,
-        "mode": "cpu_l20_qwen_family_break_even",
-        "claim_boundary": [
+    if mode == "cpu_l20_same_model_break_even":
+        claim_boundary = [
+            "CPU and L20 rows target the same Qwen2.5-Coder-0.5B-Instruct model family.",
+            "CPU rows use Qwen2.5-Coder-0.5B-Instruct Q4_K_M GGUF on Apple M4.",
+            "L20 rows use Qwen2.5-Coder-0.5B-Instruct vLLM FlashInfer serving artifacts.",
+            "CPU and L20 runtimes use different precision/runtime stacks, so this is a serving boundary comparison, not bit-identical math.",
+            "CPU llama-bench excludes tokenization and sampling; use the C++ completion smoke for an output-producing CPU path proof.",
+            "L20 request throughput is estimated as output_throughput / requested_output_tokens because these source summaries do not store request_throughput.",
+        ]
+        decision = {
+            "single_local_request": "M4 CPU is usable for local single-user Qwen2.5-Coder-0.5B decode when the measured serial p512 request rate is acceptable.",
+            "serving_boundary": "Use L20/vLLM once the p512 workload needs multi-request concurrency, stable tail latency, or more than one serial M4 process can provide.",
+            "next_proof": "Add cost-per-1M-output-token and memory footprint columns after same-model latency is checked in.",
+        }
+    else:
+        claim_boundary = [
             "CPU and L20 rows are Qwen-family controls, not identical-model comparisons.",
             "CPU rows use Qwen2.5-Coder-0.5B-Instruct Q4_K_M GGUF on Apple M4.",
             "L20 rows use checked-in Qwen3-0.6B vLLM FlashInfer serving artifacts.",
             "CPU llama-bench excludes tokenization and sampling; use the C++ completion smoke for an output-producing CPU path proof.",
             "L20 request throughput is estimated as output_throughput / requested_output_tokens because these source summaries do not store request_throughput.",
-        ],
+        ]
+        decision = {
+            "single_local_request": "M4 CPU is usable for local single-user Qwen-family decode when 0.35-0.57 serial req/s is acceptable.",
+            "serving_boundary": "Use L20/vLLM once the p512 workload needs multi-request concurrency, stable tail latency, or more than one serial M4 process can provide.",
+            "next_proof": "Replace the family-level L20 rows with same-model Qwen2.5-Coder-0.5B serving artifacts when available.",
+        }
+    return {
+        "schema_version": 1,
+        "mode": mode,
+        "title": title,
+        "claim_boundary": claim_boundary,
         "inputs": {
             "cpu_o32": str(cpu_o32_path),
             "cpu_o128": str(cpu_o128_path),
@@ -163,28 +226,46 @@ def build_summary(
             "p512_o32": l20_o32,
             "p512_o128": l20_o128,
         },
-        "decision": {
-            "single_local_request": "M4 CPU is usable for local single-user Qwen-family decode when 0.35-0.57 serial req/s is acceptable.",
-            "serving_boundary": "Use L20/vLLM once the p512 workload needs multi-request concurrency, stable tail latency, or more than one serial M4 process can provide.",
-            "next_proof": "Replace the family-level L20 rows with same-model Qwen2.5-Coder-0.5B serving artifacts when available.",
-        },
+        "decision": decision,
     }
 
 
 def render_markdown(summary: dict[str, Any]) -> str:
+    same_model = summary["mode"] == "cpu_l20_same_model_break_even"
     lines = [
-        "# CPU vs L20 Break-Even: Qwen-Family p512",
+        f"# {summary.get('title', 'CPU vs L20 Break-Even')}",
         "",
-        "This artifact converts the checked-in M4 CPU Qwen2.5-Coder GGUF",
-        "measurements and L20 Qwen3 vLLM FlashInfer serving measurements into",
-        "one boundary table. It is a Qwen-family control, not an identical-model",
-        "comparison.",
-        "",
-        "## CPU Baseline",
-        "",
-        "| Shape | Combined ms | Serial req/s | Prefill tok/s | Decode tok/s | Threads |",
-        "| --- | ---: | ---: | ---: | ---: | --- |",
     ]
+    if same_model:
+        lines.extend(
+            [
+                "This artifact converts the checked-in M4 CPU Qwen2.5-Coder GGUF",
+                "measurements and same-model L20 vLLM FlashInfer serving",
+                "measurements into one boundary table.",
+                "",
+                "It is a serving-boundary comparison rather than a bit-identical",
+                "runtime comparison: CPU uses Q4_K_M GGUF through llama.cpp, while",
+                "L20 uses vLLM serving.",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "This artifact converts the checked-in M4 CPU Qwen2.5-Coder GGUF",
+                "measurements and L20 Qwen3 vLLM FlashInfer serving measurements into",
+                "one boundary table. It is a Qwen-family control, not an identical-model",
+                "comparison.",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            "## CPU Baseline",
+            "",
+            "| Shape | Combined ms | Serial req/s | Prefill tok/s | Decode tok/s | Threads |",
+            "| --- | ---: | ---: | ---: | ---: | --- |",
+        ]
+    )
     for key, row in summary["cpu"].items():
         lines.append(
             f"| `{key}` | {row['combined_ms']:.3f} | "
@@ -224,7 +305,22 @@ def render_markdown(summary: dict[str, Any]) -> str:
             "- L20/vLLM becomes the right tool for multi-request serving, tail-latency",
             "  control, or any workload that needs many serial M4 equivalents.",
             "- Keep this claim scoped: the CPU side is Qwen2.5-Coder-0.5B Q4_K_M,",
-            "  while the checked-in L20 side is Qwen3-0.6B FlashInfer serving.",
+        ]
+    )
+    if same_model:
+        lines.extend(
+            [
+                "  while the L20 side is Qwen2.5-Coder-0.5B vLLM FlashInfer serving.",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "  while the checked-in L20 side is Qwen3-0.6B FlashInfer serving.",
+            ]
+        )
+    lines.extend(
+        [
             "",
         ]
     )
@@ -233,7 +329,16 @@ def render_markdown(summary: dict[str, Any]) -> str:
 
 def main() -> int:
     args = parse_args()
-    summary = build_summary(args.cpu_o32, args.cpu_o128, args.l20_o32, args.l20_o128)
+    summary = build_summary(
+        args.cpu_o32,
+        args.cpu_o128,
+        args.l20_o32,
+        args.l20_o128,
+        mode=args.mode,
+        title=args.title,
+        l20_model=args.l20_model,
+        l20_source=args.l20_source,
+    )
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n",
