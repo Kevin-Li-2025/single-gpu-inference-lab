@@ -80,12 +80,14 @@ Relevant files:
 - `scripts/benchmark_cpu_real_model.py`
 - `scripts/summarize_cpu_llama_bench.py`
 - `scripts/run_m4_cpu_qwen_inference.py`
+- `scripts/benchmark_m4_q4_matvec_matrix.py`
 - `scripts/build_cpu_l20_break_even.py`
 - `scripts/build_cpu_l20_cost_tail.py`
 - `scripts/run_vllm_l20_qwen25_coder_0p5b_break_even.sh`
 - `scripts/run_vllm_l20_real_prompt_trace.sh`
 - `scripts/run_real_prompt_trace_client.py`
 - `cpp/my.cpp`
+- `cpp/m4_q4_matvec.cpp`
 - `src/l20_stack/epilogue/sampler_epilogue.py`
 - `src/l20_stack/ops/triton_sampling.py`
 - `integrations/vllm/l20_gemm_epilogue_trace.py`
@@ -98,6 +100,7 @@ Relevant files:
 - `benchmarks/results/l20-sparse-repetition-penalty/`
 - `benchmarks/results/l20-sparse-penalty-triangle-matrix/`
 - `benchmarks/results/cpu-tiny-transformer/`
+- `benchmarks/results/cpu-m4-q4-matvec/`
 - `benchmarks/results/cpu-real-model/`
 - `benchmarks/results/cpu-l20-break-even/`
 - `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/`

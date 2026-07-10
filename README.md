@@ -20,7 +20,7 @@ small-model break-even boundary.
 ```mermaid
 flowchart LR
     Prompts["Prompt traces and synthetic workloads"]
-    CPU["Apple M4 CPU path\ncpp/my.cpp + GGUF baselines"]
+    CPU["Apple M4 CPU path\nQ4xQ8 NEON + cpp/my.cpp + GGUF baselines"]
     VLLM["vLLM HTTP serving\nQwen / SmolLM workloads"]
     Sampler["Sampling boundary\ntop-k/top-p, penalties, logprobs"]
     Kernels["Custom kernels and dispatch gates\nCUDA, Triton, TORCH_LIBRARY"]
@@ -81,6 +81,10 @@ small-sample trace evidence, not a production SLO.
 - The CPU track is a real control, not a mock: `cpp/my.cpp` is a self-written
   decode mechanics scaffold, while Qwen/SmolLM GGUF runs provide real CPU
   baselines.
+- The M4 kernel track is shape-aware: the self-written Q4 x Q8 NEON matvec
+  dispatches narrow projections to one performance core and FFN projections to
+  four, reaching a 2.00x geometric-mean win over its same-thread scalar oracle
+  across six Qwen2.5-0.5B layer shapes. This remains microbenchmark evidence.
 
 ## What I Implemented
 
@@ -94,7 +98,7 @@ product here.
 | --- | --- | --- |
 | CUDA operator | Sparse repetition-penalty kernel, policy gate, and PyTorch `TORCH_LIBRARY` registration path for vLLM-shaped logits workloads. | `cuda/sparse_repetition_penalty/`, `integrations/vllm/cuda/`, `scripts/smoke_cuda_sparse_repetition_penalty_op.py` |
 | vLLM integration | Opt-in logits processor and fused sampler patch routes that compare standalone request-level hooks against sampler-boundary integration. | `integrations/vllm/l20_sparse_repetition_penalty_logits_processor.py`, `integrations/vllm/install_l20_topk_topp_sampler.py`, `scripts/run_vllm_l20_sparse_penalty_triangle_matrix.sh` |
-| CPU inference path | Self-written C++ transformer decode scaffold with tiled matmul modes, plus Apple M4 real-model runners for Qwen/SmolLM GGUF baselines. | `cpp/my.cpp`, `scripts/bench_cpu_tiny_transformer.sh`, `scripts/run_m4_cpu_qwen_inference.py` |
+| CPU inference path | Self-written C++ transformer decode scaffold plus an Apple M4 Q4 x Q8 NEON matvec with int4 packing, dynamic activation quantization, persistent workers, cache-flushed benchmarks, and shape-aware dispatch; separate runners provide real Qwen/SmolLM GGUF baselines. | `cpp/my.cpp`, `cpp/m4_q4_matvec.cpp`, `scripts/benchmark_m4_q4_matvec_matrix.py`, `scripts/run_m4_cpu_qwen_inference.py` |
 | Benchmark system | Reproducible CPU/L20/A100 campaign scripts, result summarizers, cost-per-token and p95/p99 tail calculators, and real prompt trace clients. | `scripts/build_cpu_l20_break_even.py`, `scripts/build_cpu_l20_cost_tail.py`, `scripts/run_real_prompt_trace_client.py` |
 | Evidence hygiene | Artifact index, public doc-link checker, compact artifact catalog, CPU-safe tests, and claim-policy docs to keep benchmark claims bounded. | `src/l20_stack/`, `tests/`, `benchmarks/results/artifact-catalog.json`, `docs/experiment-status.md` |
 
@@ -110,6 +114,7 @@ product here.
 | A100 sampling + logprobs | Combined sparse sampling and fused top-logprobs wins the richer logprobs workload across an 8-row matrix | `benchmarks/results/a100-vllm-combined-sampling-logprobs-matrix/` |
 | LM-head boundary | Semantic trace exposes 310/320 decode-safe events and 179.67 MiB FP32 logits materialization budget | `benchmarks/results/a100-vllm-gemm-epilogue-semantic-trace/` |
 | CPU mechanics | Self-written C++ tiny-transformer path plus real GGUF CPU baselines | `benchmarks/results/cpu-tiny-transformer/`, `benchmarks/results/cpu-real-model/` |
+| M4 Q4 x Q8 kernel | Six Qwen2.5-0.5B layer shapes, 6/6 exact, 2.00x geomean over same-thread scalar | `benchmarks/results/cpu-m4-q4-matvec/qwen25-0p5b-m4/` |
 
 For the full status map, use `docs/experiment-status.md`.
 
@@ -185,6 +190,16 @@ scripts/bench_cpu_tiny_transformer.sh \
   --matmul tiled \
   --tile 32 \
   --seed 7
+```
+
+Apple M4 Q4 x Q8 layer-shape matrix:
+
+```bash
+/usr/bin/python3 scripts/benchmark_m4_q4_matvec_matrix.py \
+  --threads 4 \
+  --warmup 10 \
+  --iterations 50 \
+  --cache-flush-mib 64
 ```
 
 Real Qwen CPU completion smoke on Apple M4:

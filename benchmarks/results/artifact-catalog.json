@@ -5,7 +5,7 @@
     "negative": 3,
     "other": 5,
     "path_proof": 13,
-    "positive": 10
+    "positive": 11
   },
   "entries": [
     {
@@ -73,6 +73,17 @@
       "reference": "cpu-tiny-transformer/",
       "status": "CPU path proof",
       "summary": "Adds a self-written FP32 C++ tiny-transformer decode scaffold with synthetic weights, RMSNorm, RoPE, KV cache, causal attention, greedy decode, and naive/tiled matmul; this is a mechanics and profiling baseline, not a real small-model serving claim."
+    },
+    {
+      "category": "positive",
+      "compact_file_count": 2,
+      "has_campaign_summary_json": false,
+      "has_readme": true,
+      "has_summary_json": true,
+      "path": "benchmarks/results/cpu-m4-q4-matvec",
+      "reference": "cpu-m4-q4-matvec/",
+      "status": "Apple M4 positive micro result",
+      "summary": "Adds a self-written Q4 x Q8 ARM dot-product NEON matvec with persistent workers and a shape-aware dispatch gate. Across six cache-flushed Qwen2.5-0.5B layer shapes it is exact versus the scalar integer-dot oracle and reaches 2.00x geometric-mean speedup over the same-thread scalar path; this is not yet end-to-end model evidence."
     },
     {
       "category": "path_proof",
@@ -405,7 +416,7 @@
       "summary": "Custom three-way serving path evidence; not yet a broad win."
     }
   ],
-  "entry_count": 36,
+  "entry_count": 37,
   "index_path": "benchmarks/results/README.md",
   "result_root": "benchmarks/results",
   "schema_version": 1

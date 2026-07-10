@@ -31,6 +31,22 @@ step, token throughput, weight bytes, KV-cache bytes, final token, and checksum.
 
 This is a path proof, not a performance claim about real CPU LLM serving.
 
+Artifact: `benchmarks/results/cpu-m4-q4-matvec/qwen25-0p5b-m4/`
+
+The first M4-specific primitive is now implemented separately from the FP32
+scaffold. `cpp/m4_q4_matvec.cpp` stores weights in signed int4 blocks,
+dynamically quantizes activations to int8, evaluates blocks with ARM NEON dot
+products, and uses persistent workers with a shape-aware dispatch gate. A
+64 MiB cache flush prevents the repeated layer weights from becoming a
+cache-resident-only result.
+
+Across Q/K/V/O and both FFN projection shapes from Qwen2.5-0.5B, 6/6 outputs
+match the scalar integer-dot oracle exactly. The optimized path reaches 2.00x
+geometric-mean speedup over the same dispatched thread count, with a
+1.31x-2.35x range. Relative to single-thread scalar, the geometric mean is
+2.72x. This is model-shaped kernel evidence; it does not execute real Qwen
+weights or establish an end-to-end win over llama.cpp or MLX.
+
 Artifact: `benchmarks/results/cpu-real-model/`
 
 The real-model control uses `llama-cpp-python` with `n_gpu_layers=0` and
@@ -116,16 +132,16 @@ L20/vLLM baseline -> optimized L20 sampling/logits/KV paths
 
 ## Next Gates
 
-1. Add a correctness fixture that compares `naive` and `tiled` matmul outputs
-   on the same synthetic model.
-2. Add weight-only int8 matmul and report both latency and output drift against
-   FP32.
-3. Add a repeated real-prompt trace with more prompts and explicit warmup
-   separation if this becomes a service-SLO claim.
+1. Parse the real Qwen Q4_K_M GGUF tensor metadata and convert matching decode
+   projection blocks into the custom M4 layout without copying per token.
+2. Replace one real decode matvec boundary and compare logits against llama.cpp
+   before measuring throughput.
+3. Run identical-model, identical-quantization A/B against llama.cpp CPU and
+   MLX, including load time, prompt processing, decode, memory, and output drift.
 
 ## Non-Goals
 
 - No claim that the self-written C++ synthetic path is a real model benchmark.
 - No in-repo model weights or GGUF files.
-- No AVX/AMX specialization until the scalar path is measured.
-- No claim that this hand-written runtime is competitive with llama.cpp.
+- No claim that this hand-written runtime beats llama.cpp or MLX until the real
+  model path is integrated and measured.
