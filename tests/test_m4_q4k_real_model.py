@@ -72,6 +72,30 @@ class M4Q4KRealModelTest(unittest.TestCase):
         self.assertIn("all_candidate_traces_hit", source)
         self.assertIn("different 4-bit format", source)
 
+    def test_large_model_matrix_keeps_real_model_boundaries(self):
+        source = Path("scripts/run_m4_large_model_matrix.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('magic != b"GGUF"', source)
+        self.assertIn("cpu_metal_outputs_exact", source)
+        self.assertIn("different 4-bit format", source)
+        self.assertIn("sha256_file", source)
+        self.assertIn("--threads must match the winner", source)
+
+    def test_mlx_bootstrap_pins_compatible_stack(self):
+        source = Path("scripts/bootstrap_mlx_m4.sh").read_text(encoding="utf-8")
+        self.assertIn('"mlx==0.32.0"', source)
+        self.assertIn('"mlx-lm==0.31.3"', source)
+        self.assertIn('"transformers==5.0.0"', source)
+
+    def test_sme2_probe_is_labeled_as_external_kernel_evidence(self):
+        source = Path("scripts/benchmark_m4_sme2_qwen3b.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("external KleidiAI kernel probe", source)
+        self.assertIn("not integrated model inference", source)
+        self.assertIn("sme2_speedup", source)
+
 
 if __name__ == "__main__":
     unittest.main()

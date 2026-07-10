@@ -83,6 +83,9 @@ Relevant files:
 - `scripts/benchmark_m4_q4_matvec_matrix.py`
 - `scripts/run_m4_q4k_real_model_ab.py`
 - `scripts/benchmark_mlx_qwen.py`
+- `scripts/bootstrap_mlx_m4.sh`
+- `scripts/run_m4_large_model_matrix.py`
+- `scripts/benchmark_m4_sme2_qwen3b.py`
 - `scripts/build_cpu_l20_break_even.py`
 - `scripts/build_cpu_l20_cost_tail.py`
 - `scripts/run_vllm_l20_qwen25_coder_0p5b_break_even.sh`

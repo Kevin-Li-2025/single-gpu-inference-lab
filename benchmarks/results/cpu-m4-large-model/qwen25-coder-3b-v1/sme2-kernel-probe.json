@@ -1,0 +1,35 @@
+{
+  "correctness": {
+    "tests_passed": 154,
+    "tests_run": 154
+  },
+  "format": "FP32 activation dynamically quantized to QAI8; QSI4C32 weights",
+  "implementation": "scripts/benchmark_m4_sme2_qwen3b.py",
+  "rows": [
+    {
+      "benchmark_exit_code": -11,
+      "bl": 32,
+      "k": 2048,
+      "m": 1,
+      "n": 11008,
+      "name": "ffn_up_gate",
+      "neon_median_ns": 226245.0,
+      "sme2_median_ns": 161909.0,
+      "sme2_speedup": 1.3973590103082596
+    },
+    {
+      "benchmark_exit_code": -11,
+      "bl": 32,
+      "k": 11008,
+      "m": 1,
+      "n": 2048,
+      "name": "ffn_down",
+      "neon_median_ns": 225603.0,
+      "sme2_median_ns": 163751.0,
+      "sme2_speedup": 1.377719830718591
+    }
+  ],
+  "runner_note": "KleidiAI v1.28.0 reports complete medians, then exits SIGSEGV on this macOS M4 host; each row records that external runner teardown status",
+  "schema_version": 1,
+  "scope": "external KleidiAI kernel probe; not integrated model inference"
+}

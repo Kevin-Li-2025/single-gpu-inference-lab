@@ -1,0 +1,286 @@
+{
+  "cpu_thread_sweep": {
+    "rows": [
+      {
+        "avg_tokens_per_s": 33.701312,
+        "samples_tokens_per_s": [
+          35.1272,
+          34.5397,
+          34.9174,
+          30.6028,
+          33.3194
+        ],
+        "stddev_tokens_per_s": 1.86826,
+        "threads": 4
+      },
+      {
+        "avg_tokens_per_s": 31.259721,
+        "samples_tokens_per_s": [
+          34.7889,
+          30.1771,
+          25.2116,
+          32.4138,
+          33.7071
+        ],
+        "stddev_tokens_per_s": 3.792368,
+        "threads": 6
+      },
+      {
+        "avg_tokens_per_s": 32.495001,
+        "samples_tokens_per_s": [
+          32.7853,
+          30.294,
+          31.8674,
+          33.9848,
+          33.5434
+        ],
+        "stddev_tokens_per_s": 1.469818,
+        "threads": 8
+      },
+      {
+        "avg_tokens_per_s": 17.271572,
+        "samples_tokens_per_s": [
+          15.7438,
+          15.6918,
+          20.6484,
+          20.6541,
+          13.6197
+        ],
+        "stddev_tokens_per_s": 3.201961,
+        "threads": 10
+      }
+    ],
+    "selected_threads": 4
+  },
+  "hardware": {
+    "machine": "arm64",
+    "macos": "27.0",
+    "processor": "arm"
+  },
+  "implementation": "scripts/run_m4_large_model_matrix.py",
+  "llama": {
+    "cpu": {
+      "completion_median_decode_tokens_per_s": 34.84,
+      "completion_median_prompt_tokens_per_s": 105.93,
+      "completion_rows": [
+        {
+          "decode_count": 127,
+          "decode_ms": 3644.85,
+          "decode_tokens_per_s": 34.84,
+          "output_sha256": "2a4ef83a9880fdb6351eb90e5480a6b2ea7d6501bc1e80f234d5710da672bd70",
+          "prompt_count": 22,
+          "prompt_ms": 207.69,
+          "prompt_tokens_per_s": 105.93
+        },
+        {
+          "decode_count": 127,
+          "decode_ms": 3651.39,
+          "decode_tokens_per_s": 34.78,
+          "output_sha256": "2a4ef83a9880fdb6351eb90e5480a6b2ea7d6501bc1e80f234d5710da672bd70",
+          "prompt_count": 22,
+          "prompt_ms": 206.26,
+          "prompt_tokens_per_s": 106.66
+        },
+        {
+          "decode_count": 127,
+          "decode_ms": 3643.29,
+          "decode_tokens_per_s": 34.86,
+          "output_sha256": "2a4ef83a9880fdb6351eb90e5480a6b2ea7d6501bc1e80f234d5710da672bd70",
+          "prompt_count": 22,
+          "prompt_ms": 214.97,
+          "prompt_tokens_per_s": 102.34
+        }
+      ],
+      "decode": {
+        "avg_tokens_per_s": 33.029722,
+        "backend": "cpu",
+        "build_commit": "bec4772",
+        "model_size_bytes": 2098976768,
+        "n_gpu_layers": 0,
+        "samples_tokens_per_s": [
+          34.8431,
+          33.152,
+          32.8725,
+          31.3883,
+          32.8927
+        ],
+        "stddev_tokens_per_s": 1.228936,
+        "threads": 4
+      },
+      "prefill": {
+        "avg_tokens_per_s": 115.016754,
+        "backend": "cpu",
+        "build_commit": "bec4772",
+        "model_size_bytes": 2098976768,
+        "n_gpu_layers": 0,
+        "samples_tokens_per_s": [
+          118.103,
+          116.379,
+          110.664,
+          113.732,
+          116.206
+        ],
+        "stddev_tokens_per_s": 2.889377,
+        "threads": 4
+      }
+    },
+    "cpu_metal_outputs_exact": true,
+    "metal": {
+      "completion_median_decode_tokens_per_s": 46.92,
+      "completion_median_prompt_tokens_per_s": 274.37,
+      "completion_rows": [
+        {
+          "decode_count": 127,
+          "decode_ms": 2759.76,
+          "decode_tokens_per_s": 46.02,
+          "output_sha256": "2a4ef83a9880fdb6351eb90e5480a6b2ea7d6501bc1e80f234d5710da672bd70",
+          "prompt_count": 22,
+          "prompt_ms": 80.47,
+          "prompt_tokens_per_s": 273.39
+        },
+        {
+          "decode_count": 127,
+          "decode_ms": 2690.49,
+          "decode_tokens_per_s": 47.2,
+          "output_sha256": "2a4ef83a9880fdb6351eb90e5480a6b2ea7d6501bc1e80f234d5710da672bd70",
+          "prompt_count": 22,
+          "prompt_ms": 80.19,
+          "prompt_tokens_per_s": 274.37
+        },
+        {
+          "decode_count": 127,
+          "decode_ms": 2706.68,
+          "decode_tokens_per_s": 46.92,
+          "output_sha256": "2a4ef83a9880fdb6351eb90e5480a6b2ea7d6501bc1e80f234d5710da672bd70",
+          "prompt_count": 22,
+          "prompt_ms": 79.04,
+          "prompt_tokens_per_s": 278.33
+        }
+      ],
+      "decode": {
+        "avg_tokens_per_s": 44.238576,
+        "backend": "metal",
+        "build_commit": "bec4772",
+        "model_size_bytes": 2098976768,
+        "n_gpu_layers": 99,
+        "samples_tokens_per_s": [
+          41.4878,
+          42.6181,
+          44.7564,
+          45.6991,
+          46.6315
+        ],
+        "stddev_tokens_per_s": 2.140087,
+        "threads": 4
+      },
+      "prefill": {
+        "avg_tokens_per_s": 408.280206,
+        "backend": "metal",
+        "build_commit": "bec4772",
+        "model_size_bytes": 2098976768,
+        "n_gpu_layers": 99,
+        "samples_tokens_per_s": [
+          419.934,
+          419.718,
+          404.869,
+          399.862,
+          397.018
+        ],
+        "stddev_tokens_per_s": 10.908484,
+        "threads": 4
+      }
+    }
+  },
+  "mlx": {
+    "implementation": "scripts/benchmark_mlx_qwen.py",
+    "iterations": 5,
+    "max_tokens": 128,
+    "median_generation_tokens_per_s": 54.7207747933635,
+    "median_prompt_tokens_per_s": 257.9141302567642,
+    "mode": "persistent_mlx_same_model_4bit",
+    "model": "mlx-community/Qwen2.5-Coder-3B-Instruct-4bit",
+    "output_stable": true,
+    "quantization_boundary": "MLX 4-bit; not bitwise-identical to GGUF Q4_K_M",
+    "rows": [
+      {
+        "finish_reason": "length",
+        "generation_tokens": 128,
+        "generation_tokens_per_s": 54.47564600151254,
+        "peak_memory_gb": 1.81413458,
+        "prompt_tokens": 22,
+        "prompt_tokens_per_s": 261.3580599650812,
+        "token_checksum": 3300065178
+      },
+      {
+        "finish_reason": "length",
+        "generation_tokens": 128,
+        "generation_tokens_per_s": 54.7207747933635,
+        "peak_memory_gb": 1.814445876,
+        "prompt_tokens": 22,
+        "prompt_tokens_per_s": 255.6904431138706,
+        "token_checksum": 3300065178
+      },
+      {
+        "finish_reason": "length",
+        "generation_tokens": 128,
+        "generation_tokens_per_s": 55.35126858173986,
+        "peak_memory_gb": 1.814445876,
+        "prompt_tokens": 22,
+        "prompt_tokens_per_s": 257.9141302567642,
+        "token_checksum": 3300065178
+      },
+      {
+        "finish_reason": "length",
+        "generation_tokens": 128,
+        "generation_tokens_per_s": 55.278145159115,
+        "peak_memory_gb": 1.814445876,
+        "prompt_tokens": 22,
+        "prompt_tokens_per_s": 257.97411171649264,
+        "token_checksum": 3300065178
+      },
+      {
+        "finish_reason": "length",
+        "generation_tokens": 128,
+        "generation_tokens_per_s": 54.679920353129276,
+        "peak_memory_gb": 1.814445876,
+        "prompt_tokens": 22,
+        "prompt_tokens_per_s": 255.06334655273196,
+        "token_checksum": 3300065178
+      }
+    ],
+    "runtime": {
+      "machine": "arm64",
+      "macos": "27.0",
+      "mlx": "0.32.0",
+      "mlx_lm": "0.31.3",
+      "python": "3.12.13",
+      "transformers": "5.0.0"
+    },
+    "schema_version": 1
+  },
+  "mode": "apple_m4_real_qwen3b_cpu_metal_mlx",
+  "model": {
+    "comparison_boundary": "llama CPU/Metal use identical GGUF bytes; MLX uses the same model architecture in a different 4-bit format",
+    "filename": "qwen2.5-coder-3b-instruct-q4_k_m.gguf",
+    "gguf_revision": "f74adce6aa16316c625447af059dbebe4983757c",
+    "gguf_source": "Qwen/Qwen2.5-Coder-3B-Instruct-GGUF",
+    "llama_quantization": "official GGUF Q4_K_M",
+    "mlx_model": "mlx-community/Qwen2.5-Coder-3B-Instruct-4bit",
+    "mlx_revision": "3dd939c621c08e5753d5b89f35a2642cd83b98ca",
+    "sha256": "724fb256bec1ff062b2f65e4569e871ad2e95ab2a3989723d1769c54294730b7",
+    "size_bytes": 2104932800
+  },
+  "schema_version": 1,
+  "settings": {
+    "completion_runs": 3,
+    "decode_tokens": 128,
+    "prompt_tokens": 512,
+    "real_prompt": "Implement a Python function merge_intervals(intervals) that merges overlapping integer intervals. Include type hints and two assertions.",
+    "repetitions": 5,
+    "threads": 4
+  },
+  "speedups": {
+    "llama_metal_over_cpu_decode": 1.3393565952507867,
+    "mlx_over_cpu_completion_decode": 1.5706307345971153
+  }
+}

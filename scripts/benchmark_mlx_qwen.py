@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import platform
 import statistics
+from importlib.metadata import version
 
 from mlx_lm import load, stream_generate
 from mlx_lm.sample_utils import make_sampler
@@ -79,6 +81,14 @@ def main() -> int:
         "implementation": "scripts/benchmark_mlx_qwen.py",
         "mode": "persistent_mlx_same_model_4bit",
         "model": args.model,
+        "runtime": {
+            "machine": platform.machine(),
+            "macos": platform.mac_ver()[0],
+            "mlx": version("mlx"),
+            "mlx_lm": version("mlx-lm"),
+            "python": platform.python_version(),
+            "transformers": version("transformers"),
+        },
         "quantization_boundary": "MLX 4-bit; not bitwise-identical to GGUF Q4_K_M",
         "iterations": args.iterations,
         "max_tokens": args.max_tokens,

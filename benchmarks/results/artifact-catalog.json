@@ -5,7 +5,7 @@
     "negative": 3,
     "other": 6,
     "path_proof": 13,
-    "positive": 11
+    "positive": 12
   },
   "entries": [
     {
@@ -95,6 +95,17 @@
       "reference": "cpu-m4-q4k-real-model/",
       "status": "Apple M4 real-model boundary",
       "summary": "Directly parses real Qwen GGUF Q4_K tensors, validates the custom kernel to 1e-6 against llama.cpp, and reaches real opt-in decode with byte-identical output. The formal result is parity, not a win: 0.997x in `tg128` and 0.995x in repeated completion, while MLX same-model 4-bit reaches 263.553 tok/s."
+    },
+    {
+      "category": "positive",
+      "compact_file_count": 2,
+      "has_campaign_summary_json": false,
+      "has_readme": true,
+      "has_summary_json": true,
+      "path": "benchmarks/results/cpu-m4-large-model",
+      "reference": "cpu-m4-large-model/",
+      "status": "Apple M4 confirmed 3B runtime boundary",
+      "summary": "Runs real Qwen2.5-Coder-3B weights across a four-core CPU path, llama.cpp Metal, and MLX: real completion reaches 34.84, 46.92, and 54.72 tok/s. CPU/Metal outputs match across 3/3 pairs and MLX is stable across 5/5 runs. The separate external KleidiAI probe passes 154/154 SME2 tests and is explicitly not integrated inference."
     },
     {
       "category": "path_proof",
@@ -427,7 +438,7 @@
       "summary": "Custom three-way serving path evidence; not yet a broad win."
     }
   ],
-  "entry_count": 38,
+  "entry_count": 39,
   "index_path": "benchmarks/results/README.md",
   "result_root": "benchmarks/results",
   "schema_version": 1
