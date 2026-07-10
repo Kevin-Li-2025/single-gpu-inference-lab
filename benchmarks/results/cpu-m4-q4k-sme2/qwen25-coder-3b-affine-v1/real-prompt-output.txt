@@ -1,0 +1,18 @@
+ Here's the code snippet:
+
+```python
+from typing import List, Tuple
+
+def merge_intervals(intervals: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+    """
+    Merge overlapping integer intervals.
+    
+    :param intervals: List of tuples representing intervals (start, end)
+    :return: List of tuples representing merged intervals
+    """
+    if not intervals:
+        return []
+    
+    intervals.sort(key=lambda x: x[0])
+    merged
+

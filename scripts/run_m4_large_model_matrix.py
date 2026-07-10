@@ -226,9 +226,10 @@ using all ten M4 cores is slower for this memory-bound decode workload.
 
 ## SME2 Follow-up
 
-The accompanying M4 probe uses Arm KleidiAI's QSI4/QAI8 SME2 GEMV on Qwen 3B
-FFN shapes. It is kept as a kernel-boundary result until GGUF weights are
-repacked and the path is integrated into full decode.
+The follow-up now parses and repacks real Q4_K tensors, restores the affine
+minimum term, and reaches llama.cpp decode. Full FFN tensor kernels improve,
+but the four-thread end-to-end gate regresses and remains disabled. See
+`benchmarks/results/cpu-m4-q4k-sme2/qwen25-coder-3b-affine-v1/`.
 """
 
 

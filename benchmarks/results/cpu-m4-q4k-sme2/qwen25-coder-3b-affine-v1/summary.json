@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "status": "negative_full_decode_gate",
+  "hardware": {
+    "cpu": "Apple M4",
+    "unified_memory_bytes": 17179869184,
+    "threads": 4
+  },
+  "model": {
+    "name": "Qwen2.5-Coder-3B-Instruct",
+    "format": "GGUF Q4_K_M",
+    "sha256": "724fb256bec1ff062b2f65e4569e871ad2e95ab2a3989723d1769c54294730b7",
+    "real_model": true,
+    "mock_weights": false
+  },
+  "versions": {
+    "llama_cpp_commit": "bec4772f6a2527d371557b5d2032641e5ff7619c",
+    "kleidiai": "v1.24.0"
+  },
+  "implementation": {
+    "gguf_parser": "cpp/m4_gguf_q4k.hpp",
+    "standalone_gate": "cpp/m4_q4k_sme2.cpp",
+    "llama_cpp_integration": "integrations/llama_cpp/kevin_m4_q4k_sme2.h",
+    "installer": "integrations/llama_cpp/install_kevin_m4_q4k_sme2.py",
+    "weight_transform": "lossless Q4 nibble preservation plus explicit affine correction",
+    "decode_policy": "20 percent SME2 rows plus three x8 NEON fallback workers",
+    "default_enabled": false
+  },
+  "real_tensor_gates": [
+    {
+      "tensor": "blk.0.ffn_up.weight",
+      "shape": [11008, 2048],
+      "mapping_normalized_rmse": 1.7e-7,
+      "fp32_activation_normalized_rmse": 0.00378656,
+      "custom_neon_normalized_rmse": 0.00398764,
+      "speedup_vs_custom_raw_neon": 1.13193086,
+      "gate_pass": true
+    },
+    {
+      "tensor": "blk.12.ffn_down.weight",
+      "shape": [2048, 11008],
+      "mapping_normalized_rmse": 3.7e-7,
+      "fp32_activation_normalized_rmse": 0.00384362,
+      "custom_neon_normalized_rmse": 0.00406074,
+      "speedup_vs_custom_raw_neon": 1.15812285,
+      "gate_pass": true
+    }
+  ],
+  "decode_tg128": {
+    "repetitions": 5,
+    "baseline_tps_median": 33.9767,
+    "hybrid_tps_median": 29.1314,
+    "speedup": 0.857402,
+    "baseline_itl_ms_p95": 30.155656,
+    "baseline_itl_ms_p99": 30.29532,
+    "hybrid_itl_ms_p95": 40.364154,
+    "hybrid_itl_ms_p99": 40.583376,
+    "gate_pass": false
+  },
+  "real_prompt": {
+    "prompt": "Implement a Python function merge_intervals(intervals) that merges overlapping integer intervals. Include type hints and two assertions.",
+    "greedy_output_sha256": "8ff2391976022289e0b35ded5071463b329a85a615884fdac0febe44a1151c59",
+    "outputs_byte_identical": true,
+    "baseline_prefill_tps": 116.62,
+    "hybrid_prefill_tps": 67.19,
+    "baseline_decode_tps": 33.26,
+    "hybrid_decode_tps": 28.69,
+    "baseline_load_ms": 1569.3,
+    "hybrid_load_ms": 2985.5
+  },
+  "memory": {
+    "cpu_mapped_mib": 1758.31,
+    "cpu_kleidiai_mib": 3507.2,
+    "cpu_repack_mib": 745.46,
+    "total_model_buffers_mib": 6010.97
+  },
+  "decision": "Keep the integrated SME2 path opt-in and disabled by default. Preserve the real-tensor kernel result, but do not claim an end-to-end inference speedup."
+}

@@ -1,0 +1,470 @@
+#ifndef KEVIN_M4_Q4K_SME2_H
+#define KEVIN_M4_Q4K_SME2_H
+
+#include <arm_neon.h>
+
+#include <algorithm>
+#include <atomic>
+#include <cfloat>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <vector>
+
+#include "kai/ukernels/matmul/matmul_clamp_f32_qsi8d32p_qsi4c32p/kai_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot.h"
+#include "kai/ukernels/matmul/pack/kai_lhs_quant_pack_qsi8d32p_f32_neon.h"
+#include "kai/ukernels/matmul/pack/kai_rhs_pack_nxk_qsi4c32ps1s0scalef16_qsu4c32s16s0_neon.h"
+#include "../repack.h"
+
+static constexpr uint32_t KEVIN_M4_Q4K_SME2_MAGIC = 0x4b513453; // "KQ4S"
+static constexpr uint32_t KEVIN_M4_Q4K_SME2_VERSION = 2;
+static constexpr size_t KEVIN_M4_Q4K_SME2_ALIGN = 64;
+static constexpr size_t KEVIN_M4_Q4K_SME2_BL = 32;
+static constexpr size_t KEVIN_M4_Q4K_SME2_SOURCE_BLOCK = 18;
+static constexpr size_t KEVIN_M4_Q4K_SME2_MAX_THREADS = 64;
+
+struct kevin_m4_q4k_sme2_header {
+    uint32_t magic;
+    uint32_t version;
+    uint64_t n;
+    uint64_t k;
+    uint64_t packed_offset;
+    uint64_t packed_size;
+    uint64_t correction_offset;
+    uint64_t correction_size;
+    uint64_t fallback_offset;
+    uint64_t fallback_size;
+};
+
+static size_t kevin_m4_q4k_sme2_align_up(size_t value) {
+    return (value + KEVIN_M4_Q4K_SME2_ALIGN - 1) & ~(KEVIN_M4_Q4K_SME2_ALIGN - 1);
+}
+
+static bool kevin_m4_q4k_sme2_enabled(void) {
+    const char * value = getenv("GGML_M4_Q4K_SME2");
+    return value != nullptr && value[0] == '1' && value[1] == '\0';
+}
+
+static bool kevin_m4_q4k_sme2_tensor_eligible(const ggml_tensor * tensor) {
+    return tensor != nullptr && tensor->type == GGML_TYPE_Q4_K &&
+           tensor->ne[0] * tensor->ne[1] >= 8 * 1024 * 1024 &&
+           tensor->ne[1] % 8 == 0 &&
+           strstr(tensor->name, ".ffn_") != nullptr;
+}
+
+static bool kevin_m4_q4k_sme2_trace_enabled(void) {
+    const char * value = getenv("GGML_M4_Q4K_SME2_TRACE");
+    return value != nullptr && value[0] == '1' && value[1] == '\0';
+}
+
+static int kevin_m4_q4k_sme2_share_percent(void) {
+    const char * value = getenv("GGML_M4_Q4K_SME2_SHARE_PERCENT");
+    if (value == nullptr) {
+        return 20;
+    }
+    char * end = nullptr;
+    const long parsed = strtol(value, &end, 10);
+    return end != value && *end == '\0' && parsed >= 5 && parsed <= 50
+        ? static_cast<int>(parsed)
+        : 20;
+}
+
+static void kevin_m4_q4k_sme2_trace_once(void) {
+    static std::atomic_flag emitted = ATOMIC_FLAG_INIT;
+    if (kevin_m4_q4k_sme2_trace_enabled() && !emitted.test_and_set(std::memory_order_relaxed)) {
+        GGML_LOG_INFO("kevin_m4_q4k_sme2: persistent affine Q4_K SME2 decode path hit\n");
+    }
+}
+
+static void kevin_m4_q4k_decode_scale_min(
+        const uint8_t * packed, int group, uint8_t & scale, uint8_t & minimum) {
+    if (group < 4) {
+        scale = packed[group] & 63;
+        minimum = packed[group + 4] & 63;
+    } else {
+        scale = (packed[group + 4] & 0x0f) | ((packed[group - 4] >> 6) << 4);
+        minimum = (packed[group + 4] >> 4) | ((packed[group] >> 6) << 4);
+    }
+}
+
+static uint8_t kevin_m4_q4k_value(const block_q4_K & block, int group, int index) {
+    const uint8_t packed = block.qs[(group / 2) * 32 + index];
+    return (group & 1) != 0 ? packed >> 4 : packed & 0x0f;
+}
+
+static size_t kevin_m4_q4k_sme2_packed_size(size_t n, size_t k) {
+    const size_t nr =
+        kai_get_nr_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot();
+    const size_t kr =
+        kai_get_kr_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot();
+    return kai_get_rhs_packed_size_rhs_pack_nxk_qsi4c32ps1s0scalef16_qsu4c32s16s0_neon(
+        n, k, nr, kr, KEVIN_M4_Q4K_SME2_BL);
+}
+
+static size_t kevin_m4_q4k_sme2_alloc_size(const ggml_tensor * tensor) {
+    const size_t original_size = ggml_nbytes(tensor);
+    if (!kevin_m4_q4k_sme2_enabled() || !kevin_m4_q4k_sme2_tensor_eligible(tensor) ||
+        tensor->ne[0] % QK_K != 0) {
+        return original_size;
+    }
+    const size_t n = tensor->ne[1];
+    const size_t k = tensor->ne[0];
+    const size_t header_offset = kevin_m4_q4k_sme2_align_up(original_size);
+    const size_t packed_offset =
+        kevin_m4_q4k_sme2_align_up(header_offset + sizeof(kevin_m4_q4k_sme2_header));
+    const size_t correction_offset =
+        kevin_m4_q4k_sme2_align_up(packed_offset + kevin_m4_q4k_sme2_packed_size(n, k));
+    const size_t correction_size = n * (k / KEVIN_M4_Q4K_SME2_BL) * sizeof(float);
+    const size_t fallback_offset =
+        kevin_m4_q4k_sme2_align_up(correction_offset + correction_size);
+    return fallback_offset + original_size;
+}
+
+static kevin_m4_q4k_sme2_header * kevin_m4_q4k_sme2_header_for(ggml_tensor * tensor) {
+    uint8_t * base = static_cast<uint8_t *>(tensor->data);
+    return reinterpret_cast<kevin_m4_q4k_sme2_header *>(
+        base + kevin_m4_q4k_sme2_align_up(ggml_nbytes(tensor)));
+}
+
+static const kevin_m4_q4k_sme2_header * kevin_m4_q4k_sme2_header_for(const ggml_tensor * tensor) {
+    const uint8_t * base = static_cast<const uint8_t *>(tensor->data);
+    return reinterpret_cast<const kevin_m4_q4k_sme2_header *>(
+        base + kevin_m4_q4k_sme2_align_up(ggml_nbytes(tensor)));
+}
+
+static bool kevin_m4_q4k_sme2_header_valid(
+        const kevin_m4_q4k_sme2_header * header, const ggml_tensor * tensor) {
+    return header != nullptr && header->magic == KEVIN_M4_Q4K_SME2_MAGIC &&
+           header->version == KEVIN_M4_Q4K_SME2_VERSION &&
+           header->n == static_cast<uint64_t>(tensor->ne[1]) &&
+           header->k == static_cast<uint64_t>(tensor->ne[0]);
+}
+
+static block_q4_Kx8 kevin_m4_q4k_make_x8(const block_q4_K * input) {
+    block_q4_Kx8 output{};
+    for (int row = 0; row < 8; ++row) {
+        output.d[row] = input[row].GGML_COMMON_AGGR_U.GGML_COMMON_AGGR_S.d;
+        output.dmin[row] = input[row].GGML_COMMON_AGGR_U.GGML_COMMON_AGGR_S.dmin;
+    }
+    for (int i = 0; i < QK_K * 4 / 8; ++i) {
+        const int source_row = i % 8;
+        const int source_offset = (i / 8) * 8;
+        memcpy(output.qs + i * 8, input[source_row].qs + source_offset, 8);
+    }
+
+    uint8_t scales[8];
+    uint8_t minimums[8];
+    for (int group = 0; group < 4; ++group) {
+        for (int row = 0; row < 8; ++row) {
+            scales[row] = input[row].scales[group] & 63;
+            minimums[row] = input[row].scales[group + 4] & 63;
+        }
+        uint8_t * destination = output.scales + group * 12;
+        for (int row = 0; row < 4; ++row) {
+            destination[row] = (scales[row] & 63) | ((scales[row + 4] & 48) << 2);
+            destination[row + 4] = (minimums[row] & 63) | ((minimums[row + 4] & 48) << 2);
+            destination[row + 8] = (scales[row + 4] & 15) | ((minimums[row + 4] & 15) << 4);
+        }
+    }
+    for (int group = 0; group < 4; ++group) {
+        for (int row = 0; row < 8; ++row) {
+            scales[row] = ((input[row].scales[group] & 192) >> 2) |
+                          (input[row].scales[group + 8] & 15);
+            minimums[row] = ((input[row].scales[group + 4] & 192) >> 2) |
+                            ((input[row].scales[group + 8] & 240) >> 4);
+        }
+        uint8_t * destination = output.scales + 48 + group * 12;
+        for (int row = 0; row < 4; ++row) {
+            destination[row] = (scales[row] & 63) | ((scales[row + 4] & 48) << 2);
+            destination[row + 4] = (minimums[row] & 63) | ((minimums[row + 4] & 48) << 2);
+            destination[row + 8] = (scales[row + 4] & 15) | ((minimums[row + 4] & 15) << 4);
+        }
+    }
+    return output;
+}
+
+static void kevin_m4_q4k_repack_x8(
+        const void * data, size_t n, size_t k, block_q4_Kx8 * destination) {
+    const block_q4_K * source = static_cast<const block_q4_K *>(data);
+    const size_t blocks = k / QK_K;
+    block_q4_K rows[8];
+    for (size_t row = 0; row < n; row += 8) {
+        for (size_t block = 0; block < blocks; ++block) {
+            for (int lane = 0; lane < 8; ++lane) {
+                rows[lane] = source[(row + lane) * blocks + block];
+            }
+            *destination++ = kevin_m4_q4k_make_x8(rows);
+        }
+    }
+}
+
+static int kevin_m4_q4k_sme2_repack(
+        ggml_tensor * tensor, const void * data, size_t data_size) {
+    if (!kevin_m4_q4k_sme2_enabled() || !kevin_m4_q4k_sme2_tensor_eligible(tensor)) {
+        return -1;
+    }
+    const size_t n = tensor->ne[1];
+    const size_t k = tensor->ne[0];
+    if (k % QK_K != 0 || data_size != ggml_nbytes(tensor)) {
+        return -1;
+    }
+
+    memcpy(tensor->data, data, data_size);
+    uint8_t * base = static_cast<uint8_t *>(tensor->data);
+    kevin_m4_q4k_sme2_header * header = kevin_m4_q4k_sme2_header_for(tensor);
+    const size_t header_offset = reinterpret_cast<uint8_t *>(header) - base;
+    const size_t packed_offset =
+        kevin_m4_q4k_sme2_align_up(header_offset + sizeof(*header));
+    const size_t packed_size = kevin_m4_q4k_sme2_packed_size(n, k);
+    const size_t correction_offset =
+        kevin_m4_q4k_sme2_align_up(packed_offset + packed_size);
+    const size_t groups = k / KEVIN_M4_Q4K_SME2_BL;
+    const size_t correction_size = n * groups * sizeof(float);
+    const size_t fallback_offset =
+        kevin_m4_q4k_sme2_align_up(correction_offset + correction_size);
+
+    std::vector<uint8_t> source(n * groups * KEVIN_M4_Q4K_SME2_SOURCE_BLOCK);
+    float * correction = reinterpret_cast<float *>(base + correction_offset);
+    const size_t row_bytes = (k / QK_K) * sizeof(block_q4_K);
+    const uint8_t * input = static_cast<const uint8_t *>(data);
+
+    for (size_t row = 0; row < n; ++row) {
+        const block_q4_K * row_blocks =
+            reinterpret_cast<const block_q4_K *>(input + row * row_bytes);
+        for (size_t block = 0; block < k / QK_K; ++block) {
+            const block_q4_K & source_block = row_blocks[block];
+            const float d = GGML_FP16_TO_FP32(
+                source_block.GGML_COMMON_AGGR_U.GGML_COMMON_AGGR_S.d);
+            const float dmin = GGML_FP16_TO_FP32(
+                source_block.GGML_COMMON_AGGR_U.GGML_COMMON_AGGR_S.dmin);
+            for (int group = 0; group < 8; ++group) {
+                uint8_t scale = 0;
+                uint8_t minimum = 0;
+                kevin_m4_q4k_decode_scale_min(source_block.scales, group, scale, minimum);
+                const size_t group_index = block * 8 + group;
+                uint8_t * destination = source.data() +
+                    (row * groups + group_index) * KEVIN_M4_Q4K_SME2_SOURCE_BLOCK;
+                const ggml_half scale_f16 = GGML_FP32_TO_FP16(d * static_cast<float>(scale));
+                memcpy(destination, &scale_f16, sizeof(scale_f16));
+                for (int i = 0; i < 16; ++i) {
+                    const uint8_t low = kevin_m4_q4k_value(source_block, group, i);
+                    const uint8_t high = kevin_m4_q4k_value(source_block, group, i + 16);
+                    destination[sizeof(scale_f16) + i] = low | (high << 4);
+                }
+                correction[row * groups + group_index] =
+                    8.0f * GGML_FP16_TO_FP32(scale_f16) -
+                    dmin * static_cast<float>(minimum);
+            }
+        }
+    }
+
+    const size_t nr =
+        kai_get_nr_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot();
+    const size_t kr =
+        kai_get_kr_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot();
+    const size_t sr =
+        kai_get_sr_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot();
+    const kai_rhs_pack_qs4cxs1s0_param pack_params{1, 8};
+    kai_run_rhs_pack_nxk_qsi4c32ps1s0scalef16_qsu4c32s16s0_neon(
+        1, n, k, nr, kr, sr, KEVIN_M4_Q4K_SME2_BL, source.data(), nullptr,
+        base + packed_offset, 0, &pack_params);
+    kevin_m4_q4k_repack_x8(
+        data, n, k, reinterpret_cast<block_q4_Kx8 *>(base + fallback_offset));
+
+    *header = {
+        KEVIN_M4_Q4K_SME2_MAGIC,
+        KEVIN_M4_Q4K_SME2_VERSION,
+        n,
+        k,
+        packed_offset,
+        packed_size,
+        correction_offset,
+        correction_size,
+        fallback_offset,
+        data_size,
+    };
+    return 0;
+}
+
+static bool kevin_m4_q4k_sme2_supports_op(const ggml_tensor * op) {
+    if (!kevin_m4_q4k_sme2_enabled() || !ggml_cpu_has_sme() ||
+        op->op != GGML_OP_MUL_MAT || op->src[0] == nullptr || op->src[1] == nullptr ||
+        !kevin_m4_q4k_sme2_tensor_eligible(op->src[0]) || op->src[0]->buffer == nullptr ||
+        ggml_n_dims(op->src[0]) != 2 ||
+        op->src[0]->buffer->buft != ggml_backend_cpu_kleidiai_buffer_type()) {
+        return false;
+    }
+    return true;
+}
+
+static bool kevin_m4_q4k_sme2_is_decode_op(const ggml_tensor * op) {
+    return kevin_m4_q4k_sme2_supports_op(op) &&
+           op->src[1]->type == GGML_TYPE_F32 && op->src[1]->ne[1] == 1 &&
+           op->src[1]->ne[2] == 1 && op->src[1]->ne[3] == 1;
+}
+
+static bool kevin_m4_q4k_sme2_work_size(
+        const ggml_tensor * op, size_t & size) {
+    if (!kevin_m4_q4k_sme2_is_decode_op(op)) {
+        return false;
+    }
+    const size_t k = op->src[0]->ne[0];
+    const size_t mr =
+        kai_get_mr_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot();
+    const size_t kr =
+        kai_get_kr_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot();
+    const size_t sr =
+        kai_get_sr_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot();
+    const size_t lhs_size = kai_get_lhs_packed_size_lhs_quant_pack_qsi8d32p_f32_neon(
+        1, k, KEVIN_M4_Q4K_SME2_BL, mr, kr, sr);
+    const size_t sme_workspace = kevin_m4_q4k_sme2_align_up(lhs_size) +
+        (k / KEVIN_M4_Q4K_SME2_BL) * sizeof(float);
+    const size_t q8k_size = (k / QK_K) * sizeof(block_q8_K);
+    size = kevin_m4_q4k_sme2_align_up(sme_workspace) +
+           KEVIN_M4_Q4K_SME2_MAX_THREADS * q8k_size;
+    return true;
+}
+
+static void kevin_m4_q4k_sme2_block_sums(
+        const uint8_t * packed_lhs, size_t groups, float * sums) {
+    const int8_t * values = reinterpret_cast<const int8_t *>(packed_lhs);
+    const uint16_t * scales = reinterpret_cast<const uint16_t *>(
+        packed_lhs + groups * KEVIN_M4_Q4K_SME2_BL);
+    for (size_t group = 0; group < groups; ++group) {
+        const int8_t * block = values + group * KEVIN_M4_Q4K_SME2_BL;
+        const int sum = vaddlvq_s8(vld1q_s8(block)) + vaddlvq_s8(vld1q_s8(block + 16));
+        sums[group] = static_cast<float>(sum) * GGML_FP16_TO_FP32(scales[group]);
+    }
+}
+
+static void kevin_m4_q4k_sme2_apply_correction(
+        const float * coefficients, const float * sums, size_t n, size_t groups,
+        float * output) {
+    for (size_t row = 0; row < n; ++row) {
+        const float * coeff = coefficients + row * groups;
+        float32x4_t total4 = vdupq_n_f32(0.0f);
+        size_t group = 0;
+        for (; group + 4 <= groups; group += 4) {
+            total4 = vfmaq_f32(total4, vld1q_f32(coeff + group), vld1q_f32(sums + group));
+        }
+        float total = vaddvq_f32(total4);
+        for (; group < groups; ++group) {
+            total += coeff[group] * sums[group];
+        }
+        output[row] += total;
+    }
+}
+
+static void kevin_m4_q4k_sme2_quantize_q8k(
+        const float * input, size_t k, block_q8_K * output) {
+    for (size_t block = 0; block < k / QK_K; ++block) {
+        const float * source = input + block * QK_K;
+        block_q8_K & target = output[block];
+        float max_value = 0.0f;
+        float max_abs = 0.0f;
+        for (int i = 0; i < QK_K; ++i) {
+            const float magnitude = std::fabs(source[i]);
+            if (magnitude > max_abs) {
+                max_abs = magnitude;
+                max_value = source[i];
+            }
+        }
+        if (max_abs == 0.0f) {
+            memset(&target, 0, sizeof(target));
+            continue;
+        }
+        const float inverse_scale = -127.0f / max_value;
+        for (int i = 0; i < QK_K; ++i) {
+            const int value = static_cast<int>(std::nearbyint(source[i] * inverse_scale));
+            target.qs[i] = static_cast<int8_t>(std::min(127, value));
+        }
+        for (int group = 0; group < QK_K / 16; ++group) {
+            int sum = 0;
+            for (int i = 0; i < 16; ++i) {
+                sum += target.qs[group * 16 + i];
+            }
+            target.bsums[group] = static_cast<int16_t>(sum);
+        }
+        target.d = 1.0f / inverse_scale;
+    }
+}
+
+static bool kevin_m4_q4k_sme2_compute(
+        ggml_compute_params * params, ggml_tensor * dst) {
+    if (!kevin_m4_q4k_sme2_is_decode_op(dst)) {
+        return false;
+    }
+    const ggml_tensor * weights = dst->src[0];
+    const kevin_m4_q4k_sme2_header * header = kevin_m4_q4k_sme2_header_for(weights);
+    if (!kevin_m4_q4k_sme2_header_valid(header, weights)) {
+        return false;
+    }
+    const ggml_tensor * activation = dst->src[1];
+    const size_t n = weights->ne[1];
+    const size_t k = weights->ne[0];
+    const size_t groups = k / KEVIN_M4_Q4K_SME2_BL;
+    const uint8_t * base = static_cast<const uint8_t *>(weights->data);
+    const size_t mr =
+        kai_get_mr_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot();
+    const size_t kr =
+        kai_get_kr_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot();
+    const size_t sr =
+        kai_get_sr_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot();
+    const size_t lhs_size = kai_get_lhs_packed_size_lhs_quant_pack_qsi8d32p_f32_neon(
+        1, k, KEVIN_M4_Q4K_SME2_BL, mr, kr, sr);
+    uint8_t * packed_lhs = static_cast<uint8_t *>(params->wdata);
+    float * sums = reinterpret_cast<float *>(
+        packed_lhs + kevin_m4_q4k_sme2_align_up(lhs_size));
+
+    const int nth = std::max(params->nth, 1);
+    const int ith = params->ith;
+    const size_t requested_sme_rows =
+        (n * static_cast<size_t>(kevin_m4_q4k_sme2_share_percent()) + 99) / 100;
+    const size_t sme_rows = nth == 1
+        ? n
+        : std::min(n, (requested_sme_rows + 7) & ~static_cast<size_t>(7));
+    float * output = static_cast<float *>(dst->data);
+
+    if (ith == 0) {
+        kai_run_lhs_quant_pack_qsi8d32p_f32_neon(
+            1, k, KEVIN_M4_Q4K_SME2_BL, mr, kr, sr, 0,
+            static_cast<const float *>(activation->data), activation->nb[1], packed_lhs);
+        kevin_m4_q4k_sme2_block_sums(packed_lhs, groups, sums);
+        kai_run_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot(
+            1, sme_rows, k, KEVIN_M4_Q4K_SME2_BL, packed_lhs, base + header->packed_offset,
+            output, dst->nb[1], sizeof(float), -FLT_MAX, FLT_MAX);
+        kevin_m4_q4k_sme2_apply_correction(
+            reinterpret_cast<const float *>(base + header->correction_offset), sums,
+            sme_rows, groups, output);
+        kevin_m4_q4k_sme2_trace_once();
+    } else if (ith < nth && sme_rows < n) {
+        const size_t fallback_threads = static_cast<size_t>(nth - 1);
+        const size_t fallback_index = static_cast<size_t>(ith - 1);
+        const size_t fallback_groups = (n - sme_rows) / 8;
+        const size_t groups_per_thread =
+            (fallback_groups + fallback_threads - 1) / fallback_threads;
+        const size_t row_begin = std::min(
+            n, sme_rows + fallback_index * groups_per_thread * 8);
+        const size_t row_end = std::min(n, row_begin + groups_per_thread * 8);
+        const size_t sme_workspace = kevin_m4_q4k_sme2_align_up(
+            kevin_m4_q4k_sme2_align_up(lhs_size) + groups * sizeof(float));
+        const size_t q8k_size = (k / QK_K) * sizeof(block_q8_K);
+        block_q8_K * q8k = reinterpret_cast<block_q8_K *>(
+            static_cast<uint8_t *>(params->wdata) + sme_workspace + fallback_index * q8k_size);
+        kevin_m4_q4k_sme2_quantize_q8k(
+            static_cast<const float *>(activation->data), k, q8k);
+        if (row_begin < row_end) {
+            const size_t blocks = k / QK_K;
+            const block_q4_Kx8 * fallback = reinterpret_cast<const block_q4_Kx8 *>(
+                base + header->fallback_offset) + (row_begin / 8) * blocks;
+            ggml_gemv_q4_K_8x8_q8_K(
+                static_cast<int>(k), output + row_begin, n, fallback, q8k,
+                1, static_cast<int>(row_end - row_begin));
+        }
+    }
+    return true;
+}
+
+#endif

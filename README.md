@@ -107,7 +107,7 @@ product here.
 | --- | --- | --- |
 | CUDA operator | Sparse repetition-penalty kernel, policy gate, and PyTorch `TORCH_LIBRARY` registration path for vLLM-shaped logits workloads. | `cuda/sparse_repetition_penalty/`, `integrations/vllm/cuda/`, `scripts/smoke_cuda_sparse_repetition_penalty_op.py` |
 | vLLM integration | Opt-in logits processor and fused sampler patch routes that compare standalone request-level hooks against sampler-boundary integration. | `integrations/vllm/l20_sparse_repetition_penalty_logits_processor.py`, `integrations/vllm/install_l20_topk_topp_sampler.py`, `scripts/run_vllm_l20_sparse_penalty_triangle_matrix.sh` |
-| CPU inference path | Self-written C++ transformer scaffold, M4 Q4 x Q8 NEON matvec, GGUF v3 parser, real Q4_K kernel, reversible llama.cpp decode hook, and reproducible 3B CPU/Metal/MLX matrix. | `cpp/my.cpp`, `cpp/m4_q4_matvec.cpp`, `cpp/m4_q4k_gguf.cpp`, `integrations/llama_cpp/`, `scripts/run_m4_q4k_real_model_ab.py`, `scripts/run_m4_large_model_matrix.py` |
+| CPU inference path | Self-written C++ transformer scaffold, M4 Q4 x Q8 NEON matvec, GGUF v3 parser, real Q4_K kernels, affine Q4_K-to-SME2 transform, reversible llama.cpp decode hooks, and reproducible 3B CPU/Metal/MLX matrix. | `cpp/my.cpp`, `cpp/m4_q4_matvec.cpp`, `cpp/m4_q4k_gguf.cpp`, `cpp/m4_q4k_sme2.cpp`, `integrations/llama_cpp/`, `scripts/run_m4_q4k_real_model_ab.py`, `scripts/run_m4_large_model_matrix.py` |
 | Benchmark system | Reproducible CPU/L20/A100 campaign scripts, result summarizers, cost-per-token and p95/p99 tail calculators, and real prompt trace clients. | `scripts/build_cpu_l20_break_even.py`, `scripts/build_cpu_l20_cost_tail.py`, `scripts/run_real_prompt_trace_client.py` |
 | Evidence hygiene | Artifact index, public doc-link checker, compact artifact catalog, CPU-safe tests, and claim-policy docs to keep benchmark claims bounded. | `src/l20_stack/`, `tests/`, `benchmarks/results/artifact-catalog.json`, `docs/experiment-status.md` |
 
@@ -126,6 +126,7 @@ product here.
 | M4 Q4 x Q8 kernel | Six Qwen2.5-0.5B layer shapes, 6/6 exact, 2.00x geomean over same-thread scalar | `benchmarks/results/cpu-m4-q4-matvec/qwen25-0p5b-m4/` |
 | M4 real Q4_K decode | Real GGUF tensor parser, 1e-6 kernel agreement, byte-identical serving output, and llama.cpp/MLX A/B | `benchmarks/results/cpu-m4-q4k-real-model/qwen25-coder-0p5b-v1/` |
 | M4 real Qwen 3B matrix | Four-core CPU 34.84, llama.cpp Metal 46.92, MLX 54.72 real-completion tok/s; no mock weights | `benchmarks/results/cpu-m4-large-model/qwen25-coder-3b-v1/` |
+| M4 Q4_K affine SME2 | Real FFN tensors win 1.132x-1.158x over custom raw NEON, but full `tg128` loses 0.857x to llama x8; disabled | `benchmarks/results/cpu-m4-q4k-sme2/qwen25-coder-3b-affine-v1/` |
 
 For the full status map, use `docs/experiment-status.md`.
 
@@ -241,6 +242,25 @@ build/mlx-venv/bin/python scripts/run_m4_large_model_matrix.py \
   --mlx-python build/mlx-venv/bin/python \
   --cpu-thread-sweep-json build/qwen3b-cpu-thread-sweep.json \
   --threads 4
+```
+
+Build the standalone real-Q4_K affine SME2 gate:
+
+```bash
+scripts/build_m4_q4k_sme2.sh build/m4_q4k_sme2
+
+build/m4_q4k_sme2 \
+  --model /path/to/qwen2.5-coder-3b-instruct-q4_k_m.gguf \
+  --tensor blk.0.ffn_up.weight \
+  --warmup 3 --iterations 20 --cache-flush-mib 64
+```
+
+The llama.cpp integration is deliberately opt-in. Its current end-to-end gate
+is negative; see `docs/m4-q4k-sme2-case-study.md` before enabling
+`GGML_M4_Q4K_SME2=1`.
+
+```bash
+LLAMA_ROOT=build/llama.cpp scripts/build_llama_cpp_m4_q4k_sme2.sh
 ```
 
 Real Qwen CPU completion smoke on Apple M4:

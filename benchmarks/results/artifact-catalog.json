@@ -2,7 +2,7 @@
   "category_counts": {
     "active": 4,
     "analysis": 1,
-    "negative": 3,
+    "negative": 4,
     "other": 6,
     "path_proof": 13,
     "positive": 12
@@ -106,6 +106,17 @@
       "reference": "cpu-m4-large-model/",
       "status": "Apple M4 confirmed 3B runtime boundary",
       "summary": "Runs real Qwen2.5-Coder-3B weights across a four-core CPU path, llama.cpp Metal, and MLX: real completion reaches 34.84, 46.92, and 54.72 tok/s. CPU/Metal outputs match across 3/3 pairs and MLX is stable across 5/5 runs. The separate external KleidiAI probe passes 154/154 SME2 tests and is explicitly not integrated inference."
+    },
+    {
+      "category": "negative",
+      "compact_file_count": 2,
+      "has_campaign_summary_json": false,
+      "has_readme": true,
+      "has_summary_json": true,
+      "path": "benchmarks/results/cpu-m4-q4k-sme2",
+      "reference": "cpu-m4-q4k-sme2/",
+      "status": "Apple M4 negative full-decode gate",
+      "summary": "Preserves real Q4_K values through an affine SME2 transform and wins 1.132x-1.158x over custom raw NEON on two full Qwen 3B FFN tensors, but loses 0.857x to llama x8 in repeated `tg128`; the opt-in integration stays disabled."
     },
     {
       "category": "path_proof",
@@ -438,7 +449,7 @@
       "summary": "Custom three-way serving path evidence; not yet a broad win."
     }
   ],
-  "entry_count": 39,
+  "entry_count": 40,
   "index_path": "benchmarks/results/README.md",
   "result_root": "benchmarks/results",
   "schema_version": 1

@@ -96,6 +96,35 @@ class M4Q4KRealModelTest(unittest.TestCase):
         self.assertIn("not integrated model inference", source)
         self.assertIn("sme2_speedup", source)
 
+    def test_affine_sme2_path_keeps_q4k_math_and_opt_in_boundary(self):
+        source = Path("cpp/m4_q4k_sme2.cpp").read_text(encoding="utf-8")
+        integration = Path(
+            "integrations/llama_cpp/kevin_m4_q4k_sme2.h"
+        ).read_text(encoding="utf-8")
+        installer = Path(
+            "integrations/llama_cpp/install_kevin_m4_q4k_sme2.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("8.0f * rounded_scale", source)
+        self.assertIn("qsi8_reference_normalized_rmse", source)
+        self.assertIn("full_decode_integration_gate_pass", source)
+        self.assertIn('getenv("GGML_M4_Q4K_SME2")', integration)
+        self.assertIn("kevin_m4_q4k_repack_x8", integration)
+        self.assertIn("GGML_M4_Q4K_SME2_SHARE_PERCENT", integration)
+        self.assertIn("--uninstall", installer)
+        self.assertIn("KEVIN_M4_Q4K_SME2_COMPUTE_BEGIN", installer)
+
+    def test_affine_sme2_artifact_keeps_negative_e2e_decision(self):
+        artifact = json.loads(
+            Path(
+                "benchmarks/results/cpu-m4-q4k-sme2/"
+                "qwen25-coder-3b-affine-v1/summary.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertTrue(all(row["gate_pass"] for row in artifact["real_tensor_gates"]))
+        self.assertFalse(artifact["decode_tg128"]["gate_pass"])
+        self.assertTrue(artifact["real_prompt"]["outputs_byte_identical"])
+        self.assertFalse(artifact["implementation"]["default_enabled"])
+
 
 if __name__ == "__main__":
     unittest.main()

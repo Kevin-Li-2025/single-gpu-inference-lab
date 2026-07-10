@@ -12,6 +12,7 @@ This file is the fastest way to orient in the repo.
 | `docs/where-optimizations-stop-mattering.md` | Paper-style one-page systems thesis. |
 | `docs/cpu-small-model-boundary.md` | CPU tiny-transformer mechanics proof, real GGUF CPU smoke, and CPU-vs-L20 break-even scope. |
 | `docs/cpu-l20-break-even-case-study.md` | Resume-ready CPU-vs-L20 deployment boundary narrative and final same-model gate. |
+| `docs/m4-q4k-sme2-case-study.md` | Real Q4_K affine SME2 implementation, architecture, micro wins, and negative full-decode gate. |
 | `benchmarks/results/README.md` | Curated artifact index. |
 | `benchmarks/results/artifact-catalog.json` | Generated machine-readable artifact catalog. |
 | `integrations/vllm/README.md` | vLLM hook and patch status. |
@@ -86,6 +87,8 @@ Relevant files:
 - `scripts/bootstrap_mlx_m4.sh`
 - `scripts/run_m4_large_model_matrix.py`
 - `scripts/benchmark_m4_sme2_qwen3b.py`
+- `scripts/build_m4_q4k_sme2.sh`
+- `scripts/build_llama_cpp_m4_q4k_sme2.sh`
 - `scripts/build_cpu_l20_break_even.py`
 - `scripts/build_cpu_l20_cost_tail.py`
 - `scripts/run_vllm_l20_qwen25_coder_0p5b_break_even.sh`
@@ -94,6 +97,7 @@ Relevant files:
 - `cpp/my.cpp`
 - `cpp/m4_q4_matvec.cpp`
 - `cpp/m4_q4k_gguf.cpp`
+- `cpp/m4_q4k_sme2.cpp`
 - `integrations/llama_cpp/`
 - `src/l20_stack/epilogue/sampler_epilogue.py`
 - `src/l20_stack/ops/triton_sampling.py`
@@ -109,6 +113,7 @@ Relevant files:
 - `benchmarks/results/cpu-tiny-transformer/`
 - `benchmarks/results/cpu-m4-q4-matvec/`
 - `benchmarks/results/cpu-m4-q4k-real-model/`
+- `benchmarks/results/cpu-m4-q4k-sme2/`
 - `benchmarks/results/cpu-real-model/`
 - `benchmarks/results/cpu-l20-break-even/`
 - `benchmarks/results/cpu-l20-break-even/qwen25-coder-0p5b-identical-model-v1/`
