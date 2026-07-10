@@ -64,7 +64,6 @@ PYTHONPATH=src single-gpu-infer artifact-index
 | `l20-lm-head-topk-boundary/` | Standalone top-k/logits replacement loses; move to epilogue/upstream boundary. |
 | A100 LM-head sparse-penalty boundary | Standalone producer-side sparse-penalty LM-head replacement is correct but slower; only a true GEMM epilogue can plausibly win. |
 | `l20-vllm-paged-decode-o2/` | O2 path is not the blocker; the isolated paged-decode boundary is too small. |
-| `cpu-m4-q4k-sme2/` | Real Qwen 3B FFN kernels improve, but repeated full decode and tail latency regress; keep the SME2 path opt-in. |
 
 ## Artifact Contract
 
