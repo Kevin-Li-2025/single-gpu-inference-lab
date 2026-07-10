@@ -26,6 +26,14 @@
     "decode_policy": "20 percent SME2 rows plus three x8 NEON fallback workers",
     "default_enabled": false
   },
+  "follow_up_candidate": {
+    "tensor_roles": "ffn_down only",
+    "sme_share_percent": 25,
+    "shared_q8_activation": true,
+    "parallel_affine_correction": true,
+    "serial_fallback_env": "GGML_M4_Q4K_SME2_PARALLEL_CORRECTION=0",
+    "formal_power_qualified_gate_pending": true
+  },
   "real_tensor_gates": [
     {
       "tensor": "blk.0.ffn_up.weight",

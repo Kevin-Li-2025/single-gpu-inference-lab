@@ -37,8 +37,10 @@ analysis. Raw benchmark rows are kept beside this file.
 ## Follow-up status
 
 The integration now defaults to `ffn_down` only, shares one Q8_K activation
-pack across fallback workers, and assigns 25% of rows to SME2. The original
-negative result above remains the formal evidence. A new AC-power interleaved
-A/B must pass `scripts/run_m4_q4k_sme2_ab.py` before this artifact can be
-superseded; battery/low-power diagnostics are intentionally not committed as
+pack across fallback workers, assigns 25% of rows to SME2, and overlaps affine
+correction with the x8 fallback work. The serial correction path remains
+available through `GGML_M4_Q4K_SME2_PARALLEL_CORRECTION=0` for same-binary A/B.
+The original negative result above remains the formal evidence. A new AC-power
+interleaved A/B must pass `scripts/run_m4_q4k_sme2_ab.py` before this artifact
+can be superseded; battery diagnostics are intentionally not committed as
 performance evidence.

@@ -19,6 +19,7 @@ CUSTOM_ENV = (
     "GGML_M4_Q4K_SME2_TENSORS",
     "GGML_M4_Q4K_SME2_SHARED_Q8",
     "GGML_M4_Q4K_SME2_SHARE_PERCENT",
+    "GGML_M4_Q4K_SME2_PARALLEL_CORRECTION",
     "GGML_M4_Q4K_SME2_TRACE",
 )
 DEFAULT_PROMPT = (
@@ -103,7 +104,7 @@ def mode_env(mode: str) -> dict[str, str]:
     for name in CUSTOM_ENV:
         env.pop(name, None)
     if mode == "candidate":
-        # The integration defaults to down-only, one shared Q8 pack, and 25% SME rows.
+        # Defaults: down-only, one shared Q8 pack, 25% SME rows, parallel correction.
         env["GGML_M4_Q4K_SME2"] = "1"
     return env
 
@@ -292,6 +293,7 @@ def main() -> int:
             "tensor_roles": "down",
             "shared_q8": True,
             "sme_share_percent": 25,
+            "parallel_correction": True,
         },
         "benchmark": {
             "threads": args.threads,

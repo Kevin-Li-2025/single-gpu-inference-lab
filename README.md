@@ -126,7 +126,7 @@ product here.
 | M4 Q4 x Q8 kernel | Six Qwen2.5-0.5B layer shapes, 6/6 exact, 2.00x geomean over same-thread scalar | `benchmarks/results/cpu-m4-q4-matvec/qwen25-0p5b-m4/` |
 | M4 real Q4_K decode | Real GGUF tensor parser, 1e-6 kernel agreement, byte-identical serving output, and llama.cpp/MLX A/B | `benchmarks/results/cpu-m4-q4k-real-model/qwen25-coder-0p5b-v1/` |
 | M4 real Qwen 3B matrix | Four-core CPU 34.84, llama.cpp Metal 46.92, MLX 54.72 real-completion tok/s; no mock weights | `benchmarks/results/cpu-m4-large-model/qwen25-coder-3b-v1/` |
-| M4 Q4_K affine SME2 | Real FFN tensors win 1.132x-1.158x over custom raw NEON, but full `tg128` loses 0.857x to llama x8; disabled | `benchmarks/results/cpu-m4-q4k-sme2/qwen25-coder-3b-affine-v1/` |
+| M4 Q4_K affine SME2 | Real FFN tensors win 1.132x-1.158x over custom raw NEON; the original full `tg128` loses 0.857x to llama x8. A parallel-correction follow-up is implemented but remains disabled pending a power-qualified A/B. | `benchmarks/results/cpu-m4-q4k-sme2/qwen25-coder-3b-affine-v1/` |
 
 For the full status map, use `docs/experiment-status.md`.
 

@@ -93,6 +93,11 @@ static bool kevin_m4_q4k_sme2_shared_q8_enabled(void) {
     return value == nullptr || (value[0] == '1' && value[1] == '\0');
 }
 
+static bool kevin_m4_q4k_sme2_parallel_correction_enabled(void) {
+    const char * value = getenv("GGML_M4_Q4K_SME2_PARALLEL_CORRECTION");
+    return value == nullptr || (value[0] == '1' && value[1] == '\0');
+}
+
 static void kevin_m4_q4k_sme2_trace_once(void) {
     static std::atomic_flag emitted = ATOMIC_FLAG_INIT;
     if (kevin_m4_q4k_sme2_trace_enabled() && !emitted.test_and_set(std::memory_order_relaxed)) {
@@ -341,8 +346,11 @@ static bool kevin_m4_q4k_sme2_work_size(
         kai_get_sr_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot();
     const size_t lhs_size = kai_get_lhs_packed_size_lhs_quant_pack_qsi8d32p_f32_neon(
         1, k, KEVIN_M4_Q4K_SME2_BL, mr, kr, sr);
-    const size_t sme_workspace = kevin_m4_q4k_sme2_align_up(lhs_size) +
-        (k / KEVIN_M4_Q4K_SME2_BL) * sizeof(float);
+    const size_t sums_offset = kevin_m4_q4k_sme2_align_up(lhs_size);
+    const size_t correction_values_offset = kevin_m4_q4k_sme2_align_up(
+        sums_offset + (k / KEVIN_M4_Q4K_SME2_BL) * sizeof(float));
+    const size_t sme_workspace = correction_values_offset +
+        op->src[0]->ne[1] * sizeof(float);
     const size_t q8k_size = (k / QK_K) * sizeof(block_q8_K);
     const size_t q8k_copies = kevin_m4_q4k_sme2_shared_q8_enabled()
         ? 1
@@ -364,22 +372,19 @@ static void kevin_m4_q4k_sme2_block_sums(
     }
 }
 
-static void kevin_m4_q4k_sme2_apply_correction(
-        const float * coefficients, const float * sums, size_t n, size_t groups,
-        float * output) {
-    for (size_t row = 0; row < n; ++row) {
-        const float * coeff = coefficients + row * groups;
-        float32x4_t total4 = vdupq_n_f32(0.0f);
-        size_t group = 0;
-        for (; group + 4 <= groups; group += 4) {
-            total4 = vfmaq_f32(total4, vld1q_f32(coeff + group), vld1q_f32(sums + group));
-        }
-        float total = vaddvq_f32(total4);
-        for (; group < groups; ++group) {
-            total += coeff[group] * sums[group];
-        }
-        output[row] += total;
+static float kevin_m4_q4k_sme2_correction_value(
+        const float * coefficients, const float * sums, size_t row, size_t groups) {
+    const float * coeff = coefficients + row * groups;
+    float32x4_t total4 = vdupq_n_f32(0.0f);
+    size_t group = 0;
+    for (; group + 4 <= groups; group += 4) {
+        total4 = vfmaq_f32(total4, vld1q_f32(coeff + group), vld1q_f32(sums + group));
     }
+    float total = vaddvq_f32(total4);
+    for (; group < groups; ++group) {
+        total += coeff[group] * sums[group];
+    }
+    return total;
 }
 
 static void kevin_m4_q4k_sme2_quantize_q8k(
@@ -440,8 +445,8 @@ static bool kevin_m4_q4k_sme2_compute(
     const size_t lhs_size = kai_get_lhs_packed_size_lhs_quant_pack_qsi8d32p_f32_neon(
         1, k, KEVIN_M4_Q4K_SME2_BL, mr, kr, sr);
     uint8_t * packed_lhs = static_cast<uint8_t *>(params->wdata);
-    float * sums = reinterpret_cast<float *>(
-        packed_lhs + kevin_m4_q4k_sme2_align_up(lhs_size));
+    const size_t sums_offset = kevin_m4_q4k_sme2_align_up(lhs_size);
+    float * sums = reinterpret_cast<float *>(packed_lhs + sums_offset);
 
     const int nth = std::max(params->nth, 1);
     const int ith = params->ith;
@@ -450,11 +455,17 @@ static bool kevin_m4_q4k_sme2_compute(
     const size_t sme_rows = nth == 1
         ? n
         : std::min(n, (requested_sme_rows + 7) & ~static_cast<size_t>(7));
+    const size_t correction_values_offset = kevin_m4_q4k_sme2_align_up(
+        sums_offset + groups * sizeof(float));
+    float * correction_values = reinterpret_cast<float *>(
+        packed_lhs + correction_values_offset);
     const size_t sme_workspace = kevin_m4_q4k_sme2_align_up(
-        kevin_m4_q4k_sme2_align_up(lhs_size) + groups * sizeof(float));
+        correction_values_offset + n * sizeof(float));
     const size_t q8k_size = (k / QK_K) * sizeof(block_q8_K);
     const bool shared_q8 = nth > 1 && sme_rows < n &&
         kevin_m4_q4k_sme2_shared_q8_enabled();
+    const bool parallel_correction = nth > 1 && sme_rows < n &&
+        kevin_m4_q4k_sme2_parallel_correction_enabled();
     block_q8_K * shared_q8k = reinterpret_cast<block_q8_K *>(
         static_cast<uint8_t *>(params->wdata) + sme_workspace);
     float * output = static_cast<float *>(dst->data);
@@ -469,7 +480,7 @@ static bool kevin_m4_q4k_sme2_compute(
             static_cast<const float *>(activation->data), k, shared_q8k);
     }
 
-    if (shared_q8) {
+    if (shared_q8 || parallel_correction) {
         ggml_barrier(params->threadpool);
     }
 
@@ -477,13 +488,30 @@ static bool kevin_m4_q4k_sme2_compute(
         kai_run_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot(
             1, sme_rows, k, KEVIN_M4_Q4K_SME2_BL, packed_lhs, base + header->packed_offset,
             output, dst->nb[1], sizeof(float), -FLT_MAX, FLT_MAX);
-        kevin_m4_q4k_sme2_apply_correction(
-            reinterpret_cast<const float *>(base + header->correction_offset), sums,
-            sme_rows, groups, output);
+        if (!parallel_correction) {
+            const float * coefficients = reinterpret_cast<const float *>(
+                base + header->correction_offset);
+            for (size_t row = 0; row < sme_rows; ++row) {
+                output[row] += kevin_m4_q4k_sme2_correction_value(
+                    coefficients, sums, row, groups);
+            }
+        }
         kevin_m4_q4k_sme2_trace_once();
     } else if (ith < nth && sme_rows < n) {
         const size_t fallback_threads = static_cast<size_t>(nth - 1);
         const size_t fallback_index = static_cast<size_t>(ith - 1);
+        const size_t correction_rows_per_thread =
+            (sme_rows + fallback_threads - 1) / fallback_threads;
+        const size_t correction_begin = std::min(
+            sme_rows, fallback_index * correction_rows_per_thread);
+        const size_t correction_end = std::min(
+            sme_rows, correction_begin + correction_rows_per_thread);
+        const float * coefficients = reinterpret_cast<const float *>(
+            base + header->correction_offset);
+        for (size_t row = correction_begin; row < correction_end; ++row) {
+            correction_values[row] = kevin_m4_q4k_sme2_correction_value(
+                coefficients, sums, row, groups);
+        }
         const size_t fallback_groups = (n - sme_rows) / 8;
         const size_t groups_per_thread =
             (fallback_groups + fallback_threads - 1) / fallback_threads;
@@ -505,6 +533,17 @@ static bool kevin_m4_q4k_sme2_compute(
             ggml_gemv_q4_K_8x8_q8_K(
                 static_cast<int>(k), output + row_begin, n, fallback, q8k,
                 1, static_cast<int>(row_end - row_begin));
+        }
+    }
+    if (parallel_correction) {
+        ggml_barrier(params->threadpool);
+        const size_t rows_per_thread =
+            (sme_rows + static_cast<size_t>(nth) - 1) / static_cast<size_t>(nth);
+        const size_t row_begin = std::min(
+            sme_rows, static_cast<size_t>(ith) * rows_per_thread);
+        const size_t row_end = std::min(sme_rows, row_begin + rows_per_thread);
+        for (size_t row = row_begin; row < row_end; ++row) {
+            output[row] += correction_values[row];
         }
     }
     return true;

@@ -112,6 +112,9 @@ class M4Q4KRealModelTest(unittest.TestCase):
         self.assertIn("GGML_M4_Q4K_SME2_SHARE_PERCENT", integration)
         self.assertIn("GGML_M4_Q4K_SME2_TENSORS", integration)
         self.assertIn("GGML_M4_Q4K_SME2_SHARED_Q8", integration)
+        self.assertIn("GGML_M4_Q4K_SME2_PARALLEL_CORRECTION", integration)
+        self.assertIn("correction_values_offset", integration)
+        self.assertIn("parallel_correction", integration)
         self.assertIn("ggml_barrier(params->threadpool)", integration)
         self.assertIn("--uninstall", installer)
         self.assertIn("KEVIN_M4_Q4K_SME2_COMPUTE_BEGIN", installer)
@@ -124,6 +127,7 @@ class M4Q4KRealModelTest(unittest.TestCase):
         self.assertIn("outputs_byte_identical", source)
         self.assertIn('modes = ("baseline", "candidate")', source)
         self.assertIn('else ("candidate", "baseline")', source)
+        self.assertIn('"parallel_correction": True', source)
 
     def test_affine_sme2_artifact_keeps_negative_e2e_decision(self):
         artifact = json.loads(

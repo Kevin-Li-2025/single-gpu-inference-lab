@@ -17,6 +17,7 @@ FP16 weights.
 - persistent SME2, correction, and x8 fallback layouts for llama.cpp;
 - a reversible opt-in llama.cpp KleidiAI installer;
 - four-thread hybrid dispatch with one SME worker and three x8 NEON workers;
+- overlapped affine correction computed by fallback workers while SME2 runs;
 - real Qwen tensor, `llama-bench`, tail, and greedy-output gates.
 
 Arm KleidiAI supplies the QSI8/QSI4 packers and SME2 SDOT microkernel. The
@@ -35,10 +36,11 @@ flowchart LR
     G["FP32 decode activation"] --> H["QSI8 block-32 pack"]
     H --> I["SME2 SDOT rows"]
     H --> J["Block sums"]
-    F --> K["Correction GEMV"]
+    F --> K["Parallel correction shards"]
     I --> L["Corrected SME rows"]
     J --> K
-    K --> L
+    K --> Q["Correction scratch"]
+    Q --> L
     A --> M["Persistent llama x8 layout"]
     G --> N["Q8_K pack"]
     M --> O["Three x8 fallback workers"]
@@ -112,10 +114,21 @@ the opt-in defaults to:
 - concurrent SME/Q8 packing followed by one thread-pool barrier;
 - 25% of output rows on SME2 and 75% on the three x8 workers.
 
+A second scheduling follow-up removes the serial correction tail from the SME
+worker. The three fallback workers compute disjoint correction rows while the
+SME2 kernel runs, write them to thread-pool scratch, and synchronize before all
+four workers add disjoint output ranges. Setting
+`GGML_M4_Q4K_SME2_PARALLEL_CORRECTION=0` restores the serial path for
+same-binary A/B. The accumulation order within each row is unchanged.
+
 The fixed greedy prompt remains byte-identical with SHA-256
 `8ff2391976022289e0b35ded5071463b329a85a615884fdac0febe44a1151c59`.
 An FP16 correction experiment was rejected because it changed the generated
 tokens; the integrated path therefore retains FP32 correction coefficients.
+
+The parallel-correction schedule produced a positive same-path diagnostic, but
+the Mac was on battery power with uncontrolled background load. It is a
+candidate, not a replacement for the formal negative result above.
 
 A battery/low-power diagnostic produced pooled medians of 14.7819 tok/s for
 baseline and 14.7616 tok/s for the follow-up. This is not a publishable
