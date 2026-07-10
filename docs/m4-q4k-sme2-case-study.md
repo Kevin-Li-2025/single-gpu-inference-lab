@@ -100,3 +100,28 @@ by default and is not presented as faster full-model inference. The useful
 result is the exact Q4_K affine mapping and the measured proof that a positive
 single-layer SME2 result is insufficient to beat llama.cpp's production x8
 decode on a base M4.
+
+## Dispatch Follow-up
+
+The first hybrid made every fallback worker quantize the same activation and
+enabled SME2 for all large FFN tensors. The follow-up implementation changes
+the opt-in defaults to:
+
+- `ffn_down` tensors only;
+- one Q8_K activation pack shared by the three x8 workers;
+- concurrent SME/Q8 packing followed by one thread-pool barrier;
+- 25% of output rows on SME2 and 75% on the three x8 workers.
+
+The fixed greedy prompt remains byte-identical with SHA-256
+`8ff2391976022289e0b35ded5071463b329a85a615884fdac0febe44a1151c59`.
+An FP16 correction experiment was rejected because it changed the generated
+tokens; the integrated path therefore retains FP32 correction coefficients.
+
+A battery/low-power diagnostic produced pooled medians of 14.7819 tok/s for
+baseline and 14.7616 tok/s for the follow-up. This is not a publishable
+performance result: the host was in low-power mode and had high background
+load, and one pair was severely contaminated. The checked-in
+`scripts/run_m4_q4k_sme2_ab.py` runner refuses to produce a formal result
+unless the Mac is on AC power, low-power mode is disabled, and one-minute load
+is below its configured threshold. Until that qualified A/B passes, the
+original negative full-decode decision remains authoritative.

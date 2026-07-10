@@ -33,3 +33,12 @@ candidate p95/p99 ITL is 40.36/40.58 ms versus 30.16/30.30 ms for baseline.
 
 See `docs/m4-q4k-sme2-case-study.md` for the implementation and failure
 analysis. Raw benchmark rows are kept beside this file.
+
+## Follow-up status
+
+The integration now defaults to `ffn_down` only, shares one Q8_K activation
+pack across fallback workers, and assigns 25% of rows to SME2. The original
+negative result above remains the formal evidence. A new AC-power interleaved
+A/B must pass `scripts/run_m4_q4k_sme2_ab.py` before this artifact can be
+superseded; battery/low-power diagnostics are intentionally not committed as
+performance evidence.

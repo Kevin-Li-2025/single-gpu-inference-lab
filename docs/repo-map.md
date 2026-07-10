@@ -89,6 +89,7 @@ Relevant files:
 - `scripts/benchmark_m4_sme2_qwen3b.py`
 - `scripts/build_m4_q4k_sme2.sh`
 - `scripts/build_llama_cpp_m4_q4k_sme2.sh`
+- `scripts/run_m4_q4k_sme2_ab.py`
 - `scripts/build_cpu_l20_break_even.py`
 - `scripts/build_cpu_l20_cost_tail.py`
 - `scripts/run_vllm_l20_qwen25_coder_0p5b_break_even.sh`

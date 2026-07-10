@@ -110,8 +110,20 @@ class M4Q4KRealModelTest(unittest.TestCase):
         self.assertIn('getenv("GGML_M4_Q4K_SME2")', integration)
         self.assertIn("kevin_m4_q4k_repack_x8", integration)
         self.assertIn("GGML_M4_Q4K_SME2_SHARE_PERCENT", integration)
+        self.assertIn("GGML_M4_Q4K_SME2_TENSORS", integration)
+        self.assertIn("GGML_M4_Q4K_SME2_SHARED_Q8", integration)
+        self.assertIn("ggml_barrier(params->threadpool)", integration)
         self.assertIn("--uninstall", installer)
         self.assertIn("KEVIN_M4_Q4K_SME2_COMPUTE_BEGIN", installer)
+
+    def test_affine_sme2_runner_rejects_unqualified_power_state(self):
+        source = Path("scripts/run_m4_q4k_sme2_ab.py").read_text(encoding="utf-8")
+        self.assertIn('power["source"] == "AC Power"', source)
+        self.assertIn('power["low_power_mode"] == 0', source)
+        self.assertIn("load_per_cpu <= args.max_load_per_cpu", source)
+        self.assertIn("outputs_byte_identical", source)
+        self.assertIn('modes = ("baseline", "candidate")', source)
+        self.assertIn('else ("candidate", "baseline")', source)
 
     def test_affine_sme2_artifact_keeps_negative_e2e_decision(self):
         artifact = json.loads(

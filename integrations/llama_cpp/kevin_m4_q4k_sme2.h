@@ -47,11 +47,28 @@ static bool kevin_m4_q4k_sme2_enabled(void) {
     return value != nullptr && value[0] == '1' && value[1] == '\0';
 }
 
+static bool kevin_m4_q4k_sme2_tensor_role_enabled(const ggml_tensor * tensor) {
+    const char * roles = getenv("GGML_M4_Q4K_SME2_TENSORS");
+    const bool is_up = strstr(tensor->name, ".ffn_up.") != nullptr;
+    const bool is_gate = strstr(tensor->name, ".ffn_gate.") != nullptr;
+    const bool is_down = strstr(tensor->name, ".ffn_down.") != nullptr;
+    if (roles == nullptr) {
+        return is_down;
+    }
+    if (strcmp(roles, "all") == 0) {
+        return true;
+    }
+    return (is_up && strstr(roles, "up") != nullptr) ||
+           (is_gate && strstr(roles, "gate") != nullptr) ||
+           (is_down && strstr(roles, "down") != nullptr);
+}
+
 static bool kevin_m4_q4k_sme2_tensor_eligible(const ggml_tensor * tensor) {
     return tensor != nullptr && tensor->type == GGML_TYPE_Q4_K &&
            tensor->ne[0] * tensor->ne[1] >= 8 * 1024 * 1024 &&
            tensor->ne[1] % 8 == 0 &&
-           strstr(tensor->name, ".ffn_") != nullptr;
+           strstr(tensor->name, ".ffn_") != nullptr &&
+           kevin_m4_q4k_sme2_tensor_role_enabled(tensor);
 }
 
 static bool kevin_m4_q4k_sme2_trace_enabled(void) {
@@ -62,13 +79,18 @@ static bool kevin_m4_q4k_sme2_trace_enabled(void) {
 static int kevin_m4_q4k_sme2_share_percent(void) {
     const char * value = getenv("GGML_M4_Q4K_SME2_SHARE_PERCENT");
     if (value == nullptr) {
-        return 20;
+        return 25;
     }
     char * end = nullptr;
     const long parsed = strtol(value, &end, 10);
     return end != value && *end == '\0' && parsed >= 5 && parsed <= 50
         ? static_cast<int>(parsed)
-        : 20;
+        : 25;
+}
+
+static bool kevin_m4_q4k_sme2_shared_q8_enabled(void) {
+    const char * value = getenv("GGML_M4_Q4K_SME2_SHARED_Q8");
+    return value == nullptr || (value[0] == '1' && value[1] == '\0');
 }
 
 static void kevin_m4_q4k_sme2_trace_once(void) {
@@ -322,8 +344,11 @@ static bool kevin_m4_q4k_sme2_work_size(
     const size_t sme_workspace = kevin_m4_q4k_sme2_align_up(lhs_size) +
         (k / KEVIN_M4_Q4K_SME2_BL) * sizeof(float);
     const size_t q8k_size = (k / QK_K) * sizeof(block_q8_K);
+    const size_t q8k_copies = kevin_m4_q4k_sme2_shared_q8_enabled()
+        ? 1
+        : KEVIN_M4_Q4K_SME2_MAX_THREADS;
     size = kevin_m4_q4k_sme2_align_up(sme_workspace) +
-           KEVIN_M4_Q4K_SME2_MAX_THREADS * q8k_size;
+           q8k_copies * q8k_size;
     return true;
 }
 
@@ -425,6 +450,13 @@ static bool kevin_m4_q4k_sme2_compute(
     const size_t sme_rows = nth == 1
         ? n
         : std::min(n, (requested_sme_rows + 7) & ~static_cast<size_t>(7));
+    const size_t sme_workspace = kevin_m4_q4k_sme2_align_up(
+        kevin_m4_q4k_sme2_align_up(lhs_size) + groups * sizeof(float));
+    const size_t q8k_size = (k / QK_K) * sizeof(block_q8_K);
+    const bool shared_q8 = nth > 1 && sme_rows < n &&
+        kevin_m4_q4k_sme2_shared_q8_enabled();
+    block_q8_K * shared_q8k = reinterpret_cast<block_q8_K *>(
+        static_cast<uint8_t *>(params->wdata) + sme_workspace);
     float * output = static_cast<float *>(dst->data);
 
     if (ith == 0) {
@@ -432,6 +464,16 @@ static bool kevin_m4_q4k_sme2_compute(
             1, k, KEVIN_M4_Q4K_SME2_BL, mr, kr, sr, 0,
             static_cast<const float *>(activation->data), activation->nb[1], packed_lhs);
         kevin_m4_q4k_sme2_block_sums(packed_lhs, groups, sums);
+    } else if (shared_q8 && ith == 1) {
+        kevin_m4_q4k_sme2_quantize_q8k(
+            static_cast<const float *>(activation->data), k, shared_q8k);
+    }
+
+    if (shared_q8) {
+        ggml_barrier(params->threadpool);
+    }
+
+    if (ith == 0) {
         kai_run_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot(
             1, sme_rows, k, KEVIN_M4_Q4K_SME2_BL, packed_lhs, base + header->packed_offset,
             output, dst->nb[1], sizeof(float), -FLT_MAX, FLT_MAX);
@@ -448,13 +490,14 @@ static bool kevin_m4_q4k_sme2_compute(
         const size_t row_begin = std::min(
             n, sme_rows + fallback_index * groups_per_thread * 8);
         const size_t row_end = std::min(n, row_begin + groups_per_thread * 8);
-        const size_t sme_workspace = kevin_m4_q4k_sme2_align_up(
-            kevin_m4_q4k_sme2_align_up(lhs_size) + groups * sizeof(float));
-        const size_t q8k_size = (k / QK_K) * sizeof(block_q8_K);
-        block_q8_K * q8k = reinterpret_cast<block_q8_K *>(
-            static_cast<uint8_t *>(params->wdata) + sme_workspace + fallback_index * q8k_size);
-        kevin_m4_q4k_sme2_quantize_q8k(
-            static_cast<const float *>(activation->data), k, q8k);
+        block_q8_K * q8k = shared_q8k;
+        if (!shared_q8) {
+            q8k = reinterpret_cast<block_q8_K *>(
+                static_cast<uint8_t *>(params->wdata) +
+                sme_workspace + fallback_index * q8k_size);
+            kevin_m4_q4k_sme2_quantize_q8k(
+                static_cast<const float *>(activation->data), k, q8k);
+        }
         if (row_begin < row_end) {
             const size_t blocks = k / QK_K;
             const block_q4_Kx8 * fallback = reinterpret_cast<const block_q4_Kx8 *>(
