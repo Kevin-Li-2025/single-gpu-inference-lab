@@ -47,6 +47,22 @@ geometric-mean speedup over the same dispatched thread count, with a
 2.72x. This is model-shaped kernel evidence; it does not execute real Qwen
 weights or establish an end-to-end win over llama.cpp or MLX.
 
+Artifact: `benchmarks/results/cpu-m4-q4k-real-model/qwen25-coder-0p5b-v1/`
+
+The real-model follow-up implements a standalone GGUF v3 parser, mmaps actual
+Qwen Q4_K tensor bytes, and validates a self-written Q4_K x Q8_K NEON kernel
+against llama.cpp. On `blk.2.ffn_down.weight`, maximum absolute difference is
+`0.000001`. A reversible, environment-gated llama.cpp integration proves the
+kernel runs in actual decode: all 4/4 candidate traces hit and all 4/4 generated
+outputs are byte-identical to baseline.
+
+The formal result is a boundary rather than a win. `tg128` moves from 165.261
+tok/s to 164.772 tok/s (`0.997x`), and repeated real completion moves from
+166.995 tok/s to 166.180 tok/s (`0.995x`). MLX same-model 4-bit reaches 263.553
+tok/s using its different quantization layout and Metal backend. The next CPU
+kernel must operate on llama.cpp's repacked 8-row layout, likely through SME2;
+disabling repacking for raw Q4_K rows is not a production optimization.
+
 Artifact: `benchmarks/results/cpu-real-model/`
 
 The real-model control uses `llama-cpp-python` with `n_gpu_layers=0` and
@@ -132,12 +148,10 @@ L20/vLLM baseline -> optimized L20 sampling/logits/KV paths
 
 ## Next Gates
 
-1. Parse the real Qwen Q4_K_M GGUF tensor metadata and convert matching decode
-   projection blocks into the custom M4 layout without copying per token.
-2. Replace one real decode matvec boundary and compare logits against llama.cpp
-   before measuring throughput.
-3. Run identical-model, identical-quantization A/B against llama.cpp CPU and
-   MLX, including load time, prompt processing, decode, memory, and output drift.
+1. Implement an SME2 kernel for llama.cpp's repacked Q4_K 8-row GEMV layout.
+2. Preserve repacking for prefill and dispatch SME2 only for single-token decode.
+3. Re-run identical-GGUF completion A/B and keep the custom route disabled
+   unless it exceeds both median throughput and tail stability.
 
 ## Non-Goals
 

@@ -3,7 +3,7 @@
     "active": 4,
     "analysis": 1,
     "negative": 3,
-    "other": 5,
+    "other": 6,
     "path_proof": 13,
     "positive": 11
   },
@@ -84,6 +84,17 @@
       "reference": "cpu-m4-q4-matvec/",
       "status": "Apple M4 positive micro result",
       "summary": "Adds a self-written Q4 x Q8 ARM dot-product NEON matvec with persistent workers and a shape-aware dispatch gate. Across six cache-flushed Qwen2.5-0.5B layer shapes it is exact versus the scalar integer-dot oracle and reaches 2.00x geometric-mean speedup over the same-thread scalar path; this is not yet end-to-end model evidence."
+    },
+    {
+      "category": "other",
+      "compact_file_count": 2,
+      "has_campaign_summary_json": false,
+      "has_readme": true,
+      "has_summary_json": true,
+      "path": "benchmarks/results/cpu-m4-q4k-real-model",
+      "reference": "cpu-m4-q4k-real-model/",
+      "status": "Apple M4 real-model boundary",
+      "summary": "Directly parses real Qwen GGUF Q4_K tensors, validates the custom kernel to 1e-6 against llama.cpp, and reaches real opt-in decode with byte-identical output. The formal result is parity, not a win: 0.997x in `tg128` and 0.995x in repeated completion, while MLX same-model 4-bit reaches 263.553 tok/s."
     },
     {
       "category": "path_proof",
@@ -416,7 +427,7 @@
       "summary": "Custom three-way serving path evidence; not yet a broad win."
     }
   ],
-  "entry_count": 37,
+  "entry_count": 38,
   "index_path": "benchmarks/results/README.md",
   "result_root": "benchmarks/results",
   "schema_version": 1

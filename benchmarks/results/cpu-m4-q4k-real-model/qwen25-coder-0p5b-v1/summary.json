@@ -1,0 +1,185 @@
+{
+  "bench": {
+    "baseline": {
+      "avg_tokens_per_s": 165.260677,
+      "build_commit": "bec4772",
+      "samples_tokens_per_s": [
+        165.622,
+        169.551,
+        169.676,
+        164.783,
+        156.671
+      ],
+      "stddev_tokens_per_s": 5.29283,
+      "threads": 6
+    },
+    "candidate": {
+      "avg_tokens_per_s": 164.772246,
+      "build_commit": "bec4772",
+      "samples_tokens_per_s": [
+        160.297,
+        166.974,
+        162.389,
+        167.664,
+        166.537
+      ],
+      "stddev_tokens_per_s": 3.241558,
+      "threads": 6
+    },
+    "candidate_speedup": 0.9970444814285736
+  },
+  "comparison_boundary": "llama baseline/custom use identical GGUF bytes; MLX uses the same model architecture with a different 4-bit format and Metal backend",
+  "completion": {
+    "all_candidate_traces_hit": true,
+    "all_outputs_exact": true,
+    "baseline_median_decode_tokens_per_s": 166.995,
+    "baseline_median_prompt_tokens_per_s": 466.245,
+    "baseline_rows": [
+      {
+        "custom_trace_hit": false,
+        "decode_count": 127,
+        "decode_ms": 760.04,
+        "decode_tokens_per_s": 167.1,
+        "prompt_count": 16,
+        "prompt_ms": 35.86,
+        "prompt_tokens_per_s": 446.17
+      },
+      {
+        "custom_trace_hit": false,
+        "decode_count": 127,
+        "decode_ms": 763.22,
+        "decode_tokens_per_s": 166.4,
+        "prompt_count": 16,
+        "prompt_ms": 33.65,
+        "prompt_tokens_per_s": 475.54
+      },
+      {
+        "custom_trace_hit": false,
+        "decode_count": 127,
+        "decode_ms": 760.98,
+        "decode_tokens_per_s": 166.89,
+        "prompt_count": 16,
+        "prompt_ms": 33.96,
+        "prompt_tokens_per_s": 471.13
+      },
+      {
+        "custom_trace_hit": false,
+        "decode_count": 127,
+        "decode_ms": 754.78,
+        "decode_tokens_per_s": 168.26,
+        "prompt_count": 16,
+        "prompt_ms": 34.68,
+        "prompt_tokens_per_s": 461.36
+      }
+    ],
+    "candidate_decode_speedup": 0.9951196143597114,
+    "candidate_median_decode_tokens_per_s": 166.18,
+    "candidate_median_prompt_tokens_per_s": 457.105,
+    "candidate_rows": [
+      {
+        "custom_trace_hit": true,
+        "decode_count": 127,
+        "decode_ms": 765.0,
+        "decode_tokens_per_s": 166.01,
+        "prompt_count": 16,
+        "prompt_ms": 33.52,
+        "prompt_tokens_per_s": 477.3
+      },
+      {
+        "custom_trace_hit": true,
+        "decode_count": 127,
+        "decode_ms": 763.33,
+        "decode_tokens_per_s": 166.38,
+        "prompt_count": 16,
+        "prompt_ms": 35.54,
+        "prompt_tokens_per_s": 450.15
+      },
+      {
+        "custom_trace_hit": true,
+        "decode_count": 127,
+        "decode_ms": 767.26,
+        "decode_tokens_per_s": 165.52,
+        "prompt_count": 16,
+        "prompt_ms": 34.48,
+        "prompt_tokens_per_s": 464.06
+      },
+      {
+        "custom_trace_hit": true,
+        "decode_count": 127,
+        "decode_ms": 763.46,
+        "decode_tokens_per_s": 166.35,
+        "prompt_count": 16,
+        "prompt_ms": 36.93,
+        "prompt_tokens_per_s": 433.24
+      }
+    ],
+    "runs_per_mode": 4
+  },
+  "custom_scope": "raw Q4_K tensors; opt-in; repacked Q4_K disabled",
+  "implementation": "scripts/run_m4_q4k_real_model_ab.py",
+  "llama_quantization": "GGUF Q4_K_M",
+  "mlx": {
+    "implementation": "scripts/benchmark_mlx_qwen.py",
+    "iterations": 5,
+    "max_tokens": 128,
+    "median_generation_tokens_per_s": 263.5529836143588,
+    "median_prompt_tokens_per_s": 978.6780310581419,
+    "mode": "persistent_mlx_same_model_4bit",
+    "model": "mlx-community/Qwen2.5-Coder-0.5B-Instruct-4bit",
+    "output_stable": true,
+    "quantization_boundary": "MLX 4-bit; not bitwise-identical to GGUF Q4_K_M",
+    "rows": [
+      {
+        "finish_reason": "stop",
+        "generation_tokens": 113,
+        "generation_tokens_per_s": 270.4140418040544,
+        "peak_memory_gb": 0.307160424,
+        "prompt_tokens": 16,
+        "prompt_tokens_per_s": 926.1358607210364,
+        "token_checksum": 2173304103
+      },
+      {
+        "finish_reason": "stop",
+        "generation_tokens": 113,
+        "generation_tokens_per_s": 266.8602387392549,
+        "peak_memory_gb": 0.307160424,
+        "prompt_tokens": 16,
+        "prompt_tokens_per_s": 978.6780310581419,
+        "token_checksum": 2173304103
+      },
+      {
+        "finish_reason": "stop",
+        "generation_tokens": 113,
+        "generation_tokens_per_s": 263.5529836143588,
+        "peak_memory_gb": 0.307160424,
+        "prompt_tokens": 16,
+        "prompt_tokens_per_s": 983.4604691474582,
+        "token_checksum": 2173304103
+      },
+      {
+        "finish_reason": "stop",
+        "generation_tokens": 113,
+        "generation_tokens_per_s": 253.66547509489445,
+        "peak_memory_gb": 0.307160424,
+        "prompt_tokens": 16,
+        "prompt_tokens_per_s": 1002.0510732110959,
+        "token_checksum": 2173304103
+      },
+      {
+        "finish_reason": "stop",
+        "generation_tokens": 113,
+        "generation_tokens_per_s": 255.1508579443422,
+        "peak_memory_gb": 0.307160424,
+        "prompt_tokens": 16,
+        "prompt_tokens_per_s": 952.0551002145054,
+        "token_checksum": 2173304103
+      }
+    ],
+    "schema_version": 1
+  },
+  "mode": "apple_m4_real_qwen_llama_custom_mlx_ab",
+  "model_filename": "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf",
+  "schema_version": 1,
+  "threads": 6,
+  "tokens": 128
+}

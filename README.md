@@ -85,6 +85,10 @@ small-sample trace evidence, not a production SLO.
   dispatches narrow projections to one performance core and FFN projections to
   four, reaching a 2.00x geometric-mean win over its same-thread scalar oracle
   across six Qwen2.5-0.5B layer shapes. This remains microbenchmark evidence.
+- The real Q4_K gate is now closed: a self-written GGUF v3 parser and Q4_K
+  kernel read actual Qwen tensors, match llama.cpp within 1e-6, and reach real
+  decode with byte-identical output. The opt-in path is essentially flat
+  (`0.995x-0.997x`), so llama.cpp repacking remains the default.
 
 ## What I Implemented
 
@@ -98,7 +102,7 @@ product here.
 | --- | --- | --- |
 | CUDA operator | Sparse repetition-penalty kernel, policy gate, and PyTorch `TORCH_LIBRARY` registration path for vLLM-shaped logits workloads. | `cuda/sparse_repetition_penalty/`, `integrations/vllm/cuda/`, `scripts/smoke_cuda_sparse_repetition_penalty_op.py` |
 | vLLM integration | Opt-in logits processor and fused sampler patch routes that compare standalone request-level hooks against sampler-boundary integration. | `integrations/vllm/l20_sparse_repetition_penalty_logits_processor.py`, `integrations/vllm/install_l20_topk_topp_sampler.py`, `scripts/run_vllm_l20_sparse_penalty_triangle_matrix.sh` |
-| CPU inference path | Self-written C++ transformer decode scaffold plus an Apple M4 Q4 x Q8 NEON matvec with int4 packing, dynamic activation quantization, persistent workers, cache-flushed benchmarks, and shape-aware dispatch; separate runners provide real Qwen/SmolLM GGUF baselines. | `cpp/my.cpp`, `cpp/m4_q4_matvec.cpp`, `scripts/benchmark_m4_q4_matvec_matrix.py`, `scripts/run_m4_cpu_qwen_inference.py` |
+| CPU inference path | Self-written C++ transformer scaffold, M4 Q4 x Q8 NEON matvec, GGUF v3 parser, real Q4_K kernel, and reversible llama.cpp decode hook; separate runners compare identical GGUF bytes and MLX same-model 4-bit. | `cpp/my.cpp`, `cpp/m4_q4_matvec.cpp`, `cpp/m4_q4k_gguf.cpp`, `integrations/llama_cpp/`, `scripts/run_m4_q4k_real_model_ab.py` |
 | Benchmark system | Reproducible CPU/L20/A100 campaign scripts, result summarizers, cost-per-token and p95/p99 tail calculators, and real prompt trace clients. | `scripts/build_cpu_l20_break_even.py`, `scripts/build_cpu_l20_cost_tail.py`, `scripts/run_real_prompt_trace_client.py` |
 | Evidence hygiene | Artifact index, public doc-link checker, compact artifact catalog, CPU-safe tests, and claim-policy docs to keep benchmark claims bounded. | `src/l20_stack/`, `tests/`, `benchmarks/results/artifact-catalog.json`, `docs/experiment-status.md` |
 
@@ -115,6 +119,7 @@ product here.
 | LM-head boundary | Semantic trace exposes 310/320 decode-safe events and 179.67 MiB FP32 logits materialization budget | `benchmarks/results/a100-vllm-gemm-epilogue-semantic-trace/` |
 | CPU mechanics | Self-written C++ tiny-transformer path plus real GGUF CPU baselines | `benchmarks/results/cpu-tiny-transformer/`, `benchmarks/results/cpu-real-model/` |
 | M4 Q4 x Q8 kernel | Six Qwen2.5-0.5B layer shapes, 6/6 exact, 2.00x geomean over same-thread scalar | `benchmarks/results/cpu-m4-q4-matvec/qwen25-0p5b-m4/` |
+| M4 real Q4_K decode | Real GGUF tensor parser, 1e-6 kernel agreement, byte-identical serving output, and llama.cpp/MLX A/B | `benchmarks/results/cpu-m4-q4k-real-model/qwen25-coder-0p5b-v1/` |
 
 For the full status map, use `docs/experiment-status.md`.
 
@@ -200,6 +205,17 @@ Apple M4 Q4 x Q8 layer-shape matrix:
   --warmup 10 \
   --iterations 50 \
   --cache-flush-mib 64
+```
+
+Build and benchmark the opt-in real Q4_K path:
+
+```bash
+LLAMA_ROOT=build/llama.cpp scripts/build_llama_cpp_m4_q4k.sh
+
+/usr/bin/python3 scripts/run_m4_q4k_real_model_ab.py \
+  --model /path/to/qwen2.5-coder-0.5b-instruct-q4_k_m.gguf \
+  --llama-bench build/llama.cpp/build-cpu-kevin/bin/llama-bench \
+  --llama-completion build/llama.cpp/build-cpu-kevin/bin/llama-completion
 ```
 
 Real Qwen CPU completion smoke on Apple M4:
