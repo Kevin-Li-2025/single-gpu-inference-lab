@@ -198,6 +198,18 @@ class M4Q4KRealModelTest(unittest.TestCase):
         self.assertFalse(triangle["parallel_vs_serial"]["gate_pass"])
         self.assertTrue(triangle["correctness"]["outputs_byte_identical"])
 
+        serial = json.loads(
+            Path(
+                "benchmarks/results/cpu-m4-q4k-sme2/"
+                "qwen25-coder-3b-affine-v1/qualified-serial-neon.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertTrue(serial["hardware"]["host_qualified"])
+        self.assertEqual(serial["candidate"]["correction_schedule"], "serial")
+        self.assertFalse(serial["candidate_vs_llama"]["gate_pass"])
+        self.assertGreater(serial["candidate_vs_llama"]["speedup"], 0.99)
+        self.assertTrue(serial["correctness"]["outputs_byte_identical"])
+
 
 if __name__ == "__main__":
     unittest.main()

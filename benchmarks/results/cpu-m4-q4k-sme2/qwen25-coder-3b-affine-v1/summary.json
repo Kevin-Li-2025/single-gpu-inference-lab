@@ -38,7 +38,11 @@
     "qualified_triangle_artifact": "qualified-triangle.json",
     "qualified_candidate_vs_llama_speedup": 0.9692403205779434,
     "qualified_parallel_vs_serial_speedup": 0.9997824474963077,
-    "qualified_gate_pass": false
+    "qualified_gate_pass": false,
+    "vectorized_serial_artifact": "qualified-serial-neon.json",
+    "vectorized_serial_vs_llama_speedup": 0.9918862745156131,
+    "vectorized_serial_minimum_pair_speedup": 0.9700724327410261,
+    "vectorized_serial_gate_pass": false
   },
   "real_tensor_gates": [
     {
@@ -88,5 +92,5 @@
     "cpu_repack_mib": 745.46,
     "total_model_buffers_mib": 6010.97
   },
-  "decision": "Keep the integrated SME2 path opt-in and disabled by default. Keep parallel correction opt-in as well: the AC-qualified triangle failed both candidate-versus-llama and parallel-versus-serial gates."
+  "decision": "Keep the integrated SME2 path opt-in and disabled by default. Vectorized serial correction closes the pooled full-decode gap to 0.81%, but the AC-qualified pooled and minimum-pair gates still fail."
 }

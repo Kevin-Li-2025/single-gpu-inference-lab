@@ -13,6 +13,7 @@ This artifact uses the official Qwen2.5-Coder-3B-Instruct Q4_K_M GGUF on a
 | Real prompt decode | 33.26 tok/s | 28.69 tok/s | 0.863x |
 | Qualified `tg128`, 6x5 triangle | 33.6642 tok/s llama x8 | 32.6287 tok/s parallel | 0.9692x |
 | Qualified correction control | 32.6358 tok/s serial | 32.6287 tok/s parallel | 0.9998x |
+| Qualified vectorized serial `tg128`, 6x5 | 33.7515 tok/s llama x8 | 33.4776 tok/s hybrid | 0.9919x |
 
 The two real-tensor kernel gates pass. The full-decode gate fails. The opt-in
 integration therefore remains disabled by default.
@@ -48,3 +49,14 @@ and `0.9998x` versus serial correction; minimum pair speedups are `0.9480x`
 and `0.9691x`. The full SME2 route stays disabled, and parallel correction is
 now opt-in through `GGML_M4_Q4K_SME2_PARALLEL_CORRECTION=1`. See
 `qualified-triangle.json` for the compact formal evidence.
+
+## Vectorized Serial Follow-up
+
+The next candidate replaces the scalar Q8_K activation pack with NEON and
+computes four affine-correction rows per inner loop while preserving each
+row's accumulation order. The AC-qualified 6x5 alternating A/B reaches
+`33.4776 tok/s` versus `33.7515 tok/s` native llama, or `0.9919x`. The median
+pair speedup is `0.9874x`; the minimum pair remains `0.9701x`, so the candidate
+still fails both promotion gates. `bird` and `fileproviderd` were paused during
+the run and restored immediately afterward. Greedy output remains byte-identical.
+See `qualified-serial-neon.json` for the compact evidence.

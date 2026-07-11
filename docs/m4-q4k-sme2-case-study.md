@@ -149,4 +149,27 @@ load, and one pair was severely contaminated. The checked-in
 `scripts/run_m4_q4k_sme2_ab.py` runner refuses to produce a formal result
 unless the Mac is on AC power, low-power mode is disabled, and one-minute load
 is below its configured threshold. `qualified-triangle.json` is the current
-authoritative full-decode result.
+authoritative parallel-correction result.
+
+## Vectorized Serial Result
+
+The next pass returns to serial correction and removes two local setup costs:
+Q8_K activation packing uses NEON, and correction processes four output rows
+in parallel while retaining the original accumulation order within each row.
+The runner exposes this path with `--candidate-correction serial`.
+
+With AC power, low-power mode disabled, four performance cores, and a qualified
+`0.2394` load per logical CPU, the 6x5 alternating A/B produces:
+
+| Mode | Pooled median | Comparison |
+| --- | ---: | ---: |
+| Native llama x8 | 33.7515 tok/s | baseline |
+| Vectorized serial hybrid | 33.4776 tok/s | 0.9919x vs llama |
+
+The pooled deficit is reduced to `0.81%`, but the median pair speedup is only
+`0.9874x` and the minimum pair is `0.9701x`; the promotion gate still fails.
+The fixed greedy output remains byte-identical. `bird` and `fileproviderd`
+were paused to remove iCloud synchronization interference and restored after
+the run. The full SME2 integration therefore remains opt-in and disabled by
+default. `qualified-serial-neon.json` is the authoritative artifact for this
+candidate.

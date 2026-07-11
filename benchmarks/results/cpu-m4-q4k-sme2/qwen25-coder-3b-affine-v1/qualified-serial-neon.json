@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "status": "fail",
+  "run_commit": "922cc13",
+  "hardware": {
+    "cpu": "Apple M4",
+    "threads": 4,
+    "performance_core_mask": "0x3c0",
+    "power_source": "AC Power",
+    "low_power_mode": 0,
+    "load_per_logical_cpu": 0.239404296875,
+    "host_qualified": true,
+    "controlled_background_services": ["bird", "fileproviderd"]
+  },
+  "model": {
+    "name": "Qwen2.5-Coder-3B-Instruct",
+    "format": "GGUF Q4_K_M",
+    "sha256": "724fb256bec1ff062b2f65e4569e871ad2e95ab2a3989723d1769c54294730b7",
+    "real_model": true,
+    "mock_weights": false
+  },
+  "candidate": {
+    "tensor_roles": "ffn_down only",
+    "sme_share_percent": 25,
+    "shared_q8_activation": true,
+    "q8_pack": "NEON",
+    "correction_rows_per_inner_loop": 4,
+    "correction_schedule": "serial"
+  },
+  "protocol": {
+    "pairs": 6,
+    "repetitions_per_mode_per_pair": 5,
+    "generation_tokens": 128,
+    "alternating_order": true,
+    "minimum_pooled_speedup": 1.0,
+    "minimum_pair_speedup": 0.98
+  },
+  "candidate_vs_llama": {
+    "baseline_pooled_median_tps": 33.751450000000006,
+    "candidate_pooled_median_tps": 33.477599999999995,
+    "speedup": 0.9918862745156131,
+    "median_pair_speedup": 0.9873861422964674,
+    "minimum_pair_speedup": 0.9700724327410261,
+    "gate_pass": false,
+    "pair_speedups": [
+      0.992767718940333,
+      0.9700724327410261,
+      0.9911072930860831,
+      0.9915393654524091,
+      0.9836649915068516,
+      0.979773232795379
+    ]
+  },
+  "correctness": {
+    "outputs_byte_identical": true,
+    "modes": ["baseline", "candidate"],
+    "greedy_output_sha256": "8ff2391976022289e0b35ded5071463b329a85a615884fdac0febe44a1151c59"
+  },
+  "decision": "Keep the full SME2 integration disabled. Vectorized serial correction closes the pooled gap to 0.81%, but neither the pooled nor minimum-pair promotion gate passes."
+}
