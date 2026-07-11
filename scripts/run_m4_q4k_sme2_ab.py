@@ -44,6 +44,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-speedup", type=float, default=1.0)
     parser.add_argument("--min-pair-speedup", type=float, default=0.98)
     parser.add_argument("--include-serial-control", action="store_true")
+    parser.add_argument(
+        "--candidate-correction",
+        choices=("serial", "parallel"),
+        default="parallel",
+        help="correction schedule used by candidate mode",
+    )
     parser.add_argument("--prompt", default=DEFAULT_PROMPT)
     parser.add_argument("--n-predict", type=int, default=96)
     parser.add_argument("--allow-dirty-host", action="store_true")
@@ -98,9 +104,13 @@ def validate_inputs(args: argparse.Namespace) -> None:
         raise SystemExit(f"llama-completion is not executable: {args.llama_completion}")
     if min(args.threads, args.n_gen, args.repetitions, args.pairs) <= 0:
         raise SystemExit("threads, n-gen, repetitions, and pairs must be positive")
+    if args.include_serial_control and args.candidate_correction == "serial":
+        raise SystemExit(
+            "--include-serial-control requires --candidate-correction=parallel"
+        )
 
 
-def mode_env(mode: str) -> dict[str, str]:
+def mode_env(mode: str, candidate_correction: str = "parallel") -> dict[str, str]:
     env = os.environ.copy()
     for name in CUSTOM_ENV:
         env.pop(name, None)
@@ -108,7 +118,9 @@ def mode_env(mode: str) -> dict[str, str]:
         # Shared candidate policy: down-only, one Q8 pack, and 25% SME rows.
         env["GGML_M4_Q4K_SME2"] = "1"
     if mode == "candidate":
-        env["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"] = "1"
+        env["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"] = (
+            "1" if candidate_correction == "parallel" else "0"
+        )
     if mode == "serial":
         env["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"] = "0"
     return env
@@ -149,7 +161,7 @@ def run_bench(
     ):
         subprocess.run(
             command,
-            env=mode_env(mode),
+            env=mode_env(mode, args.candidate_correction),
             stdout=stdout,
             stderr=stderr,
             check=True,
@@ -202,7 +214,7 @@ def run_completion(args: argparse.Namespace, mode: str, output_dir: Path) -> dic
     with output_path.open("wb") as stdout, stderr_path.open("wb") as stderr:
         subprocess.run(
             command,
-            env=mode_env(mode),
+            env=mode_env(mode, args.candidate_correction),
             stdout=stdout,
             stderr=stderr,
             check=True,
@@ -347,7 +359,8 @@ def main() -> int:
             "tensor_roles": "down",
             "shared_q8": True,
             "sme_share_percent": 25,
-            "parallel_correction": True,
+            "correction_schedule": args.candidate_correction,
+            "parallel_correction": args.candidate_correction == "parallel",
         },
         "benchmark": {
             "threads": args.threads,

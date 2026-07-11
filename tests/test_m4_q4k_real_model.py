@@ -133,10 +133,15 @@ class M4Q4KRealModelTest(unittest.TestCase):
         self.assertIn("outputs_byte_identical", source)
         self.assertIn('modes = ("baseline", "candidate")', source)
         self.assertIn('else ("candidate", "baseline")', source)
-        self.assertIn('"parallel_correction": True', source)
+        self.assertIn(
+            '"parallel_correction": args.candidate_correction == "parallel"',
+            source,
+        )
         self.assertIn("--include-serial-control", source)
         self.assertIn('("baseline", "serial", "candidate")', source)
         self.assertIn('env["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"] = "0"', source)
+        self.assertIn("--candidate-correction", source)
+        self.assertIn('"correction_schedule": args.candidate_correction', source)
         self.assertIn('"serial_control": serial_control', source)
         self.assertIn("serial_control_gate", source)
         self.assertIn('"minimum_pair_speedup": min(serial_pair_speedups)', source)
@@ -152,6 +157,7 @@ class M4Q4KRealModelTest(unittest.TestCase):
             baseline = mode_env("baseline")
             serial = mode_env("serial")
             candidate = mode_env("candidate")
+            serial_candidate = mode_env("candidate", "serial")
 
         self.assertNotIn("GGML_M4_Q4K_SME2", baseline)
         self.assertNotIn("GGML_M4_Q4K_SME2_PARALLEL_CORRECTION", baseline)
@@ -159,6 +165,9 @@ class M4Q4KRealModelTest(unittest.TestCase):
         self.assertEqual(serial["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"], "0")
         self.assertEqual(candidate["GGML_M4_Q4K_SME2"], "1")
         self.assertEqual(candidate["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"], "1")
+        self.assertEqual(
+            serial_candidate["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"], "0"
+        )
 
     def test_affine_sme2_artifact_keeps_negative_e2e_decision(self):
         artifact = json.loads(
