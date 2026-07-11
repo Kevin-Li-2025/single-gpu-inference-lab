@@ -173,3 +173,26 @@ were paused to remove iCloud synchronization interference and restored after
 the run. The full SME2 integration therefore remains opt-in and disabled by
 default. `qualified-serial-neon.json` is the authoritative artifact for this
 candidate.
+
+## Dynamic Fallback Result
+
+The last pass reduces the SME share to 1%, removes unused correction work in
+serial mode, caches immutable process configuration, and replaces static
+fallback ownership with an eight-group atomic work queue. The Q8_K NEON
+packer retains the reference first-maximum sign rule and integer rounding
+behavior.
+
+With AC power, low-power mode disabled, four performance cores, and `0.2321`
+load per logical CPU, the 6x5 alternating A/B produces:
+
+| Mode | Pooled median | Comparison |
+| --- | ---: | ---: |
+| Native llama x8 | 34.4962 tok/s | baseline |
+| Dynamic 1% SME hybrid | 34.4966 tok/s | 1.00001x vs llama |
+
+The minimum pair speedup is `0.9954x`, versus `0.9701x` for the previous
+vectorized serial candidate. The fixed greedy output remains byte-identical.
+This passes the repository's floor gate by eliminating meaningful regression,
+but the pooled delta is only `0.001%` and is reported as parity. The full SME2
+integration remains opt-in and disabled by default.
+`qualified-dynamic-share1.json` is the authoritative artifact.

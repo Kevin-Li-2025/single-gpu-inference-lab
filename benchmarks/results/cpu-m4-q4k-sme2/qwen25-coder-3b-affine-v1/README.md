@@ -14,9 +14,11 @@ This artifact uses the official Qwen2.5-Coder-3B-Instruct Q4_K_M GGUF on a
 | Qualified `tg128`, 6x5 triangle | 33.6642 tok/s llama x8 | 32.6287 tok/s parallel | 0.9692x |
 | Qualified correction control | 32.6358 tok/s serial | 32.6287 tok/s parallel | 0.9998x |
 | Qualified vectorized serial `tg128`, 6x5 | 33.7515 tok/s llama x8 | 33.4776 tok/s hybrid | 0.9919x |
+| Qualified dynamic 1% SME `tg128`, 6x5 | 34.4962 tok/s llama x8 | 34.4966 tok/s hybrid | 1.00001x |
 
-The two real-tensor kernel gates pass. The full-decode gate fails. The opt-in
-integration therefore remains disabled by default.
+The two real-tensor kernel gates pass. The original full-decode performance
+gate fails; the latest candidate passes only the non-regression floor at
+parity. The opt-in integration therefore remains disabled by default.
 
 ## Correctness
 
@@ -60,3 +62,17 @@ pair speedup is `0.9874x`; the minimum pair remains `0.9701x`, so the candidate
 still fails both promotion gates. `bird` and `fileproviderd` were paused during
 the run and restored immediately afterward. Greedy output remains byte-identical.
 See `qualified-serial-neon.json` for the compact evidence.
+
+## Dynamic Fallback Follow-up
+
+The final scheduling pass uses 1% SME2 rows and lets all four workers claim
+eight-group fallback chunks from a shared queue. It also removes dead
+correction work from serial mode and preserves llama.cpp's Q8_K first-maximum
+and rounding rules in the NEON packer.
+
+The AC-qualified 6x5 run reaches `34.49655 tok/s` versus `34.49620 tok/s`
+native llama, or `1.00001x`. Its minimum pair improves to `0.9954x`, and the
+fixed greedy output remains byte-identical. This passes the repository's
+non-regression floor, but the pooled delta is statistical parity, not a
+production speedup claim. The route remains opt-in. See
+`qualified-dynamic-share1.json`.

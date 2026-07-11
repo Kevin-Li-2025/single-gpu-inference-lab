@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "status": "pass_at_parity",
+  "run_commit": "583efeb",
+  "hardware": {
+    "cpu": "Apple M4",
+    "threads": 4,
+    "performance_core_mask": "0x3c0",
+    "power_source": "AC Power",
+    "low_power_mode": 0,
+    "load_per_logical_cpu": 0.23212890625,
+    "host_qualified": true,
+    "controlled_background_services": ["bird", "fileproviderd"]
+  },
+  "model": {
+    "name": "Qwen2.5-Coder-3B-Instruct",
+    "format": "GGUF Q4_K_M",
+    "sha256": "724fb256bec1ff062b2f65e4569e871ad2e95ab2a3989723d1769c54294730b7",
+    "real_model": true,
+    "mock_weights": false
+  },
+  "candidate": {
+    "tensor_roles": "ffn_down only",
+    "sme_share_percent": 1,
+    "shared_q8_activation": true,
+    "q8_pack": "NEON",
+    "correction_schedule": "serial",
+    "dynamic_fallback": true,
+    "fallback_chunk_groups": 8
+  },
+  "protocol": {
+    "pairs": 6,
+    "repetitions_per_mode_per_pair": 5,
+    "generation_tokens": 128,
+    "alternating_order": true,
+    "minimum_pooled_speedup": 1.0,
+    "minimum_pair_speedup": 0.98
+  },
+  "candidate_vs_llama": {
+    "baseline_pooled_median_tps": 34.4962,
+    "candidate_pooled_median_tps": 34.49655,
+    "speedup": 1.0000101460450717,
+    "median_pair_speedup": 0.9999555273660957,
+    "minimum_pair_speedup": 0.9954333800516605,
+    "gate_pass": true,
+    "pair_speedups": [
+      1.0007600084703232,
+      0.9992084478619395,
+      0.9954333800516605,
+      1.0021291119018225,
+      1.0005851002201367,
+      0.9993259545120547
+    ]
+  },
+  "correctness": {
+    "outputs_byte_identical": true,
+    "modes": ["baseline", "candidate"],
+    "greedy_output_sha256": "8ff2391976022289e0b35ded5071463b329a85a615884fdac0febe44a1151c59"
+  },
+  "decision": "Keep the route opt-in. The dynamic 1 percent SME policy passes the repository floor gate and removes the prior tail regression, but the 0.001 percent pooled delta is parity rather than evidence of a production speedup."
+}

@@ -42,7 +42,12 @@
     "vectorized_serial_artifact": "qualified-serial-neon.json",
     "vectorized_serial_vs_llama_speedup": 0.9918862745156131,
     "vectorized_serial_minimum_pair_speedup": 0.9700724327410261,
-    "vectorized_serial_gate_pass": false
+    "vectorized_serial_gate_pass": false,
+    "dynamic_share1_artifact": "qualified-dynamic-share1.json",
+    "dynamic_share1_vs_llama_speedup": 1.0000101460450717,
+    "dynamic_share1_minimum_pair_speedup": 0.9954333800516605,
+    "dynamic_share1_gate_pass": true,
+    "dynamic_share1_interpretation": "parity, not a production speedup"
   },
   "real_tensor_gates": [
     {
@@ -92,5 +97,5 @@
     "cpu_repack_mib": 745.46,
     "total_model_buffers_mib": 6010.97
   },
-  "decision": "Keep the integrated SME2 path opt-in and disabled by default. Vectorized serial correction closes the pooled full-decode gap to 0.81%, but the AC-qualified pooled and minimum-pair gates still fail."
+  "decision": "Keep the integrated SME2 path opt-in and disabled by default. Dynamic fallback removes the prior tail regression and passes the repository floor at 1.00001x pooled speedup, but the measured delta is parity rather than evidence of a production speedup."
 }
