@@ -43,6 +43,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-load-per-cpu", type=float, default=0.25)
     parser.add_argument("--min-speedup", type=float, default=1.0)
     parser.add_argument("--min-pair-speedup", type=float, default=0.98)
+    parser.add_argument("--include-serial-control", action="store_true")
     parser.add_argument("--prompt", default=DEFAULT_PROMPT)
     parser.add_argument("--n-predict", type=int, default=96)
     parser.add_argument("--allow-dirty-host", action="store_true")
@@ -103,9 +104,11 @@ def mode_env(mode: str) -> dict[str, str]:
     env = os.environ.copy()
     for name in CUSTOM_ENV:
         env.pop(name, None)
-    if mode == "candidate":
+    if mode in {"candidate", "serial"}:
         # Defaults: down-only, one shared Q8 pack, 25% SME rows, parallel correction.
         env["GGML_M4_Q4K_SME2"] = "1"
+    if mode == "serial":
+        env["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"] = "0"
     return env
 
 
@@ -234,8 +237,16 @@ def main() -> int:
         )
 
     rows: list[dict[str, object]] = []
+    triangle_orders = (
+        ("baseline", "serial", "candidate"),
+        ("candidate", "baseline", "serial"),
+        ("serial", "candidate", "baseline"),
+    )
     for pair in range(1, args.pairs + 1):
-        modes = ("baseline", "candidate") if pair % 2 else ("candidate", "baseline")
+        if args.include_serial_control:
+            modes = triangle_orders[(pair - 1) % len(triangle_orders)]
+        else:
+            modes = ("baseline", "candidate") if pair % 2 else ("candidate", "baseline")
         for mode in modes:
             print(f"pair={pair}/{args.pairs} mode={mode}", flush=True)
             rows.append(run_bench(args, mode, pair, args.output_dir))
@@ -243,7 +254,11 @@ def main() -> int:
                 time.sleep(args.delay_seconds)
 
     by_pair: list[dict[str, object]] = []
-    pooled: dict[str, list[float]] = {"baseline": [], "candidate": []}
+    measured_modes = ("baseline", "serial", "candidate") if args.include_serial_control else (
+        "baseline",
+        "candidate",
+    )
+    pooled: dict[str, list[float]] = {mode: [] for mode in measured_modes}
     for pair in range(1, args.pairs + 1):
         pair_rows = {row["mode"]: row for row in rows if row["pair"] == pair}
         baseline = float(pair_rows["baseline"]["median_tps"])
@@ -268,13 +283,50 @@ def main() -> int:
     completions: list[dict[str, object]] = []
     outputs_exact = None
     if args.llama_completion is not None:
-        for mode in ("baseline", "candidate"):
+        for mode in measured_modes:
             completions.append(run_completion(args, mode, args.output_dir))
-        outputs_exact = completions[0]["sha256"] == completions[1]["sha256"]
+        outputs_exact = len({row["sha256"] for row in completions}) == 1
+
+    serial_control = None
+    serial_control_gate = True
+    if args.include_serial_control:
+        serial_pair_results = []
+        for pair in range(1, args.pairs + 1):
+            pair_rows = {row["mode"]: row for row in rows if row["pair"] == pair}
+            serial = float(pair_rows["serial"]["median_tps"])
+            candidate = float(pair_rows["candidate"]["median_tps"])
+            serial_pair_results.append(
+                {
+                    "pair": pair,
+                    "serial_median_tps": serial,
+                    "candidate_median_tps": candidate,
+                    "speedup": candidate / serial,
+                }
+            )
+        serial_pooled = median(pooled["serial"])
+        serial_pair_speedups = [float(row["speedup"]) for row in serial_pair_results]
+        serial_control_speedup = candidate_pooled / serial_pooled
+        serial_control_gate = (
+            serial_control_speedup >= args.min_speedup
+            and min(serial_pair_speedups) >= args.min_pair_speedup
+        )
+        serial_control = {
+            "serial_pooled_median_tps": serial_pooled,
+            "candidate_pooled_median_tps": candidate_pooled,
+            "speedup": serial_control_speedup,
+            "median_pair_speedup": median(serial_pair_speedups),
+            "minimum_pair_speedup": min(serial_pair_speedups),
+            "gate_pass": serial_control_gate,
+            "pair_results": serial_pair_results,
+        }
 
     summary = {
         "schema_version": 1,
-        "status": "pass" if performance_gate and outputs_exact is not False else "fail",
+        "status": (
+            "pass"
+            if performance_gate and serial_control_gate and outputs_exact is not False
+            else "fail"
+        ),
         "host_qualified": host_clean,
         "power": power,
         "load": {
@@ -310,6 +362,7 @@ def main() -> int:
             "pair_results": by_pair,
             "runs": rows,
         },
+        "serial_control": serial_control,
         "correctness": {
             "checked": outputs_exact is not None,
             "outputs_byte_identical": outputs_exact,

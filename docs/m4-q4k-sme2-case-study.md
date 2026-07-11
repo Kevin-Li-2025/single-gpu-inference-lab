@@ -130,6 +130,12 @@ The parallel-correction schedule produced a positive same-path diagnostic, but
 the Mac was on battery power with uncontrolled background load. It is a
 candidate, not a replacement for the formal negative result above.
 
+For the final qualified run, `scripts/run_m4_q4k_sme2_ab.py` supports
+`--include-serial-control`. This rotates native llama x8, serial correction,
+and parallel correction through three orderings per pair. The resulting JSON
+separates candidate-versus-llama speedup from parallel-versus-serial speedup
+while applying one byte-identical greedy-output gate to all three modes.
+
 A battery/low-power diagnostic produced pooled medians of 14.7819 tok/s for
 baseline and 14.7616 tok/s for the follow-up. This is not a publishable
 performance result: the host was in low-power mode and had high background

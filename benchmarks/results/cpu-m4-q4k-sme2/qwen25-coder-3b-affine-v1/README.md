@@ -43,4 +43,6 @@ available through `GGML_M4_Q4K_SME2_PARALLEL_CORRECTION=0` for same-binary A/B.
 The original negative result above remains the formal evidence. A new AC-power
 interleaved A/B must pass `scripts/run_m4_q4k_sme2_ab.py` before this artifact
 can be superseded; battery diagnostics are intentionally not committed as
-performance evidence.
+performance evidence. The final campaign should use `--include-serial-control`
+to report native llama, serial correction, and parallel correction in one
+rotated three-way experiment.

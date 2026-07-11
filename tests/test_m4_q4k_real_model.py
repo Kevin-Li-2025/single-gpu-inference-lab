@@ -1,10 +1,13 @@
 import json
+import os
 import platform
+import runpy
 import shutil
 import struct
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -128,6 +131,31 @@ class M4Q4KRealModelTest(unittest.TestCase):
         self.assertIn('modes = ("baseline", "candidate")', source)
         self.assertIn('else ("candidate", "baseline")', source)
         self.assertIn('"parallel_correction": True', source)
+        self.assertIn("--include-serial-control", source)
+        self.assertIn('("baseline", "serial", "candidate")', source)
+        self.assertIn('env["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"] = "0"', source)
+        self.assertIn('"serial_control": serial_control', source)
+        self.assertIn("serial_control_gate", source)
+        self.assertIn('"minimum_pair_speedup": min(serial_pair_speedups)', source)
+
+    def test_affine_sme2_runner_isolates_triangle_mode_environment(self):
+        namespace = runpy.run_path("scripts/run_m4_q4k_sme2_ab.py")
+        mode_env = namespace["mode_env"]
+        contaminated = {
+            "GGML_M4_Q4K_SME2": "stale",
+            "GGML_M4_Q4K_SME2_PARALLEL_CORRECTION": "stale",
+        }
+        with mock.patch.dict(os.environ, contaminated, clear=False):
+            baseline = mode_env("baseline")
+            serial = mode_env("serial")
+            candidate = mode_env("candidate")
+
+        self.assertNotIn("GGML_M4_Q4K_SME2", baseline)
+        self.assertNotIn("GGML_M4_Q4K_SME2_PARALLEL_CORRECTION", baseline)
+        self.assertEqual(serial["GGML_M4_Q4K_SME2"], "1")
+        self.assertEqual(serial["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"], "0")
+        self.assertEqual(candidate["GGML_M4_Q4K_SME2"], "1")
+        self.assertNotIn("GGML_M4_Q4K_SME2_PARALLEL_CORRECTION", candidate)
 
     def test_affine_sme2_artifact_keeps_negative_e2e_decision(self):
         artifact = json.loads(
