@@ -119,9 +119,15 @@ class M4Q4KRealModelTest(unittest.TestCase):
         self.assertIn("correction_values_offset", integration)
         self.assertIn("parallel_correction", integration)
         self.assertIn("ggml_barrier(params->threadpool)", integration)
-        self.assertIn("vcvtnq_s32_f32", integration)
+        self.assertIn("rounding_magic4", integration)
+        self.assertIn("mantissa_mask4", integration)
         self.assertIn("vaddlvq_s8(quantized)", integration)
         self.assertIn("kevin_m4_q4k_sme2_correction_rows", integration)
+        self.assertIn("if (parallel_correction) {", integration)
+        self.assertIn("GGML_M4_Q4K_SME2_DYNAMIC_FALLBACK", integration)
+        self.assertIn("__atomic_fetch_add", integration)
+        self.assertIn("groups_per_chunk", integration)
+        self.assertIn("GGML_M4_Q4K_SME2_FALLBACK_CHUNK_GROUPS", integration)
         self.assertIn("--uninstall", installer)
         self.assertIn("KEVIN_M4_Q4K_SME2_COMPUTE_BEGIN", installer)
 
@@ -141,6 +147,8 @@ class M4Q4KRealModelTest(unittest.TestCase):
         self.assertIn('("baseline", "serial", "candidate")', source)
         self.assertIn('env["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"] = "0"', source)
         self.assertIn("--candidate-correction", source)
+        self.assertIn("--sme-share-percent", source)
+        self.assertIn("--fallback-chunk-groups", source)
         self.assertIn('"correction_schedule": args.candidate_correction', source)
         self.assertIn('"serial_control": serial_control', source)
         self.assertIn("serial_control_gate", source)
@@ -158,6 +166,9 @@ class M4Q4KRealModelTest(unittest.TestCase):
             serial = mode_env("serial")
             candidate = mode_env("candidate")
             serial_candidate = mode_env("candidate", "serial")
+            five_percent = mode_env("candidate", "serial", 5)
+            zero_percent = mode_env("candidate", "serial", 0)
+            small_chunks = mode_env("candidate", "serial", 5, 2)
 
         self.assertNotIn("GGML_M4_Q4K_SME2", baseline)
         self.assertNotIn("GGML_M4_Q4K_SME2_PARALLEL_CORRECTION", baseline)
@@ -167,6 +178,11 @@ class M4Q4KRealModelTest(unittest.TestCase):
         self.assertEqual(candidate["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"], "1")
         self.assertEqual(
             serial_candidate["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"], "0"
+        )
+        self.assertEqual(five_percent["GGML_M4_Q4K_SME2_SHARE_PERCENT"], "5")
+        self.assertEqual(zero_percent["GGML_M4_Q4K_SME2_SHARE_PERCENT"], "0")
+        self.assertEqual(
+            small_chunks["GGML_M4_Q4K_SME2_FALLBACK_CHUNK_GROUPS"], "2"
         )
 
     def test_affine_sme2_artifact_keeps_negative_e2e_decision(self):

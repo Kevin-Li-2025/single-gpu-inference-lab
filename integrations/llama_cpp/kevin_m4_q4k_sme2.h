@@ -43,21 +43,24 @@ static size_t kevin_m4_q4k_sme2_align_up(size_t value) {
 }
 
 static bool kevin_m4_q4k_sme2_enabled(void) {
-    const char * value = getenv("GGML_M4_Q4K_SME2");
-    return value != nullptr && value[0] == '1' && value[1] == '\0';
+    static const bool enabled = [] {
+        const char * value = getenv("GGML_M4_Q4K_SME2");
+        return value != nullptr && value[0] == '1' && value[1] == '\0';
+    }();
+    return enabled;
 }
 
 static bool kevin_m4_q4k_sme2_tensor_role_enabled(const ggml_tensor * tensor) {
-    const char * roles = getenv("GGML_M4_Q4K_SME2_TENSORS");
-    const bool is_up = strstr(tensor->name, ".ffn_up.") != nullptr;
-    const bool is_gate = strstr(tensor->name, ".ffn_gate.") != nullptr;
-    const bool is_down = strstr(tensor->name, ".ffn_down.") != nullptr;
+    static const char * roles = getenv("GGML_M4_Q4K_SME2_TENSORS");
     if (roles == nullptr) {
-        return is_down;
+        return strstr(tensor->name, ".ffn_down.") != nullptr;
     }
     if (strcmp(roles, "all") == 0) {
         return true;
     }
+    const bool is_up = strstr(tensor->name, ".ffn_up.") != nullptr;
+    const bool is_gate = strstr(tensor->name, ".ffn_gate.") != nullptr;
+    const bool is_down = strstr(tensor->name, ".ffn_down.") != nullptr;
     return (is_up && strstr(roles, "up") != nullptr) ||
            (is_gate && strstr(roles, "gate") != nullptr) ||
            (is_down && strstr(roles, "down") != nullptr);
@@ -72,30 +75,65 @@ static bool kevin_m4_q4k_sme2_tensor_eligible(const ggml_tensor * tensor) {
 }
 
 static bool kevin_m4_q4k_sme2_trace_enabled(void) {
-    const char * value = getenv("GGML_M4_Q4K_SME2_TRACE");
-    return value != nullptr && value[0] == '1' && value[1] == '\0';
+    static const bool enabled = [] {
+        const char * value = getenv("GGML_M4_Q4K_SME2_TRACE");
+        return value != nullptr && value[0] == '1' && value[1] == '\0';
+    }();
+    return enabled;
 }
 
 static int kevin_m4_q4k_sme2_share_percent(void) {
-    const char * value = getenv("GGML_M4_Q4K_SME2_SHARE_PERCENT");
-    if (value == nullptr) {
-        return 25;
-    }
-    char * end = nullptr;
-    const long parsed = strtol(value, &end, 10);
-    return end != value && *end == '\0' && parsed >= 5 && parsed <= 50
-        ? static_cast<int>(parsed)
-        : 25;
+    static const int share = [] {
+        const char * value = getenv("GGML_M4_Q4K_SME2_SHARE_PERCENT");
+        if (value == nullptr) {
+            return 25;
+        }
+        char * end = nullptr;
+        const long parsed = strtol(value, &end, 10);
+        return end != value && *end == '\0' && parsed >= 0 && parsed <= 50
+            ? static_cast<int>(parsed)
+            : 25;
+    }();
+    return share;
 }
 
 static bool kevin_m4_q4k_sme2_shared_q8_enabled(void) {
-    const char * value = getenv("GGML_M4_Q4K_SME2_SHARED_Q8");
-    return value == nullptr || (value[0] == '1' && value[1] == '\0');
+    static const bool enabled = [] {
+        const char * value = getenv("GGML_M4_Q4K_SME2_SHARED_Q8");
+        return value == nullptr || (value[0] == '1' && value[1] == '\0');
+    }();
+    return enabled;
 }
 
 static bool kevin_m4_q4k_sme2_parallel_correction_enabled(void) {
-    const char * value = getenv("GGML_M4_Q4K_SME2_PARALLEL_CORRECTION");
-    return value != nullptr && value[0] == '1' && value[1] == '\0';
+    static const bool enabled = [] {
+        const char * value = getenv("GGML_M4_Q4K_SME2_PARALLEL_CORRECTION");
+        return value != nullptr && value[0] == '1' && value[1] == '\0';
+    }();
+    return enabled;
+}
+
+static bool kevin_m4_q4k_sme2_dynamic_fallback_enabled(void) {
+    static const bool enabled = [] {
+        const char * value = getenv("GGML_M4_Q4K_SME2_DYNAMIC_FALLBACK");
+        return value == nullptr || (value[0] == '1' && value[1] == '\0');
+    }();
+    return enabled;
+}
+
+static size_t kevin_m4_q4k_sme2_fallback_chunk_groups(void) {
+    static const size_t groups = [] {
+        const char * value = getenv("GGML_M4_Q4K_SME2_FALLBACK_CHUNK_GROUPS");
+        if (value == nullptr) {
+            return static_cast<size_t>(8);
+        }
+        char * end = nullptr;
+        const unsigned long parsed = strtoul(value, &end, 10);
+        return end != value && *end == '\0' && parsed >= 1 && parsed <= 32
+            ? static_cast<size_t>(parsed)
+            : static_cast<size_t>(8);
+    }();
+    return groups;
 }
 
 static void kevin_m4_q4k_sme2_trace_once(void) {
@@ -349,8 +387,9 @@ static bool kevin_m4_q4k_sme2_work_size(
     const size_t sums_offset = kevin_m4_q4k_sme2_align_up(lhs_size);
     const size_t correction_values_offset = kevin_m4_q4k_sme2_align_up(
         sums_offset + (k / KEVIN_M4_Q4K_SME2_BL) * sizeof(float));
-    const size_t sme_workspace = correction_values_offset +
-        op->src[0]->ne[1] * sizeof(float);
+    const size_t fallback_queue_offset = kevin_m4_q4k_sme2_align_up(
+        correction_values_offset + op->src[0]->ne[1] * sizeof(float));
+    const size_t sme_workspace = fallback_queue_offset + sizeof(size_t);
     const size_t q8k_size = (k / QK_K) * sizeof(block_q8_K);
     const size_t q8k_copies = kevin_m4_q4k_sme2_shared_q8_enabled()
         ? 1
@@ -445,11 +484,19 @@ static void kevin_m4_q4k_sme2_quantize_q8k(
         const float * source = input + block * QK_K;
         block_q8_K & target = output[block];
         float32x4_t max4 = vdupq_n_f32(0.0f);
-        for (int i = 0; i < QK_K; i += 16) {
-            max4 = vmaxq_f32(max4, vabsq_f32(vld1q_f32(source + i)));
-            max4 = vmaxq_f32(max4, vabsq_f32(vld1q_f32(source + i + 4)));
-            max4 = vmaxq_f32(max4, vabsq_f32(vld1q_f32(source + i + 8)));
-            max4 = vmaxq_f32(max4, vabsq_f32(vld1q_f32(source + i + 12)));
+        float32x4_t signed_max4 = vdupq_n_f32(0.0f);
+        uint32x4_t index4 = vdupq_n_u32(0);
+        for (int i = 0; i < QK_K; i += 4) {
+            const float32x4_t values = vld1q_f32(source + i);
+            const float32x4_t absolute = vabsq_f32(values);
+            const uint32x4_t greater = vcgtq_f32(absolute, max4);
+            max4 = vbslq_f32(greater, absolute, max4);
+            signed_max4 = vbslq_f32(greater, values, signed_max4);
+            const uint32x4_t current_indices = {
+                static_cast<uint32_t>(i), static_cast<uint32_t>(i + 1),
+                static_cast<uint32_t>(i + 2), static_cast<uint32_t>(i + 3),
+            };
+            index4 = vbslq_u32(greater, current_indices, index4);
         }
         const float max_abs = vmaxvq_f32(max4);
         if (max_abs == 0.0f) {
@@ -457,27 +504,44 @@ static void kevin_m4_q4k_sme2_quantize_q8k(
             continue;
         }
 
-        // Preserve the reference Q8_K sign rule: the first value with the
-        // maximum magnitude determines the direction of the scale.
+        // Each lane preserves its first strict maximum. Resolve the four lane
+        // winners by source index to retain the reference first-match rule.
+        float lane_max[4];
+        float lane_signed_max[4];
+        uint32_t lane_index[4];
+        vst1q_f32(lane_max, max4);
+        vst1q_f32(lane_signed_max, signed_max4);
+        vst1q_u32(lane_index, index4);
         float max_value = 0.0f;
-        for (int i = 0; i < QK_K; ++i) {
-            if (std::fabs(source[i]) == max_abs) {
-                max_value = source[i];
-                break;
+        uint32_t max_index = QK_K;
+        for (int lane = 0; lane < 4; ++lane) {
+            if (lane_max[lane] == max_abs && lane_index[lane] < max_index) {
+                max_index = lane_index[lane];
+                max_value = lane_signed_max[lane];
             }
         }
         const float inverse_scale = -127.0f / max_value;
         const float32x4_t inverse4 = vdupq_n_f32(inverse_scale);
+        const float32x4_t rounding_magic4 = vdupq_n_f32(12582912.0f);
+        const uint32x4_t mantissa_mask4 = vdupq_n_u32(0x007fffff);
+        const int32x4_t mantissa_bias4 = vdupq_n_s32(0x00400000);
         const int32x4_t maximum4 = vdupq_n_s32(127);
         for (int i = 0; i < QK_K; i += 16) {
+            const auto nearest4 = [&](const float * values) {
+                const float32x4_t rounded = vaddq_f32(
+                    vmulq_f32(vld1q_f32(values), inverse4), rounding_magic4);
+                const int32x4_t mantissa = vreinterpretq_s32_u32(
+                    vandq_u32(vreinterpretq_u32_f32(rounded), mantissa_mask4));
+                return vsubq_s32(mantissa, mantissa_bias4);
+            };
             const int32x4_t q0 = vminq_s32(
-                maximum4, vcvtnq_s32_f32(vmulq_f32(vld1q_f32(source + i), inverse4)));
+                maximum4, nearest4(source + i));
             const int32x4_t q1 = vminq_s32(
-                maximum4, vcvtnq_s32_f32(vmulq_f32(vld1q_f32(source + i + 4), inverse4)));
+                maximum4, nearest4(source + i + 4));
             const int32x4_t q2 = vminq_s32(
-                maximum4, vcvtnq_s32_f32(vmulq_f32(vld1q_f32(source + i + 8), inverse4)));
+                maximum4, nearest4(source + i + 8));
             const int32x4_t q3 = vminq_s32(
-                maximum4, vcvtnq_s32_f32(vmulq_f32(vld1q_f32(source + i + 12), inverse4)));
+                maximum4, nearest4(source + i + 12));
             const int16x8_t q01 = vcombine_s16(vqmovn_s32(q0), vqmovn_s32(q1));
             const int16x8_t q23 = vcombine_s16(vqmovn_s32(q2), vqmovn_s32(q3));
             const int8x16_t quantized = vcombine_s8(vqmovn_s16(q01), vqmovn_s16(q23));
@@ -527,21 +591,32 @@ static bool kevin_m4_q4k_sme2_compute(
     float * correction_values = reinterpret_cast<float *>(
         packed_lhs + correction_values_offset);
     const size_t sme_workspace = kevin_m4_q4k_sme2_align_up(
-        correction_values_offset + n * sizeof(float));
+        kevin_m4_q4k_sme2_align_up(correction_values_offset + n * sizeof(float)) +
+        sizeof(size_t));
     const size_t q8k_size = (k / QK_K) * sizeof(block_q8_K);
     const bool shared_q8 = nth > 1 && sme_rows < n &&
         kevin_m4_q4k_sme2_shared_q8_enabled();
     const bool parallel_correction = nth > 1 && sme_rows < n &&
         kevin_m4_q4k_sme2_parallel_correction_enabled();
+    const bool dynamic_fallback = shared_q8 && !parallel_correction &&
+        kevin_m4_q4k_sme2_dynamic_fallback_enabled();
+    size_t * fallback_queue = reinterpret_cast<size_t *>(
+        packed_lhs + kevin_m4_q4k_sme2_align_up(
+            correction_values_offset + n * sizeof(float)));
     block_q8_K * shared_q8k = reinterpret_cast<block_q8_K *>(
         static_cast<uint8_t *>(params->wdata) + sme_workspace);
     float * output = static_cast<float *>(dst->data);
 
     if (ith == 0) {
-        kai_run_lhs_quant_pack_qsi8d32p_f32_neon(
-            1, k, KEVIN_M4_Q4K_SME2_BL, mr, kr, sr, 0,
-            static_cast<const float *>(activation->data), activation->nb[1], packed_lhs);
-        kevin_m4_q4k_sme2_block_sums(packed_lhs, groups, sums);
+        if (sme_rows > 0) {
+            kai_run_lhs_quant_pack_qsi8d32p_f32_neon(
+                1, k, KEVIN_M4_Q4K_SME2_BL, mr, kr, sr, 0,
+                static_cast<const float *>(activation->data), activation->nb[1], packed_lhs);
+            kevin_m4_q4k_sme2_block_sums(packed_lhs, groups, sums);
+        }
+        if (dynamic_fallback) {
+            __atomic_store_n(fallback_queue, 0, __ATOMIC_RELAXED);
+        }
     } else if (shared_q8 && ith == 1) {
         kevin_m4_q4k_sme2_quantize_q8k(
             static_cast<const float *>(activation->data), k, shared_q8k);
@@ -551,7 +626,7 @@ static bool kevin_m4_q4k_sme2_compute(
         ggml_barrier(params->threadpool);
     }
 
-    if (ith == 0) {
+    if (ith == 0 && sme_rows > 0) {
         kai_run_matmul_clamp_f32_qsi8d32p1x4_qsi4c32p4vlx4_1x4vl_sme2_sdot(
             1, sme_rows, k, KEVIN_M4_Q4K_SME2_BL, packed_lhs, base + header->packed_offset,
             output, dst->nb[1], sizeof(float), -FLT_MAX, FLT_MAX);
@@ -562,20 +637,45 @@ static bool kevin_m4_q4k_sme2_compute(
                 coefficients, sums, 0, sme_rows, groups, output, true);
         }
         kevin_m4_q4k_sme2_trace_once();
-    } else if (ith < nth && sme_rows < n) {
+    }
+    if (dynamic_fallback) {
+        const size_t groups_per_chunk = kevin_m4_q4k_sme2_fallback_chunk_groups();
+        const size_t blocks = k / QK_K;
+        const size_t fallback_groups = (n - sme_rows) / 8;
+        size_t group_begin = __atomic_fetch_add(
+            fallback_queue, groups_per_chunk, __ATOMIC_RELAXED);
+        while (true) {
+            if (group_begin >= fallback_groups) {
+                break;
+            }
+            const size_t group_end = std::min(
+                fallback_groups, group_begin + groups_per_chunk);
+            const size_t row_begin = sme_rows + group_begin * 8;
+            const size_t row_end = sme_rows + group_end * 8;
+            const block_q4_Kx8 * fallback = reinterpret_cast<const block_q4_Kx8 *>(
+                base + header->fallback_offset) + (row_begin / 8) * blocks;
+            ggml_gemv_q4_K_8x8_q8_K(
+                static_cast<int>(k), output + row_begin, n, fallback, shared_q8k,
+                1, static_cast<int>(row_end - row_begin));
+            group_begin = __atomic_fetch_add(
+                fallback_queue, groups_per_chunk, __ATOMIC_RELAXED);
+        }
+    } else if (ith > 0 && ith < nth && sme_rows < n) {
         const size_t fallback_threads = static_cast<size_t>(nth - 1);
         const size_t fallback_index = static_cast<size_t>(ith - 1);
-        const size_t correction_rows_per_thread =
-            (sme_rows + fallback_threads - 1) / fallback_threads;
-        const size_t correction_begin = std::min(
-            sme_rows, fallback_index * correction_rows_per_thread);
-        const size_t correction_end = std::min(
-            sme_rows, correction_begin + correction_rows_per_thread);
-        const float * coefficients = reinterpret_cast<const float *>(
-            base + header->correction_offset);
-        kevin_m4_q4k_sme2_correction_rows(
-            coefficients, sums, correction_begin, correction_end, groups,
-            correction_values, false);
+        if (parallel_correction) {
+            const size_t correction_rows_per_thread =
+                (sme_rows + fallback_threads - 1) / fallback_threads;
+            const size_t correction_begin = std::min(
+                sme_rows, fallback_index * correction_rows_per_thread);
+            const size_t correction_end = std::min(
+                sme_rows, correction_begin + correction_rows_per_thread);
+            const float * coefficients = reinterpret_cast<const float *>(
+                base + header->correction_offset);
+            kevin_m4_q4k_sme2_correction_rows(
+                coefficients, sums, correction_begin, correction_end, groups,
+                correction_values, false);
+        }
         const size_t fallback_groups = (n - sme_rows) / 8;
         const size_t groups_per_thread =
             (fallback_groups + fallback_threads - 1) / fallback_threads;

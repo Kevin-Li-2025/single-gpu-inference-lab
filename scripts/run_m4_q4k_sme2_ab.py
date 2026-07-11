@@ -20,6 +20,8 @@ CUSTOM_ENV = (
     "GGML_M4_Q4K_SME2_SHARED_Q8",
     "GGML_M4_Q4K_SME2_SHARE_PERCENT",
     "GGML_M4_Q4K_SME2_PARALLEL_CORRECTION",
+    "GGML_M4_Q4K_SME2_DYNAMIC_FALLBACK",
+    "GGML_M4_Q4K_SME2_FALLBACK_CHUNK_GROUPS",
     "GGML_M4_Q4K_SME2_TRACE",
 )
 DEFAULT_PROMPT = (
@@ -50,6 +52,8 @@ def parse_args() -> argparse.Namespace:
         default="parallel",
         help="correction schedule used by candidate mode",
     )
+    parser.add_argument("--sme-share-percent", type=int, default=25)
+    parser.add_argument("--fallback-chunk-groups", type=int, default=8)
     parser.add_argument("--prompt", default=DEFAULT_PROMPT)
     parser.add_argument("--n-predict", type=int, default=96)
     parser.add_argument("--allow-dirty-host", action="store_true")
@@ -104,19 +108,32 @@ def validate_inputs(args: argparse.Namespace) -> None:
         raise SystemExit(f"llama-completion is not executable: {args.llama_completion}")
     if min(args.threads, args.n_gen, args.repetitions, args.pairs) <= 0:
         raise SystemExit("threads, n-gen, repetitions, and pairs must be positive")
+    if not 0 <= args.sme_share_percent <= 50:
+        raise SystemExit("--sme-share-percent must be between 0 and 50")
+    if not 1 <= args.fallback_chunk_groups <= 32:
+        raise SystemExit("--fallback-chunk-groups must be between 1 and 32")
     if args.include_serial_control and args.candidate_correction == "serial":
         raise SystemExit(
             "--include-serial-control requires --candidate-correction=parallel"
         )
 
 
-def mode_env(mode: str, candidate_correction: str = "parallel") -> dict[str, str]:
+def mode_env(
+    mode: str,
+    candidate_correction: str = "parallel",
+    sme_share_percent: int = 25,
+    fallback_chunk_groups: int = 8,
+) -> dict[str, str]:
     env = os.environ.copy()
     for name in CUSTOM_ENV:
         env.pop(name, None)
     if mode in {"candidate", "serial"}:
-        # Shared candidate policy: down-only, one Q8 pack, and 25% SME rows.
+        # Shared candidate policy: down-only and one Q8 pack.
         env["GGML_M4_Q4K_SME2"] = "1"
+        env["GGML_M4_Q4K_SME2_SHARE_PERCENT"] = str(sme_share_percent)
+        env["GGML_M4_Q4K_SME2_FALLBACK_CHUNK_GROUPS"] = str(
+            fallback_chunk_groups
+        )
     if mode == "candidate":
         env["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"] = (
             "1" if candidate_correction == "parallel" else "0"
@@ -161,7 +178,12 @@ def run_bench(
     ):
         subprocess.run(
             command,
-            env=mode_env(mode, args.candidate_correction),
+            env=mode_env(
+                mode,
+                args.candidate_correction,
+                args.sme_share_percent,
+                args.fallback_chunk_groups,
+            ),
             stdout=stdout,
             stderr=stderr,
             check=True,
@@ -214,7 +236,12 @@ def run_completion(args: argparse.Namespace, mode: str, output_dir: Path) -> dic
     with output_path.open("wb") as stdout, stderr_path.open("wb") as stderr:
         subprocess.run(
             command,
-            env=mode_env(mode, args.candidate_correction),
+            env=mode_env(
+                mode,
+                args.candidate_correction,
+                args.sme_share_percent,
+                args.fallback_chunk_groups,
+            ),
             stdout=stdout,
             stderr=stderr,
             check=True,
@@ -358,9 +385,11 @@ def main() -> int:
             "enabled": True,
             "tensor_roles": "down",
             "shared_q8": True,
-            "sme_share_percent": 25,
+            "sme_share_percent": args.sme_share_percent,
             "correction_schedule": args.candidate_correction,
             "parallel_correction": args.candidate_correction == "parallel",
+            "dynamic_fallback": args.candidate_correction == "serial",
+            "fallback_chunk_groups": args.fallback_chunk_groups,
         },
         "benchmark": {
             "threads": args.threads,
