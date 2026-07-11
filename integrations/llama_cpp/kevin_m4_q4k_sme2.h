@@ -387,35 +387,102 @@ static float kevin_m4_q4k_sme2_correction_value(
     return total;
 }
 
+static void kevin_m4_q4k_sme2_correction_rows(
+        const float * coefficients, const float * sums, size_t row_begin,
+        size_t row_end, size_t groups, float * values, bool accumulate) {
+    size_t row = row_begin;
+    for (; row + 4 <= row_end; row += 4) {
+        const float * coeff0 = coefficients + row * groups;
+        const float * coeff1 = coeff0 + groups;
+        const float * coeff2 = coeff1 + groups;
+        const float * coeff3 = coeff2 + groups;
+        float32x4_t total0 = vdupq_n_f32(0.0f);
+        float32x4_t total1 = vdupq_n_f32(0.0f);
+        float32x4_t total2 = vdupq_n_f32(0.0f);
+        float32x4_t total3 = vdupq_n_f32(0.0f);
+        size_t group = 0;
+        for (; group + 4 <= groups; group += 4) {
+            const float32x4_t sum4 = vld1q_f32(sums + group);
+            total0 = vfmaq_f32(total0, vld1q_f32(coeff0 + group), sum4);
+            total1 = vfmaq_f32(total1, vld1q_f32(coeff1 + group), sum4);
+            total2 = vfmaq_f32(total2, vld1q_f32(coeff2 + group), sum4);
+            total3 = vfmaq_f32(total3, vld1q_f32(coeff3 + group), sum4);
+        }
+        float corrected[4] = {
+            vaddvq_f32(total0),
+            vaddvq_f32(total1),
+            vaddvq_f32(total2),
+            vaddvq_f32(total3),
+        };
+        for (; group < groups; ++group) {
+            corrected[0] += coeff0[group] * sums[group];
+            corrected[1] += coeff1[group] * sums[group];
+            corrected[2] += coeff2[group] * sums[group];
+            corrected[3] += coeff3[group] * sums[group];
+        }
+        for (size_t lane = 0; lane < 4; ++lane) {
+            if (accumulate) {
+                values[row + lane] += corrected[lane];
+            } else {
+                values[row + lane] = corrected[lane];
+            }
+        }
+    }
+    for (; row < row_end; ++row) {
+        const float corrected = kevin_m4_q4k_sme2_correction_value(
+            coefficients, sums, row, groups);
+        if (accumulate) {
+            values[row] += corrected;
+        } else {
+            values[row] = corrected;
+        }
+    }
+}
+
 static void kevin_m4_q4k_sme2_quantize_q8k(
         const float * input, size_t k, block_q8_K * output) {
     for (size_t block = 0; block < k / QK_K; ++block) {
         const float * source = input + block * QK_K;
         block_q8_K & target = output[block];
-        float max_value = 0.0f;
-        float max_abs = 0.0f;
-        for (int i = 0; i < QK_K; ++i) {
-            const float magnitude = std::fabs(source[i]);
-            if (magnitude > max_abs) {
-                max_abs = magnitude;
-                max_value = source[i];
-            }
+        float32x4_t max4 = vdupq_n_f32(0.0f);
+        for (int i = 0; i < QK_K; i += 16) {
+            max4 = vmaxq_f32(max4, vabsq_f32(vld1q_f32(source + i)));
+            max4 = vmaxq_f32(max4, vabsq_f32(vld1q_f32(source + i + 4)));
+            max4 = vmaxq_f32(max4, vabsq_f32(vld1q_f32(source + i + 8)));
+            max4 = vmaxq_f32(max4, vabsq_f32(vld1q_f32(source + i + 12)));
         }
+        const float max_abs = vmaxvq_f32(max4);
         if (max_abs == 0.0f) {
             memset(&target, 0, sizeof(target));
             continue;
         }
-        const float inverse_scale = -127.0f / max_value;
+
+        // Preserve the reference Q8_K sign rule: the first value with the
+        // maximum magnitude determines the direction of the scale.
+        float max_value = 0.0f;
         for (int i = 0; i < QK_K; ++i) {
-            const int value = static_cast<int>(std::nearbyint(source[i] * inverse_scale));
-            target.qs[i] = static_cast<int8_t>(std::min(127, value));
-        }
-        for (int group = 0; group < QK_K / 16; ++group) {
-            int sum = 0;
-            for (int i = 0; i < 16; ++i) {
-                sum += target.qs[group * 16 + i];
+            if (std::fabs(source[i]) == max_abs) {
+                max_value = source[i];
+                break;
             }
-            target.bsums[group] = static_cast<int16_t>(sum);
+        }
+        const float inverse_scale = -127.0f / max_value;
+        const float32x4_t inverse4 = vdupq_n_f32(inverse_scale);
+        const int32x4_t maximum4 = vdupq_n_s32(127);
+        for (int i = 0; i < QK_K; i += 16) {
+            const int32x4_t q0 = vminq_s32(
+                maximum4, vcvtnq_s32_f32(vmulq_f32(vld1q_f32(source + i), inverse4)));
+            const int32x4_t q1 = vminq_s32(
+                maximum4, vcvtnq_s32_f32(vmulq_f32(vld1q_f32(source + i + 4), inverse4)));
+            const int32x4_t q2 = vminq_s32(
+                maximum4, vcvtnq_s32_f32(vmulq_f32(vld1q_f32(source + i + 8), inverse4)));
+            const int32x4_t q3 = vminq_s32(
+                maximum4, vcvtnq_s32_f32(vmulq_f32(vld1q_f32(source + i + 12), inverse4)));
+            const int16x8_t q01 = vcombine_s16(vqmovn_s32(q0), vqmovn_s32(q1));
+            const int16x8_t q23 = vcombine_s16(vqmovn_s32(q2), vqmovn_s32(q3));
+            const int8x16_t quantized = vcombine_s8(vqmovn_s16(q01), vqmovn_s16(q23));
+            vst1q_s8(target.qs + i, quantized);
+            target.bsums[i / 16] = vaddlvq_s8(quantized);
         }
         target.d = 1.0f / inverse_scale;
     }
@@ -491,10 +558,8 @@ static bool kevin_m4_q4k_sme2_compute(
         if (!parallel_correction) {
             const float * coefficients = reinterpret_cast<const float *>(
                 base + header->correction_offset);
-            for (size_t row = 0; row < sme_rows; ++row) {
-                output[row] += kevin_m4_q4k_sme2_correction_value(
-                    coefficients, sums, row, groups);
-            }
+            kevin_m4_q4k_sme2_correction_rows(
+                coefficients, sums, 0, sme_rows, groups, output, true);
         }
         kevin_m4_q4k_sme2_trace_once();
     } else if (ith < nth && sme_rows < n) {
@@ -508,10 +573,9 @@ static bool kevin_m4_q4k_sme2_compute(
             sme_rows, correction_begin + correction_rows_per_thread);
         const float * coefficients = reinterpret_cast<const float *>(
             base + header->correction_offset);
-        for (size_t row = correction_begin; row < correction_end; ++row) {
-            correction_values[row] = kevin_m4_q4k_sme2_correction_value(
-                coefficients, sums, row, groups);
-        }
+        kevin_m4_q4k_sme2_correction_rows(
+            coefficients, sums, correction_begin, correction_end, groups,
+            correction_values, false);
         const size_t fallback_groups = (n - sme_rows) / 8;
         const size_t groups_per_thread =
             (fallback_groups + fallback_threads - 1) / fallback_threads;

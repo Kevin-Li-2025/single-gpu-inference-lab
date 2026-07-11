@@ -119,6 +119,9 @@ class M4Q4KRealModelTest(unittest.TestCase):
         self.assertIn("correction_values_offset", integration)
         self.assertIn("parallel_correction", integration)
         self.assertIn("ggml_barrier(params->threadpool)", integration)
+        self.assertIn("vcvtnq_s32_f32", integration)
+        self.assertIn("vaddlvq_s8(quantized)", integration)
+        self.assertIn("kevin_m4_q4k_sme2_correction_rows", integration)
         self.assertIn("--uninstall", installer)
         self.assertIn("KEVIN_M4_Q4K_SME2_COMPUTE_BEGIN", installer)
 
