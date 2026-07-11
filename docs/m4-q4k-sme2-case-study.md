@@ -118,23 +118,29 @@ A second scheduling follow-up removes the serial correction tail from the SME
 worker. The three fallback workers compute disjoint correction rows while the
 SME2 kernel runs, write them to thread-pool scratch, and synchronize before all
 four workers add disjoint output ranges. Setting
-`GGML_M4_Q4K_SME2_PARALLEL_CORRECTION=0` restores the serial path for
-same-binary A/B. The accumulation order within each row is unchanged.
+`GGML_M4_Q4K_SME2_PARALLEL_CORRECTION=1` enables this candidate; unset or `0`
+uses the serial path. The accumulation order within each row is unchanged.
 
 The fixed greedy prompt remains byte-identical with SHA-256
 `8ff2391976022289e0b35ded5071463b329a85a615884fdac0febe44a1151c59`.
 An FP16 correction experiment was rejected because it changed the generated
 tokens; the integrated path therefore retains FP32 correction coefficients.
 
-The parallel-correction schedule produced a positive same-path diagnostic, but
-the Mac was on battery power with uncontrolled background load. It is a
-candidate, not a replacement for the formal negative result above.
+The final AC-qualified run uses `--include-serial-control` to rotate native
+llama x8, serial correction, and parallel correction through three orderings.
+Six pairs with five `tg128` repetitions per mode produce these pooled medians:
 
-For the final qualified run, `scripts/run_m4_q4k_sme2_ab.py` supports
-`--include-serial-control`. This rotates native llama x8, serial correction,
-and parallel correction through three orderings per pair. The resulting JSON
-separates candidate-versus-llama speedup from parallel-versus-serial speedup
-while applying one byte-identical greedy-output gate to all three modes.
+| Mode | Pooled median | Comparison |
+| --- | ---: | ---: |
+| Native llama x8 | 33.6642 tok/s | baseline |
+| Serial correction | 32.6358 tok/s | 0.9694x vs llama |
+| Parallel correction | 32.6287 tok/s | 0.9692x vs llama, 0.9998x vs serial |
+
+All three fixed greedy outputs have the same SHA-256. Both performance gates
+fail: parallel-versus-llama has `0.9480x` minimum pair speedup, and
+parallel-versus-serial has `0.9691x`. The earlier positive battery diagnostic
+does not survive the qualified protocol, so parallel correction is opt-in and
+the full SME2 integration remains disabled.
 
 A battery/low-power diagnostic produced pooled medians of 14.7819 tok/s for
 baseline and 14.7616 tok/s for the follow-up. This is not a publishable
@@ -142,5 +148,5 @@ performance result: the host was in low-power mode and had high background
 load, and one pair was severely contaminated. The checked-in
 `scripts/run_m4_q4k_sme2_ab.py` runner refuses to produce a formal result
 unless the Mac is on AC power, low-power mode is disabled, and one-minute load
-is below its configured threshold. Until that qualified A/B passes, the
-original negative full-decode decision remains authoritative.
+is below its configured threshold. `qualified-triangle.json` is the current
+authoritative full-decode result.

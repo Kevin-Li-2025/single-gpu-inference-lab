@@ -155,7 +155,7 @@ class M4Q4KRealModelTest(unittest.TestCase):
         self.assertEqual(serial["GGML_M4_Q4K_SME2"], "1")
         self.assertEqual(serial["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"], "0")
         self.assertEqual(candidate["GGML_M4_Q4K_SME2"], "1")
-        self.assertNotIn("GGML_M4_Q4K_SME2_PARALLEL_CORRECTION", candidate)
+        self.assertEqual(candidate["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"], "1")
 
     def test_affine_sme2_artifact_keeps_negative_e2e_decision(self):
         artifact = json.loads(
@@ -168,6 +168,23 @@ class M4Q4KRealModelTest(unittest.TestCase):
         self.assertFalse(artifact["decode_tg128"]["gate_pass"])
         self.assertTrue(artifact["real_prompt"]["outputs_byte_identical"])
         self.assertFalse(artifact["implementation"]["default_enabled"])
+        self.assertFalse(
+            artifact["follow_up_candidate"][
+                "parallel_affine_correction_default_enabled"
+            ]
+        )
+        self.assertFalse(artifact["follow_up_candidate"]["qualified_gate_pass"])
+
+        triangle = json.loads(
+            Path(
+                "benchmarks/results/cpu-m4-q4k-sme2/"
+                "qwen25-coder-3b-affine-v1/qualified-triangle.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertTrue(triangle["hardware"]["host_qualified"])
+        self.assertFalse(triangle["candidate_vs_llama"]["gate_pass"])
+        self.assertFalse(triangle["parallel_vs_serial"]["gate_pass"])
+        self.assertTrue(triangle["correctness"]["outputs_byte_identical"])
 
 
 if __name__ == "__main__":

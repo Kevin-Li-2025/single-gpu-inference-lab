@@ -115,8 +115,8 @@
       "has_summary_json": true,
       "path": "benchmarks/results/cpu-m4-q4k-sme2",
       "reference": "cpu-m4-q4k-sme2/",
-      "status": "Apple M4 negative full-decode gate",
-      "summary": "Preserves real Q4_K values through an affine SME2 transform and wins 1.132x-1.158x over custom raw NEON on two full Qwen 3B FFN tensors, but loses 0.857x to llama x8 in repeated `tg128`; the opt-in integration stays disabled."
+      "status": "Apple M4 qualified negative full-decode gate",
+      "summary": "Preserves real Q4_K values through an affine SME2 transform and wins 1.132x-1.158x over custom raw NEON on two full Qwen 3B FFN tensors. An AC-qualified six-pair triangle improves the old system result but still reaches 0.9692x versus llama x8; parallel correction is 0.9998x versus serial. Both stay disabled by default."
     },
     {
       "category": "path_proof",

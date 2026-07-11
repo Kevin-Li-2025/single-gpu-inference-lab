@@ -11,6 +11,8 @@ This artifact uses the official Qwen2.5-Coder-3B-Instruct Q4_K_M GGUF on a
 | FFN down `2048 x 11008`, cold median | 484.31 us custom raw NEON | 418.19 us SME2 + correction | 1.158x |
 | Full decode `tg128`, median | 33.98 tok/s llama x8 | 29.13 tok/s hybrid | 0.857x |
 | Real prompt decode | 33.26 tok/s | 28.69 tok/s | 0.863x |
+| Qualified `tg128`, 6x5 triangle | 33.6642 tok/s llama x8 | 32.6287 tok/s parallel | 0.9692x |
+| Qualified correction control | 32.6358 tok/s serial | 32.6287 tok/s parallel | 0.9998x |
 
 The two real-tensor kernel gates pass. The full-decode gate fails. The opt-in
 integration therefore remains disabled by default.
@@ -34,15 +36,15 @@ candidate p95/p99 ITL is 40.36/40.58 ms versus 30.16/30.30 ms for baseline.
 See `docs/m4-q4k-sme2-case-study.md` for the implementation and failure
 analysis. Raw benchmark rows are kept beside this file.
 
-## Follow-up status
+## Qualified Follow-up
 
-The integration now defaults to `ffn_down` only, shares one Q8_K activation
-pack across fallback workers, assigns 25% of rows to SME2, and overlaps affine
-correction with the x8 fallback work. The serial correction path remains
-available through `GGML_M4_Q4K_SME2_PARALLEL_CORRECTION=0` for same-binary A/B.
-The original negative result above remains the formal evidence. A new AC-power
-interleaved A/B must pass `scripts/run_m4_q4k_sme2_ab.py` before this artifact
-can be superseded; battery diagnostics are intentionally not committed as
-performance evidence. The final campaign should use `--include-serial-control`
-to report native llama, serial correction, and parallel correction in one
-rotated three-way experiment.
+The AC-qualified follow-up uses `ffn_down` only, one shared Q8_K activation
+pack, 25% SME2 rows, and a rotated native/serial/parallel triangle. It runs six
+pairs, five `tg128` repetitions per mode and pair, with each ordering repeated
+twice. All three greedy outputs are byte-identical.
+
+Both performance gates fail. Parallel reaches `0.9692x` versus native llama
+and `0.9998x` versus serial correction; minimum pair speedups are `0.9480x`
+and `0.9691x`. The full SME2 route stays disabled, and parallel correction is
+now opt-in through `GGML_M4_Q4K_SME2_PARALLEL_CORRECTION=1`. See
+`qualified-triangle.json` for the compact formal evidence.

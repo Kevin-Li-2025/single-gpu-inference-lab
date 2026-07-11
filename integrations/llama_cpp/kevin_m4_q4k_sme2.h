@@ -95,7 +95,7 @@ static bool kevin_m4_q4k_sme2_shared_q8_enabled(void) {
 
 static bool kevin_m4_q4k_sme2_parallel_correction_enabled(void) {
     const char * value = getenv("GGML_M4_Q4K_SME2_PARALLEL_CORRECTION");
-    return value == nullptr || (value[0] == '1' && value[1] == '\0');
+    return value != nullptr && value[0] == '1' && value[1] == '\0';
 }
 
 static void kevin_m4_q4k_sme2_trace_once(void) {

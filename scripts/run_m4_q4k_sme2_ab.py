@@ -105,8 +105,10 @@ def mode_env(mode: str) -> dict[str, str]:
     for name in CUSTOM_ENV:
         env.pop(name, None)
     if mode in {"candidate", "serial"}:
-        # Defaults: down-only, one shared Q8 pack, 25% SME rows, parallel correction.
+        # Shared candidate policy: down-only, one Q8 pack, and 25% SME rows.
         env["GGML_M4_Q4K_SME2"] = "1"
+    if mode == "candidate":
+        env["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"] = "1"
     if mode == "serial":
         env["GGML_M4_Q4K_SME2_PARALLEL_CORRECTION"] = "0"
     return env

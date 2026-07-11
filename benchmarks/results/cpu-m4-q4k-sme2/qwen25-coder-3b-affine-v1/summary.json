@@ -31,8 +31,14 @@
     "sme_share_percent": 25,
     "shared_q8_activation": true,
     "parallel_affine_correction": true,
+    "parallel_affine_correction_default_enabled": false,
     "serial_fallback_env": "GGML_M4_Q4K_SME2_PARALLEL_CORRECTION=0",
-    "formal_power_qualified_gate_pending": true
+    "parallel_candidate_env": "GGML_M4_Q4K_SME2_PARALLEL_CORRECTION=1",
+    "formal_power_qualified_gate_pending": false,
+    "qualified_triangle_artifact": "qualified-triangle.json",
+    "qualified_candidate_vs_llama_speedup": 0.9692403205779434,
+    "qualified_parallel_vs_serial_speedup": 0.9997824474963077,
+    "qualified_gate_pass": false
   },
   "real_tensor_gates": [
     {
@@ -82,5 +88,5 @@
     "cpu_repack_mib": 745.46,
     "total_model_buffers_mib": 6010.97
   },
-  "decision": "Keep the integrated SME2 path opt-in and disabled by default. Preserve the real-tensor kernel result, but do not claim an end-to-end inference speedup."
+  "decision": "Keep the integrated SME2 path opt-in and disabled by default. Keep parallel correction opt-in as well: the AC-qualified triangle failed both candidate-versus-llama and parallel-versus-serial gates."
 }

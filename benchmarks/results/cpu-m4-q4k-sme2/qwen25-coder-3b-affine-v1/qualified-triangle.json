@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "status": "fail",
+  "run_commit": "1de995c247199a76338ff7eb55fe774d7c8ca7d9",
+  "hardware": {
+    "cpu": "Apple M4",
+    "threads": 4,
+    "performance_core_mask": "0x3c0",
+    "power_source": "AC Power",
+    "low_power_mode": 0,
+    "load_per_logical_cpu": 0.246923828125,
+    "host_qualified": true
+  },
+  "model": {
+    "name": "Qwen2.5-Coder-3B-Instruct",
+    "format": "GGUF Q4_K_M",
+    "sha256": "724fb256bec1ff062b2f65e4569e871ad2e95ab2a3989723d1769c54294730b7",
+    "real_model": true,
+    "mock_weights": false
+  },
+  "protocol": {
+    "pairs": 6,
+    "repetitions_per_mode_per_pair": 5,
+    "generation_tokens": 128,
+    "orderings": [
+      ["baseline", "serial", "candidate"],
+      ["candidate", "baseline", "serial"],
+      ["serial", "candidate", "baseline"]
+    ],
+    "each_ordering_repeated": 2,
+    "minimum_pooled_speedup": 1.0,
+    "minimum_pair_speedup": 0.98
+  },
+  "candidate_vs_llama": {
+    "baseline_pooled_median_tps": 33.6642,
+    "candidate_pooled_median_tps": 32.6287,
+    "speedup": 0.9692403205779434,
+    "median_pair_speedup": 0.9760395192439711,
+    "minimum_pair_speedup": 0.9479892793258573,
+    "gate_pass": false,
+    "pair_speedups": [
+      1.0452793464202939,
+      0.9858381139065227,
+      0.9662409245814196,
+      0.9488249291045994,
+      0.9479892793258573,
+      0.9863840198093704
+    ]
+  },
+  "parallel_vs_serial": {
+    "serial_pooled_median_tps": 32.6358,
+    "parallel_pooled_median_tps": 32.6287,
+    "speedup": 0.9997824474963077,
+    "median_pair_speedup": 0.9907956313105257,
+    "minimum_pair_speedup": 0.9691492657914081,
+    "gate_pass": false,
+    "pair_speedups": [
+      1.0269219640453398,
+      0.9991130254640668,
+      0.9824782371569848,
+      0.9818621708972934,
+      0.9691492657914081,
+      1.0261639910023728
+    ]
+  },
+  "correctness": {
+    "outputs_byte_identical": true,
+    "modes": ["baseline", "serial", "candidate"],
+    "greedy_output_sha256": "8ff2391976022289e0b35ded5071463b329a85a615884fdac0febe44a1151c59"
+  },
+  "decision": "Keep the full SME2 integration disabled. Parallel correction is also opt-in because it did not beat serial correction under the qualified triangle protocol."
+}
