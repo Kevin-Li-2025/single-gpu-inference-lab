@@ -694,8 +694,8 @@ if triton is not None:  # pragma: no cover - requires CUDA
             token_values = tl.where(is_max, tokens, VOCAB)
             token = tl.min(token_values, axis=0)
             weight = tl.exp(max_value - max_for_softmax)
+            keep = cumulative_exp / total_exp < TOP_P
             cumulative_exp += weight
-            keep = cumulative_exp / total_exp <= TOP_P
             if rank == 0:
                 keep = True
             if TOP_P >= 1.0:
@@ -727,8 +727,8 @@ if triton is not None:  # pragma: no cover - requires CUDA
             if rank == 0:
                 first_token = token
             weight = tl.exp(max_value - max_for_softmax)
+            keep = cumulative_exp / total_exp < TOP_P
             cumulative_exp += weight
-            keep = cumulative_exp / total_exp <= TOP_P
             if rank == 0:
                 keep = True
             if TOP_P >= 1.0:
@@ -802,8 +802,8 @@ if triton is not None:  # pragma: no cover - requires CUDA
             token_values = tl.where(is_max, tokens, VOCAB)
             token = tl.min(token_values, axis=0)
             weight = tl.exp(max_value - max_for_softmax)
+            keep = cumulative_exp / total_exp < TOP_P
             cumulative_exp += weight
-            keep = cumulative_exp / total_exp <= TOP_P
             if rank == 0:
                 keep = True
             if TOP_P >= 1.0:
@@ -840,8 +840,8 @@ if triton is not None:  # pragma: no cover - requires CUDA
             if rank == 0:
                 first_token = token
             weight = tl.exp(max_value - max_for_softmax)
+            keep = cumulative_exp / total_exp < TOP_P
             cumulative_exp += weight
-            keep = cumulative_exp / total_exp <= TOP_P
             if rank == 0:
                 keep = True
             if TOP_P >= 1.0:
@@ -1787,7 +1787,10 @@ def topk_topp_sample_from_uniform_reference(
     values, indices = torch.topk(logits.float() / temperature, k=top_k, dim=-1)
     probs = torch.softmax(values, dim=-1)
     cumulative = torch.cumsum(probs, dim=-1)
-    keep = cumulative <= top_p
+    # Nucleus sampling keeps the first token that crosses ``top_p``. Equivalently,
+    # a token is retained when the probability mass before it is still below the
+    # threshold.
+    keep = (cumulative - probs) < top_p
     keep[:, 0] = True
     filtered = torch.where(keep, probs, torch.zeros_like(probs))
     target = uniforms.float().to(logits.device) * filtered.sum(dim=-1)

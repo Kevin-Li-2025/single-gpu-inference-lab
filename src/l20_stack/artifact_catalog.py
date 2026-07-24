@@ -23,6 +23,7 @@ class ArtifactCatalogEntry:
     has_readme: bool
     has_summary_json: bool
     has_campaign_summary_json: bool
+    has_evidence_status_json: bool
     compact_file_count: int
 
     def to_dict(self) -> dict[str, object]:
@@ -105,6 +106,7 @@ def _build_entry(
         has_readme="README.md" in names,
         has_summary_json="summary.json" in names,
         has_campaign_summary_json="campaign-summary.json" in names,
+        has_evidence_status_json="evidence-status.json" in names,
         compact_file_count=len(compact_files),
     )
 
@@ -124,13 +126,23 @@ def _compact_files(path: Path) -> tuple[Path, ...]:
         for file in path.rglob("*")
         if file.is_file()
         and file.name
-        in {"README.md", "summary.json", "campaign-summary.json", "run-config.json"}
+        in {
+            "README.md",
+            "summary.json",
+            "campaign-summary.json",
+            "evidence-status.json",
+            "run-config.json",
+        }
     )
 
 
 def _category(status: str, summary: str) -> str:
     status_text = status.lower()
     summary_text = summary.lower()
+    if "superseded" in status_text or "superseded" in summary_text:
+        return "superseded"
+    if "source-map" in status_text or "source map" in status_text:
+        return "path_proof"
     if "negative" in status_text:
         return "negative"
     if "active" in status_text or "current p0" in status_text:

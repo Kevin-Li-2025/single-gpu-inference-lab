@@ -1,15 +1,19 @@
 # qwen3-0p6b-c2c4c8-o32o64-r64-v1
 
+> **Superseded performance comparison:** all recorded deltas are
+> historical; only the trace/path structure remains current evidence.
+
 This artifact summarizes a native-vs-standalone-vs-fused repetition-penalty
 serving matrix on the L20 vLLM path.
 
-## Summary
+## Recorded summary
 
 - Rows: `4`
-- Comparable rows: `4`
-- Fused median ITL positives: `4`
-- Standalone median ITL positives: `1`
-- Fused median E2E positives: `4`
+- Workload-signature matches: `4`
+- Performance comparable: `False`
+- Historical fused median ITL positives: `4`
+- Historical standalone median ITL positives: `1`
+- Historical fused median E2E positives: `4`
 
 ## Rows
 
@@ -24,5 +28,5 @@ serving matrix on the L20 vLLM path.
 
 - This is a serving matrix, but each row is still scoped to its model and traffic shape.
 - Latency rows are no-trace runs; trace sub-runs are path proof only.
-- Positive rows are evidence for this fused sampler boundary, not a general vLLM claim.
+- Positive and negative rows are not current evidence until native-equivalent semantic parity is independently verified.
 - Standalone logits-processor rows remain useful as the architecture-control baseline.

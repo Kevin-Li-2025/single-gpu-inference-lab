@@ -1,7 +1,9 @@
 import ast
 from pathlib import Path
 
-import torch
+import pytest
+
+torch = pytest.importorskip("torch")
 
 from l20_stack.ops.triton_tree_attention import (
     l20_tree_attention_block_t,

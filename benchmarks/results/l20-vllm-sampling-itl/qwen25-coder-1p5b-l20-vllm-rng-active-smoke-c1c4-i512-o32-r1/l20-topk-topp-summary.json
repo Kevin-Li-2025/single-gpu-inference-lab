@@ -1,4 +1,5 @@
 {
+  "evidence_status": "path_proof_only",
   "eligible_events": 773,
   "eligible_fraction": 0.9974193548387097,
   "fallback_events": 2,

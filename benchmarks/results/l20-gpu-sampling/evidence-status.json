@@ -1,0 +1,10 @@
+{
+  "evidence_status": "superseded_semantics",
+  "performance_comparable": false,
+  "reason": "The directory contains pre-audit custom top-p measurements whose threshold semantics were not native-equivalent.",
+  "revalidation_required": "Rerun correctness and performance after the 2026-07 sampling audit gate passes.",
+  "schema_version": 1,
+  "scope": [
+    "topk-topp-v2*.json"
+  ]
+}

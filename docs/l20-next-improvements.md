@@ -138,12 +138,12 @@ L20 is CUDA OOM during vLLM warmup/cudagraph capture while another GPU service i
 resident. The wrapper now writes `sampling-path.json` for this server-start
 failure too, so failed runs remain auditable.
 
-Current ceiling update: the serving NSYS family summaries and LM-head boundary
-probe now reject standalone sampler and standalone LM-head replacement work.
-Standalone sampling/logits-processor kernels peak at 3.42% of GPU time, and the
-best standalone LM-head candidate is still 1.022x of full logits. The next
-sampling-related implementation should be an upstream GEMM/GEMV epilogue or
-logits boundary that preserves the optimized LM-head path. See
+Current ceiling update: the serving NSYS family summaries show that standalone
+sampling/logits-processor kernels peak at 3.42% of recorded GPU time, and the
+best standalone LM-head candidate is still 1.022x of full logits. Those
+profiles motivate an upstream GEMM/GEMV epilogue or logits boundary that
+preserves the optimized LM-head path; they do not rely on the withdrawn custom
+sampler latency comparison. See
 `benchmarks/results/l20-serving-optimization-ceiling/`.
 
 The upstream scout maps that target onto concrete vLLM files. The current local
@@ -175,15 +175,14 @@ two-stage top-k/top-p sampler against PyTorch, CPU round-trip, and FlashInfer.
 It uses caller-provided GPU uniforms so correctness can be exact before wiring
 the path to vLLM's RNG/Philox state.
 
-That gate has now run through real serving. The vLLM hook in
+That path has now run through real serving. The vLLM hook in
 `integrations/vllm/install_l20_topk_topp_sampler.py` reaches the custom path
-for 4251/4253 trace events, but the no-trace performance run regresses median
-ITL by 32.36% at concurrency 1 and 32.06% at concurrency 4 versus clean
-FlashInfer. This rejects the standalone sampler hook as a serving optimization.
-The useful next step is not more standalone top-k tuning; it is either a
-compiled vLLM sampler integration with seed/offset state and CUDA graph capture,
-or a logits/LM-head epilogue that avoids materializing full logits before
-top-k/top-p/multinomial. Artifacts live under
+for 4251/4253 trace events. Its recorded 32.36%/32.06% median-ITL deltas are
+superseded because the candidate used the pre-audit nucleus mask; they cannot
+accept or reject the corrected hook. The path proof and kernel-count profile
+still motivate either a compiled vLLM sampler integration with seed/offset
+state and CUDA graph capture, or a logits/LM-head epilogue that avoids
+materializing full logits before top-k/top-p/multinomial. Artifacts live under
 `benchmarks/results/l20-vllm-sampling-itl/`.
 
 The positive serving result is the production FlashInfer route, not the custom

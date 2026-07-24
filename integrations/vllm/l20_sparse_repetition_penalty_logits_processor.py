@@ -8,6 +8,7 @@ vLLM custom logits-processor extra args before logits are modified.
 from __future__ import annotations
 
 import json
+import math
 import os
 import time
 from dataclasses import dataclass
@@ -88,6 +89,20 @@ def should_use_sparse_repetition_penalty(
         and dense_elements >= GATE_MIN_DENSE_ELEMENTS
         and int(unique_tokens) <= GATE_MAX_UNIQUE_TOKENS
     )
+
+
+def _validated_penalty(value: Any, *, name: str = "repetition_penalty") -> float:
+    penalty = float(value)
+    if not math.isfinite(penalty) or penalty <= 0.0:
+        raise ValueError(f"{name} must be finite and positive")
+    return penalty
+
+
+def _uniform_penalty(penalties: list[float]) -> float | None:
+    if not penalties:
+        return None
+    first = penalties[0]
+    return first if all(value == first for value in penalties[1:]) else None
 
 
 def select_sparse_repetition_penalty_provider(
@@ -232,7 +247,12 @@ def apply_sparse_repetition_penalty(
     lengths: Any,
     repetition_penalty: float,
 ) -> Any:
-    """Apply deduplicated repetition penalty in-place and return ``logits``."""
+    """Apply repetition penalty in-place and return ``logits``.
+
+    Each active prefix ``token_ids[row, : lengths[row]]`` must contain unique
+    token IDs. ``L20SparseRepetitionPenaltyLogitsProcessor`` constructs that
+    representation; direct callers are responsible for the same invariant.
+    """
 
     if torch is None:
         raise RuntimeError("torch is required to apply repetition penalty")
@@ -244,8 +264,12 @@ def apply_sparse_repetition_penalty(
         raise ValueError("lengths must be [batch]")
     if token_ids.shape[0] != logits.shape[0] or lengths.shape[0] != logits.shape[0]:
         raise ValueError("history batch must match logits batch")
+    penalty = _validated_penalty(repetition_penalty)
 
-    max_unique = int(lengths.max().item()) if lengths.numel() else 0
+    # The padded history width is a conservative upper bound for every row.
+    # Using it keeps provider selection free of a device-to-host synchronization
+    # in the per-token serving path.
+    max_unique = int(token_ids.shape[1])
     compatible_tensors = (
         bool(getattr(logits, "is_cuda", False))
         and bool(getattr(token_ids, "is_cuda", False))
@@ -278,9 +302,9 @@ def apply_sparse_repetition_penalty(
             logits,
             token_ids,
             lengths,
-            float(repetition_penalty),
+            penalty,
         )
-    return _apply_torch_fallback(logits, token_ids, lengths, repetition_penalty)
+    return _apply_torch_fallback(logits, token_ids, lengths, penalty)
 
 
 def _as_extra_args(params: Any) -> dict[str, Any]:
@@ -319,9 +343,10 @@ class L20SparseRepetitionPenaltyProcessor(LogitsProcessor):
         extra = _as_extra_args(params)
         if not _extra_bool(extra, "l20_sparse_repetition_penalty", False):
             return
-        penalty = float(extra.get("l20_repetition_penalty", 1.0))
-        if penalty <= 0.0:
-            raise ValueError("l20_repetition_penalty must be positive")
+        penalty = _validated_penalty(
+            extra.get("l20_repetition_penalty", 1.0),
+            name="l20_repetition_penalty",
+        )
         if penalty == 1.0:
             raise ValueError("l20_repetition_penalty must differ from 1.0")
 
@@ -348,7 +373,10 @@ class L20SparseRepetitionPenaltyProcessor(LogitsProcessor):
             extra = _as_extra_args(params)
             if not _extra_bool(extra, "l20_sparse_repetition_penalty", False):
                 continue
-            penalty = float(extra.get("l20_repetition_penalty", 1.0))
+            penalty = _validated_penalty(
+                extra.get("l20_repetition_penalty", 1.0),
+                name="l20_repetition_penalty",
+            )
             if penalty == 1.0:
                 continue
             self.states[int(index)] = _RequestState(
@@ -424,15 +452,15 @@ class L20SparseRepetitionPenaltyProcessor(LogitsProcessor):
                 device=logits.device,
                 dtype=torch.long,
             )
-        unique_penalties = {round(value, 8) for value in penalties}
-        uniform_penalty = penalties[0] if len(unique_penalties) == 1 else None
+        uniform_penalty = _uniform_penalty(penalties)
         return token_ids, lengths, uniform_penalty
 
     def apply(self, logits: Any) -> Any:
         if not self.states:
             return logits
         token_ids, lengths, uniform_penalty = self._build_history_tensors(logits)
-        if int(lengths.max().item()) == 0:
+        max_unique_tokens = int(token_ids.shape[1])
+        if max_unique_tokens == 0:
             return logits
         if uniform_penalty is None:
             _trace(
@@ -442,7 +470,7 @@ class L20SparseRepetitionPenaltyProcessor(LogitsProcessor):
                     "reason": "mixed_repetition_penalties",
                     "batch": int(logits.shape[0]),
                     "vocab": int(logits.shape[1]),
-                    "max_unique_tokens": int(lengths.max().item()),
+                    "max_unique_tokens": max_unique_tokens,
                 }
             )
             for state in self.states.values():

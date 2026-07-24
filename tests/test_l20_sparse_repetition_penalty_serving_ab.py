@@ -45,6 +45,7 @@ class L20SparseRepetitionPenaltyServingAbTest(unittest.TestCase):
         self.assertIn('"logits_processors"', source)
         self.assertIn('"vllm_xargs"', source)
         self.assertIn('"l20_sparse_repetition_penalty": True', source)
+        self.assertIn('"l20_penalty_include_prompt": True', source)
         self.assertIn("median_ttft_ms", source)
         self.assertIn("median_itl_ms", source)
         self.assertIn("output_throughput", source)
@@ -66,7 +67,7 @@ class L20SparseRepetitionPenaltyServingAbTest(unittest.TestCase):
         self.assertIn("run_variant fused", source)
         self.assertIn("standalone-trace/sparse-rp-trace.jsonl", source)
         self.assertIn("fused-trace/l20-topk-topp-trace.jsonl", source)
-        self.assertIn("VLLM_L20_TOPK_TOPP_DEFER_PENALTIES=1", source)
+        self.assertNotIn("VLLM_L20_TOPK_TOPP_DEFER_PENALTIES=1", source)
         self.assertIn("summarize_vllm_sparse_penalty_triangle.py", source)
 
     def test_sparse_penalty_triangle_matrix_runner_has_formal_rows(self):
@@ -145,7 +146,12 @@ class L20SparseRepetitionPenaltyServingAbTest(unittest.TestCase):
 
             result = module.build_summary(root)
 
-        self.assertTrue(result["comparable_workload"])
+        self.assertTrue(result["workload_signature_matches"])
+        self.assertFalse(result["comparable_workload"])
+        self.assertFalse(result["performance_comparable"])
+        self.assertEqual(
+            result["evidence_status"], "requires_semantic_validation"
+        )
         self.assertEqual(
             result["trace_proof"]["standalone"]["provider_counts"]["sparse_op"],
             1,
@@ -153,7 +159,7 @@ class L20SparseRepetitionPenaltyServingAbTest(unittest.TestCase):
         self.assertEqual(result["trace_proof"]["fused"]["eligible_events"], 1)
         fused_itl = next(
             row
-            for row in result["delta_vs_baseline"]["fused"]
+            for row in result["historical_delta_vs_baseline"]["fused"]
             if row["metric"] == "median_itl_ms"
         )
         self.assertEqual(fused_itl["improvement_pct"], 25.0)
@@ -178,7 +184,9 @@ class L20SparseRepetitionPenaltyServingAbTest(unittest.TestCase):
 
         def row(path, fused_itl):
             payload = {
-                "comparable_workload": True,
+                "evidence_status": "requires_semantic_validation",
+                "performance_comparable": False,
+                "workload_signature_matches": True,
                 "workloads": {
                     name: {
                         "model": "qwen",
@@ -189,7 +197,7 @@ class L20SparseRepetitionPenaltyServingAbTest(unittest.TestCase):
                     }
                     for name in ("baseline", "standalone", "fused")
                 },
-                "delta_vs_baseline": {
+                "historical_delta_vs_baseline": {
                     "standalone": [
                         metric("median_itl_ms", 10.0, 10.5, -4.0),
                         metric("median_e2el_ms", 100.0, 101.0, -1.0),
@@ -220,5 +228,7 @@ class L20SparseRepetitionPenaltyServingAbTest(unittest.TestCase):
             result = module.build_summary(root)
 
         self.assertEqual(result["row_count"], 2)
-        self.assertEqual(result["fused_itl_positive_rows"], 1)
-        self.assertEqual(result["fused_e2e_positive_rows"], 2)
+        self.assertFalse(result["performance_comparable"])
+        self.assertEqual(result["workload_signature_match_row_count"], 2)
+        self.assertEqual(result["historical_fused_itl_positive_rows"], 1)
+        self.assertEqual(result["historical_fused_e2e_positive_rows"], 2)

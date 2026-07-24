@@ -1,4 +1,5 @@
 {
+  "evidence_status": "source_map_only",
   "blockers": [
     {
       "evidence": "The L20 hook uses two Triton kernels after logits are already produced.",
@@ -24,10 +25,10 @@
   "complete": true,
   "implementation_plan": [
     {
-      "details": "Real ITL regressed, so the hook is useful only as a negative artifact and path-proof harness.",
+      "details": "The historical latency comparator used invalidated top-p semantics; retain only its path-proof value until a corrected native-equivalent rerun.",
       "priority": "P0",
       "ready": true,
-      "step": "do not enable the standalone L20 sampler hook"
+      "step": "keep the standalone L20 sampler disabled pending revalidation"
     },
     {
       "details": "First extend active SamplingMetadata with request seed/position state; then patch TopKTopPSampler so a custom path can reuse vLLM RNG semantics without torch.rand or a stale worker hook.",
@@ -391,7 +392,8 @@
   },
   "schema_version": 1,
   "serving_evidence": {
-    "l20_notrace_deltas": {
+    "evidence_status": "superseded_semantics",
+    "historical_l20_notrace_deltas": {
       "c1": {
         "mean_itl_pct": 33.16605149706977,
         "median_itl_pct": 32.36045369402194,
@@ -407,7 +409,7 @@
     },
     "model": "Qwen2.5-Coder-1.5B-Instruct",
     "path": "benchmarks/results/l20-vllm-sampling-itl/qwen25-coder-1p5b-summary.json",
-    "rejects_standalone_hook": true,
+    "performance_comparable": false,
     "shape": {}
   },
   "source": {

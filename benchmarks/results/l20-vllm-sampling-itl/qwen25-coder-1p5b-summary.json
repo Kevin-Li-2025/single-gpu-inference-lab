@@ -1,4 +1,6 @@
 {
+  "evidence_status": "superseded_semantics",
+  "performance_comparable": false,
   "deltas": {
     "l20_notrace": {
       "c1": {

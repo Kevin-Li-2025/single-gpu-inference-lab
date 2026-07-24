@@ -4,6 +4,7 @@
 #include <torch/extension.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 
 namespace {
@@ -49,9 +50,18 @@ torch::Tensor l20_sparse_repetition_penalty_out_cuda(
     torch::Tensor token_ids,
     torch::Tensor lengths,
     double repetition_penalty) {
+  // Contract: every active token_ids row prefix is deduplicated. The vLLM
+  // processor constructs this representation before dispatch; direct callers
+  // must preserve it to avoid repeated/racing writes to one logit.
   TORCH_CHECK(logits.is_cuda(), "logits must be a CUDA tensor");
   TORCH_CHECK(token_ids.is_cuda(), "token_ids must be a CUDA tensor");
   TORCH_CHECK(lengths.is_cuda(), "lengths must be a CUDA tensor");
+  TORCH_CHECK(
+      token_ids.device() == logits.device(),
+      "token_ids must be on the same CUDA device as logits");
+  TORCH_CHECK(
+      lengths.device() == logits.device(),
+      "lengths must be on the same CUDA device as logits");
   TORCH_CHECK(logits.dim() == 2, "logits must be [batch, vocab]");
   TORCH_CHECK(token_ids.dim() == 2, "token_ids must be [batch, max_tokens]");
   TORCH_CHECK(lengths.dim() == 1, "lengths must be [batch]");
@@ -74,8 +84,8 @@ torch::Tensor l20_sparse_repetition_penalty_out_cuda(
       lengths.scalar_type() == at::kLong,
       "lengths must have dtype torch.int64");
   TORCH_CHECK(
-      repetition_penalty > 0.0,
-      "repetition_penalty must be positive");
+      std::isfinite(repetition_penalty) && repetition_penalty > 0.0,
+      "repetition_penalty must be finite and positive");
 
   const int64_t batch = logits.size(0);
   const int64_t vocab = logits.size(1);

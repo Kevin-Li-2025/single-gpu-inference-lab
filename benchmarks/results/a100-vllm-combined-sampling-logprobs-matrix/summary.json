@@ -2,12 +2,14 @@
   "baseline": "vLLM FlashInfer top-k/top-p sampling with native token logprobs path",
   "candidate": "opt-in sparse token-history sampler plus fused generated-token top-logprobs with no-clone borrowed raw logits when gate-safe",
   "claim_boundary": [
-    "This is a paired A100 vLLM HTTP serving A/B matrix, not a microbenchmark.",
+    "Evidence status: superseded_semantics; combined latency deltas are historical only.",
     "The candidate path is proven by trace coverage: top-logprobs 64/64 borrowed raw-logits events and sparse sampler 64/66 events for every row.",
-    "Positive wins are strongest on 0.5B/0.6B and logprobs-heavy settings; 1.5B/1.7B logprobs=5 is flat or negative.",
-    "The result supports a narrow sampling/logprobs-boundary claim, not a broad model-inference speedup claim."
+    "No positive or negative latency row is current evidence because the sampling component was not native-equivalent.",
+    "The unaffected fused top-logprobs primitive is evaluated separately."
   ],
   "created_utc": "2026-07-02T16:13:03Z",
+  "evidence_status": "superseded_semantics",
+  "performance_comparable": false,
   "hardware": "NVIDIA A100-SXM4-80GB",
   "name": "a100-vllm-combined-sampling-logprobs-matrix",
   "remote_artifacts": [

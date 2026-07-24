@@ -1,4 +1,6 @@
 {
+  "evidence_status": "superseded_semantics",
+  "performance_comparable": false,
   "baseline_failed": 0,
   "baseline_trace": {
     "trace_exists": false

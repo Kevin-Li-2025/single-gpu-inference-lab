@@ -3,18 +3,25 @@
   "claim_boundary": [
     "This is a serving matrix, but each row is still scoped to its model and traffic shape.",
     "Latency rows are no-trace runs; trace sub-runs are path proof only.",
-    "Positive rows are evidence for this fused sampler boundary, not a general vLLM claim.",
+    "Positive and negative rows are not current evidence until native-equivalent semantic parity is independently verified.",
     "Standalone logits-processor rows remain useful as the architecture-control baseline."
   ],
-  "comparable_row_count": 4,
-  "fused_e2e_positive_rows": 4,
-  "fused_itl_positive_rows": 4,
+  "evidence_status": "superseded_semantics",
+  "historical_fused_e2e_positive_rows": 4,
+  "historical_fused_itl_positive_rows": 4,
+  "historical_standalone_itl_positive_rows": 1,
+  "performance_comparable": false,
   "row_count": 4,
   "rows": [
     {
       "artifact": "c2_i512_o32_r64",
-      "comparable_workload": true,
-      "fused_e2e": {
+      "evidence_status": "superseded_semantics",
+      "fused_trace": {
+        "eligible_events": 33,
+        "eligible_fraction": 0.9428571428571428,
+        "total_events": 35
+      },
+      "historical_fused_e2e": {
         "baseline": 485.685612,
         "candidate": 481.824716,
         "higher_is_better": false,
@@ -22,7 +29,7 @@
         "metric": "median_e2el_ms",
         "speedup": 1.008013
       },
-      "fused_itl": {
+      "historical_fused_itl": {
         "baseline": 14.199487,
         "candidate": 14.12012,
         "higher_is_better": false,
@@ -30,7 +37,7 @@
         "metric": "median_itl_ms",
         "speedup": 1.005621
       },
-      "fused_output_throughput": {
+      "historical_fused_output_throughput": {
         "baseline": 129.010949,
         "candidate": 128.516857,
         "higher_is_better": true,
@@ -38,17 +45,7 @@
         "metric": "output_throughput",
         "speedup": 0.99617
       },
-      "fused_trace": {
-        "eligible_events": 33,
-        "eligible_fraction": 0.9428571428571428,
-        "total_events": 35
-      },
-      "input_tokens": 512,
-      "max_concurrency": 2,
-      "num_prompts": 64,
-      "output_tokens": 32,
-      "path": "c2_i512_o32_r64",
-      "standalone_e2e": {
+      "historical_standalone_e2e": {
         "baseline": 485.685612,
         "candidate": 508.760029,
         "higher_is_better": false,
@@ -56,7 +53,7 @@
         "metric": "median_e2el_ms",
         "speedup": 0.954646
       },
-      "standalone_itl": {
+      "historical_standalone_itl": {
         "baseline": 14.199487,
         "candidate": 14.805414,
         "higher_is_better": false,
@@ -64,7 +61,7 @@
         "metric": "median_itl_ms",
         "speedup": 0.959074
       },
-      "standalone_output_throughput": {
+      "historical_standalone_output_throughput": {
         "baseline": 129.010949,
         "candidate": 122.566302,
         "higher_is_better": true,
@@ -72,6 +69,12 @@
         "metric": "output_throughput",
         "speedup": 0.950046
       },
+      "input_tokens": 512,
+      "max_concurrency": 2,
+      "num_prompts": 64,
+      "output_tokens": 32,
+      "path": "c2_i512_o32_r64",
+      "performance_comparable": false,
       "standalone_trace": {
         "event_count": 31,
         "max_unique_tokens_seen": 15,
@@ -82,12 +85,18 @@
           "outside_sparse_gate": 31
         },
         "trace_exists": true
-      }
+      },
+      "workload_signature_matches": true
     },
     {
       "artifact": "c4_i512_o32_r64",
-      "comparable_workload": true,
-      "fused_e2e": {
+      "evidence_status": "superseded_semantics",
+      "fused_trace": {
+        "eligible_events": 34,
+        "eligible_fraction": 0.9444444444444444,
+        "total_events": 36
+      },
+      "historical_fused_e2e": {
         "baseline": 526.065193,
         "candidate": 484.392168,
         "higher_is_better": false,
@@ -95,7 +104,7 @@
         "metric": "median_e2el_ms",
         "speedup": 1.086032
       },
-      "fused_itl": {
+      "historical_fused_itl": {
         "baseline": 14.741466,
         "candidate": 13.925617,
         "higher_is_better": false,
@@ -103,7 +112,7 @@
         "metric": "median_itl_ms",
         "speedup": 1.058586
       },
-      "fused_output_throughput": {
+      "historical_fused_output_throughput": {
         "baseline": 242.493505,
         "candidate": 263.493193,
         "higher_is_better": true,
@@ -111,17 +120,7 @@
         "metric": "output_throughput",
         "speedup": 1.086599
       },
-      "fused_trace": {
-        "eligible_events": 34,
-        "eligible_fraction": 0.9444444444444444,
-        "total_events": 36
-      },
-      "input_tokens": 512,
-      "max_concurrency": 4,
-      "num_prompts": 64,
-      "output_tokens": 32,
-      "path": "c4_i512_o32_r64",
-      "standalone_e2e": {
+      "historical_standalone_e2e": {
         "baseline": 526.065193,
         "candidate": 502.112545,
         "higher_is_better": false,
@@ -129,7 +128,7 @@
         "metric": "median_e2el_ms",
         "speedup": 1.047704
       },
-      "standalone_itl": {
+      "historical_standalone_itl": {
         "baseline": 14.741466,
         "candidate": 14.38548,
         "higher_is_better": false,
@@ -137,7 +136,7 @@
         "metric": "median_itl_ms",
         "speedup": 1.024746
       },
-      "standalone_output_throughput": {
+      "historical_standalone_output_throughput": {
         "baseline": 242.493505,
         "candidate": 254.091082,
         "higher_is_better": true,
@@ -145,6 +144,12 @@
         "metric": "output_throughput",
         "speedup": 1.047826
       },
+      "input_tokens": 512,
+      "max_concurrency": 4,
+      "num_prompts": 64,
+      "output_tokens": 32,
+      "path": "c4_i512_o32_r64",
+      "performance_comparable": false,
       "standalone_trace": {
         "event_count": 32,
         "max_unique_tokens_seen": 15,
@@ -157,12 +162,18 @@
           "outside_sparse_gate": 17
         },
         "trace_exists": true
-      }
+      },
+      "workload_signature_matches": true
     },
     {
       "artifact": "c4_i512_o64_r64",
-      "comparable_workload": true,
-      "fused_e2e": {
+      "evidence_status": "superseded_semantics",
+      "fused_trace": {
+        "eligible_events": 34,
+        "eligible_fraction": 0.9444444444444444,
+        "total_events": 36
+      },
+      "historical_fused_e2e": {
         "baseline": 972.970402,
         "candidate": 935.728812,
         "higher_is_better": false,
@@ -170,7 +181,7 @@
         "metric": "median_e2el_ms",
         "speedup": 1.0398
       },
-      "fused_itl": {
+      "historical_fused_itl": {
         "baseline": 14.562633,
         "candidate": 13.990212,
         "higher_is_better": false,
@@ -178,7 +189,7 @@
         "metric": "median_itl_ms",
         "speedup": 1.040916
       },
-      "fused_output_throughput": {
+      "historical_fused_output_throughput": {
         "baseline": 260.542386,
         "candidate": 266.625862,
         "higher_is_better": true,
@@ -186,17 +197,7 @@
         "metric": "output_throughput",
         "speedup": 1.023349
       },
-      "fused_trace": {
-        "eligible_events": 34,
-        "eligible_fraction": 0.9444444444444444,
-        "total_events": 36
-      },
-      "input_tokens": 512,
-      "max_concurrency": 4,
-      "num_prompts": 64,
-      "output_tokens": 64,
-      "path": "c4_i512_o64_r64",
-      "standalone_e2e": {
+      "historical_standalone_e2e": {
         "baseline": 972.970402,
         "candidate": 994.551498,
         "higher_is_better": false,
@@ -204,7 +205,7 @@
         "metric": "median_e2el_ms",
         "speedup": 0.978301
       },
-      "standalone_itl": {
+      "historical_standalone_itl": {
         "baseline": 14.562633,
         "candidate": 14.833198,
         "higher_is_better": false,
@@ -212,7 +213,7 @@
         "metric": "median_itl_ms",
         "speedup": 0.98176
       },
-      "standalone_output_throughput": {
+      "historical_standalone_output_throughput": {
         "baseline": 260.542386,
         "candidate": 253.953402,
         "higher_is_better": true,
@@ -220,6 +221,12 @@
         "metric": "output_throughput",
         "speedup": 0.974711
       },
+      "input_tokens": 512,
+      "max_concurrency": 4,
+      "num_prompts": 64,
+      "output_tokens": 64,
+      "path": "c4_i512_o64_r64",
+      "performance_comparable": false,
       "standalone_trace": {
         "event_count": 32,
         "max_unique_tokens_seen": 15,
@@ -232,12 +239,18 @@
           "outside_sparse_gate": 17
         },
         "trace_exists": true
-      }
+      },
+      "workload_signature_matches": true
     },
     {
       "artifact": "c8_i512_o32_r64",
-      "comparable_workload": true,
-      "fused_e2e": {
+      "evidence_status": "superseded_semantics",
+      "fused_trace": {
+        "eligible_events": 19,
+        "eligible_fraction": 0.5135135135135135,
+        "total_events": 37
+      },
+      "historical_fused_e2e": {
         "baseline": 522.019948,
         "candidate": 510.134244,
         "higher_is_better": false,
@@ -245,7 +258,7 @@
         "metric": "median_e2el_ms",
         "speedup": 1.023299
       },
-      "fused_itl": {
+      "historical_fused_itl": {
         "baseline": 14.522419,
         "candidate": 14.177956,
         "higher_is_better": false,
@@ -253,7 +266,7 @@
         "metric": "median_itl_ms",
         "speedup": 1.024296
       },
-      "fused_output_throughput": {
+      "historical_fused_output_throughput": {
         "baseline": 481.275231,
         "candidate": 492.11861,
         "higher_is_better": true,
@@ -261,17 +274,7 @@
         "metric": "output_throughput",
         "speedup": 1.022531
       },
-      "fused_trace": {
-        "eligible_events": 19,
-        "eligible_fraction": 0.5135135135135135,
-        "total_events": 37
-      },
-      "input_tokens": 512,
-      "max_concurrency": 8,
-      "num_prompts": 64,
-      "output_tokens": 32,
-      "path": "c8_i512_o32_r64",
-      "standalone_e2e": {
+      "historical_standalone_e2e": {
         "baseline": 522.019948,
         "candidate": 540.131374,
         "higher_is_better": false,
@@ -279,7 +282,7 @@
         "metric": "median_e2el_ms",
         "speedup": 0.966468
       },
-      "standalone_itl": {
+      "historical_standalone_itl": {
         "baseline": 14.522419,
         "candidate": 14.957365,
         "higher_is_better": false,
@@ -287,7 +290,7 @@
         "metric": "median_itl_ms",
         "speedup": 0.970921
       },
-      "standalone_output_throughput": {
+      "historical_standalone_output_throughput": {
         "baseline": 481.275231,
         "candidate": 463.423039,
         "higher_is_better": true,
@@ -295,6 +298,12 @@
         "metric": "output_throughput",
         "speedup": 0.962906
       },
+      "input_tokens": 512,
+      "max_concurrency": 8,
+      "num_prompts": 64,
+      "output_tokens": 32,
+      "path": "c8_i512_o32_r64",
+      "performance_comparable": false,
       "standalone_trace": {
         "event_count": 33,
         "max_unique_tokens_seen": 15,
@@ -307,9 +316,10 @@
           "outside_sparse_gate": 16
         },
         "trace_exists": true
-      }
+      },
+      "workload_signature_matches": true
     }
   ],
   "schema_version": 1,
-  "standalone_itl_positive_rows": 1
+  "workload_signature_match_row_count": 4
 }

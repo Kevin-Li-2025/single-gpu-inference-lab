@@ -126,10 +126,11 @@ def test_compiled_sampler_scout_finds_required_boundaries(tmp_path):
 
     assert result["schema_version"] == 1
     assert result["complete"]
-    assert result["serving_evidence"]["rejects_standalone_hook"]
+    assert result["serving_evidence"]["evidence_status"] == "superseded_semantics"
+    assert not result["serving_evidence"]["performance_comparable"]
     assert not result["rng_metadata_gap"]["stateful_sampler_ready"]
     plan = {item["step"]: item for item in result["implementation_plan"]}
-    assert plan["do not enable the standalone L20 sampler hook"]["ready"]
+    assert plan["keep the standalone L20 sampler disabled pending revalidation"]["ready"]
     assert not plan["build a state-preserving compiled sampler prototype"]["ready"]
     assert plan["prototype a logits/LM-head epilogue boundary"]["ready"]
 

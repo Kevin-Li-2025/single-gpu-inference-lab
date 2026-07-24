@@ -102,7 +102,7 @@ def request_payload(args: argparse.Namespace, index: int) -> dict[str, Any]:
         payload["vllm_xargs"] = {
             "l20_sparse_repetition_penalty": True,
             "l20_repetition_penalty": args.repetition_penalty,
-            "l20_penalty_include_prompt": False,
+            "l20_penalty_include_prompt": True,
         }
     return payload
 

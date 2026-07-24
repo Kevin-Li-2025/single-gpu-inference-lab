@@ -1,4 +1,5 @@
 {
+  "evidence_status": "superseded_semantics",
   "artifact": "20260702-133710",
   "baseline": {
     "mode": "vllm_flashinfer_sampling_native_logprobs",
@@ -74,6 +75,8 @@
     }
   },
   "claim_boundary": [
+    "The combined sparse-sampler deltas are not current performance evidence.",
+    "The corrected top-p sampler must pass native-equivalent semantic revalidation before comparison.",
     "This is a real vLLM HTTP serving A/B for token logprobs.",
     "The candidate enables both the opt-in sparse token-history sampler and fused top-logprobs path.",
     "The candidate is opt-in and falls back to native vLLM when the fused logprobs gate rejects a request.",
@@ -131,7 +134,7 @@
     "vllm_version": "0.10.2",
     "warmup": 2
   },
-  "delta": {
+  "historical_delta": {
     "itl_ms": {
       "baseline_median": 4.4322870671749115,
       "candidate_median": 4.26163524389267,
@@ -157,6 +160,7 @@
       "speedup": 1.0367659748200884
     }
   },
+  "performance_comparable": false,
   "schema_version": 1,
   "sparse_sampler_trace_proof": {
     "eligible_events": 36,

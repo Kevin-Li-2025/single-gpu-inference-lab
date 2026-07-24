@@ -1,5 +1,11 @@
 # A100 vLLM Combined Sampling/Logprobs Matrix
 
+> **Superseded sampling comparison:** the fused top-logprobs component remains
+> independently validated, but this combined candidate predates the 2026-07
+> top-p semantics and penalty-history corrections. These deltas are historical,
+> not current performance evidence. See
+> `docs/sampling-correctness-notice-2026-07.md`.
+
 This artifact extends the single-model combined-boundary result into a compact
 multi-model A100 serving matrix.
 
@@ -16,7 +22,7 @@ multi-model A100 serving matrix.
   presence, and repetition penalties + generated-token logprobs
 - Runs: 30 measured requests per row, 4 warmup requests, 48 output tokens
 
-## Result
+## Historical result (not current evidence)
 
 | Model | Logprobs | Baseline ITL | Candidate ITL | ITL delta | Total delta | TTFT delta |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -42,26 +48,17 @@ candidate path was live without polluting the paired request-latency numbers.
 
 ## Interpretation
 
-This is the strongest serving-level evidence for the current sampling/logprobs
-boundary, but the claim is intentionally narrow.
-
-The result is strongest on small models and richer logprobs settings:
-`Qwen2.5-0.5B-Instruct` reaches -5.18% median ITL at `logprobs=20`, and
-`Qwen3-0.6B` stays around -4% to -4.5% across both logprobs settings. Larger
-1.5B/1.7B rows show the expected Amdahl behavior: `logprobs=20` remains
-positive, while `logprobs=5` is flat or slightly negative.
-
-This supports the repo's current direction: sampling/logprobs fusion can produce
-real serving wins, but only when the semantic tax is large enough relative to
-the model-forward path.
+The matrix remains useful as a path-coverage and workload record. Its
+positive and negative latency rows are historical because the sampling
+component was not native-equivalent. They cannot establish model-size,
+logprobs-count, or Amdahl trends for the corrected candidate.
 
 ## Claim Boundary
 
-- This is a paired A100 vLLM HTTP serving A/B matrix, not a microbenchmark.
-- It does not claim a broad model-inference speedup.
-- It does not claim that every model/logprobs shape wins.
-- It does show repeated positive serving wins for richer sampling semantics,
-  especially `logprobs=20`.
+- The runs are paired A100 vLLM HTTP artifacts, not microbenchmarks.
+- Trace coverage remains valid evidence that the combined path executed.
+- No row is current positive or negative performance evidence.
+- Fused top-logprobs is evaluated separately in an unaffected artifact.
 
 Raw vLLM logs and model caches were left off git. The checked-in
 `summary.json` contains the compact rows, workload settings, and trace proof.

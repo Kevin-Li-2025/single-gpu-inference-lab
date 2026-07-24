@@ -49,6 +49,9 @@ def test_current_main_upstream_patch_uses_stable_libtorch_extension():
     assert "torch::stable::Tensor" in patch
     assert "tests/v1/attention/test_l20_paged_decode.py" in patch
     assert "DeviceCapability(8, 9)" in patch
+    assert "Superseded patch snapshots" in doc
+    assert "Do not apply them as current integration" in doc
+    assert "authoritative implementation" in doc
 
 
 def test_cuda13_upstream_build_is_reproducible():

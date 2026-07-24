@@ -1,8 +1,11 @@
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 
 def test_cuda_paged_decode_gate_matches_measured_regimes():
+    pytest.importorskip("torch")
     path = Path("scripts/benchmark_cuda_paged_decode.py")
     spec = importlib.util.spec_from_file_location("cuda_bench", path)
     module = importlib.util.module_from_spec(spec)

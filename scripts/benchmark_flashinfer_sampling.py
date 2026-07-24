@@ -71,7 +71,7 @@ def torch_gpu_topk_topp_multinomial(logits, top_k, top_p, temperature):
     probs = torch.softmax(values, dim=-1)
     sorted_probs, sorted_order = torch.sort(probs, descending=True, dim=-1)
     cumulative = torch.cumsum(sorted_probs, dim=-1)
-    keep = cumulative <= top_p
+    keep = (cumulative - sorted_probs) < top_p
     keep[..., 0] = True
     filtered = torch.where(keep, sorted_probs, torch.zeros_like(sorted_probs))
     filtered = filtered / filtered.sum(dim=-1, keepdim=True)

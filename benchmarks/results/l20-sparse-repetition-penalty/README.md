@@ -45,10 +45,10 @@ sampling-loop A/B possible without monkey-patching vLLM internals. A publishable
 serving result still needs TTFT, ITL, throughput, and trace hit coverage.
 Use `scripts/run_vllm_l20_sparse_repetition_penalty_serving_ab.sh` for paired
 eager serving runs. The first nontrivial Qwen3-0.6B c8/i512/o32 run proves the
-custom path is reachable (`sparse_op=65`, `torch_fallback=36`) but regresses
-serving latency: median ITL moves 14.33 ms -> 15.67 ms. Treat the standalone
-logits processor as integration evidence and keep the optimization target at a
-larger sampler or LM-head boundary.
+custom path is reachable (`sparse_op=65`, `torch_fallback=36`). Its recorded
+14.33 ms -> 15.67 ms comparison is not current performance evidence because
+the custom request excluded prompt tokens while native repetition penalty did
+not. Treat this serving artifact as path proof until a native-equivalent rerun.
 
 ## Reproduce
 

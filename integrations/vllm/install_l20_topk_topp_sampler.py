@@ -14,7 +14,6 @@ IMPORT_LINE = (
     "from vllm.v1.sample.ops.l20_topk_topp_sampling import "
     "maybe_l20_topk_topp_sample\n"
 )
-DEFER_ENV = "VLLM_L20_TOPK_TOPP_DEFER_PENALTIES"
 ALLOW_LOGPROBS_ENV = "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS"
 PIN_MEMORY_EXPR = (
     'globals().get("PIN_MEMORY", locals().get("pin_memory", '
@@ -156,6 +155,28 @@ TOPK_FLASHINFER_RETURN_PATCHED = """        contiguous_logits = logits.contiguou
             frequency_penalties=l20_frequency_penalties,
             presence_penalties=l20_presence_penalties,
             repetition_penalties=l20_repetition_penalties,
+            defer_penalties=False,
+        )
+        if l20_sampled is not None:
+            return l20_sampled, None
+        if "is_flashinfer_available" in globals() and not is_flashinfer_available:
+            return self.forward_native(logits, generators, k, p)
+        return flashinfer_sample(contiguous_logits, k, p, generators), None
+"""
+TOPK_FLASHINFER_RETURN_PATCHED_LEGACY_DEFERRED = """        contiguous_logits = logits.contiguous()
+        l20_sampled = maybe_l20_topk_topp_sample(
+            contiguous_logits,
+            k,
+            p,
+            generators,
+            expanded_idx_mapping=l20_expanded_idx_mapping,
+            seeds=l20_seeds,
+            positions=l20_positions,
+            history_tokens=l20_history_tokens,
+            history_lengths=l20_history_lengths,
+            frequency_penalties=l20_frequency_penalties,
+            presence_penalties=l20_presence_penalties,
+            repetition_penalties=l20_repetition_penalties,
             defer_penalties=l20_defer_penalties,
         )
         if l20_sampled is not None:
@@ -199,6 +220,22 @@ SAMPLER_TOPK_CALL_PATCHED_NO_LOGPROBS_GATE = """        random_sampled, processe
             l20_positions=sampling_metadata.l20_positions,
             l20_history_tokens=sampling_metadata.l20_history_tokens,
             l20_history_lengths=sampling_metadata.l20_history_lengths,
+            l20_defer_penalties=False,
+            l20_frequency_penalties=sampling_metadata.frequency_penalties,
+            l20_presence_penalties=sampling_metadata.presence_penalties,
+            l20_repetition_penalties=sampling_metadata.repetition_penalties,
+        )
+"""
+SAMPLER_TOPK_CALL_PATCHED_NO_LOGPROBS_GATE_LEGACY_DEFERRED = """        random_sampled, processed_logprobs = self.topk_topp_sampler(
+            logits,
+            sampling_metadata.generators,
+            sampling_metadata.top_k,
+            sampling_metadata.top_p,
+            l20_expanded_idx_mapping=sampling_metadata.l20_expanded_idx_mapping,
+            l20_seeds=sampling_metadata.l20_seeds,
+            l20_positions=sampling_metadata.l20_positions,
+            l20_history_tokens=sampling_metadata.l20_history_tokens,
+            l20_history_lengths=sampling_metadata.l20_history_lengths,
             l20_defer_penalties=sampling_metadata.l20_defer_penalties,
             l20_frequency_penalties=sampling_metadata.frequency_penalties,
             l20_presence_penalties=sampling_metadata.presence_penalties,
@@ -206,6 +243,48 @@ SAMPLER_TOPK_CALL_PATCHED_NO_LOGPROBS_GATE = """        random_sampled, processe
         )
 """
 SAMPLER_TOPK_CALL_PATCHED = """        l20_allow_logprobs = (
+            sampling_metadata.max_num_logprobs is None
+            or __import__("os").environ.get(
+                "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS", "0"
+            ).lower() in {"1", "true", "yes", "on"}
+        )
+        random_sampled, processed_logprobs = self.topk_topp_sampler(
+            logits,
+            sampling_metadata.generators,
+            sampling_metadata.top_k,
+            sampling_metadata.top_p,
+            l20_expanded_idx_mapping=(
+                sampling_metadata.l20_expanded_idx_mapping
+                if l20_allow_logprobs
+                else None
+            ),
+            l20_seeds=(
+                sampling_metadata.l20_seeds
+                if l20_allow_logprobs
+                else None
+            ),
+            l20_positions=(
+                sampling_metadata.l20_positions
+                if l20_allow_logprobs
+                else None
+            ),
+            l20_history_tokens=(
+                sampling_metadata.l20_history_tokens
+                if l20_allow_logprobs
+                else None
+            ),
+            l20_history_lengths=(
+                sampling_metadata.l20_history_lengths
+                if l20_allow_logprobs
+                else None
+            ),
+            l20_defer_penalties=False,
+            l20_frequency_penalties=sampling_metadata.frequency_penalties,
+            l20_presence_penalties=sampling_metadata.presence_penalties,
+            l20_repetition_penalties=sampling_metadata.repetition_penalties,
+        )
+"""
+SAMPLER_TOPK_CALL_PATCHED_LEGACY_DEFERRED = """        l20_allow_logprobs = (
             sampling_metadata.max_num_logprobs is None
             or __import__("os").environ.get(
                 "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS", "0"
@@ -343,14 +422,6 @@ INPUT_BATCH_TOPK_REQS_V010_PATCHED = f"""        self.top_k_reqs: set[str] = set
         # IDs of requests which do not support spec decoding
 """
 
-INPUT_BATCH_IMPORTS = """import numpy as np
-import torch
-"""
-INPUT_BATCH_IMPORTS_PATCHED = """import numpy as np
-import os
-import torch
-"""
-
 INPUT_BATCH_TOPK_CPU = """            self.top_k_cpu[req_index] = top_k
             self.frequency_penalties_cpu[req_index] = sampling_params.frequency_penalty
 """
@@ -410,7 +481,7 @@ INPUT_BATCH_METADATA_GENERATORS_PATCHED = """            generators=self.generat
 INPUT_BATCH_METADATA_RETURN = """        return SamplingMetadata(
             temperature=temperature,
 """
-INPUT_BATCH_SPARSE_HISTORY = f"""        l20_history_tokens = None
+INPUT_BATCH_SPARSE_HISTORY_LEGACY_DEFERRED = f"""        l20_history_tokens = None
         l20_history_lengths = None
         l20_defer_penalties = False
         l20_allow_logprobs = (
@@ -419,7 +490,7 @@ INPUT_BATCH_SPARSE_HISTORY = f"""        l20_history_tokens = None
             in {{"1", "true", "yes", "on"}}
         )
         if (
-            os.environ.get("{DEFER_ENV}", "0").lower() in {{"1", "true", "yes", "on"}}
+            os.environ.get("VLLM_L20_TOPK_TOPP_DEFER_PENALTIES", "0").lower() in {{"1", "true", "yes", "on"}}
             and not self.no_penalties
             and l20_allow_logprobs
             and num_reqs <= 4
@@ -455,6 +526,16 @@ INPUT_BATCH_SPARSE_HISTORY = f"""        l20_history_tokens = None
                 device=self.device, non_blocking=True
             )
             l20_defer_penalties = True
+
+        return SamplingMetadata(
+            temperature=temperature,
+"""
+INPUT_BATCH_SPARSE_HISTORY = """        # Keep native vLLM penalties active. The sampler's final eligibility
+        # decision happens later, so deferring penalties here could make an
+        # otherwise valid fallback semantically unsafe.
+        l20_history_tokens = None
+        l20_history_lengths = None
+        l20_defer_penalties = False
 
         return SamplingMetadata(
             temperature=temperature,
@@ -582,6 +663,11 @@ def patch_topk_topp_sampler(source: str) -> str:
             TOPK_FORCE_FORWARD_PATCHED,
             "topk_topp force l20 forward_cuda",
         )
+    source = source.replace(
+        TOPK_FLASHINFER_RETURN_PATCHED_LEGACY_DEFERRED,
+        TOPK_FLASHINFER_RETURN_PATCHED,
+        1,
+    )
     return replace_once(
         source,
         TOPK_FLASHINFER_RETURN,
@@ -600,6 +686,29 @@ def patch_sampling_metadata(source: str) -> str:
 
 
 def patch_active_sampler(source: str) -> str:
+    # Repair installations made by the earlier experimental deferred-penalty
+    # patch. Native penalties must always execute before the optional sampler;
+    # otherwise any later eligibility fallback can silently change semantics.
+    source = source.replace(
+        SAMPLER_APPLY_PENALTIES_PATCHED,
+        SAMPLER_APPLY_PENALTIES,
+        1,
+    )
+    source = source.replace(
+        SAMPLER_FORWARD_APPLY_PENALTIES_PATCHED,
+        SAMPLER_FORWARD_APPLY_PENALTIES,
+        1,
+    )
+    source = source.replace(
+        SAMPLER_TOPK_CALL_PATCHED_LEGACY_DEFERRED,
+        SAMPLER_TOPK_CALL_PATCHED,
+        1,
+    )
+    source = source.replace(
+        SAMPLER_TOPK_CALL_PATCHED_NO_LOGPROBS_GATE_LEGACY_DEFERRED,
+        SAMPLER_TOPK_CALL_PATCHED,
+        1,
+    )
     source = source.replace(
         SAMPLER_TOPK_CALL_PATCHED_NO_LOGPROBS_GATE,
         SAMPLER_TOPK_CALL_PATCHED,
@@ -611,19 +720,7 @@ def patch_active_sampler(source: str) -> str:
         SAMPLER_TOPK_CALL_PATCHED,
         "active sampler topk_topp state pass",
     )
-    if SAMPLER_APPLY_PENALTIES in source or SAMPLER_APPLY_PENALTIES_PATCHED in source:
-        return replace_once(
-            source,
-            SAMPLER_APPLY_PENALTIES,
-            SAMPLER_APPLY_PENALTIES_PATCHED,
-            "active sampler deferred penalties guard",
-        )
-    return replace_once(
-        source,
-        SAMPLER_FORWARD_APPLY_PENALTIES,
-        SAMPLER_FORWARD_APPLY_PENALTIES_PATCHED,
-        "active sampler forward deferred penalties guard",
-    )
+    return source
 
 
 def patch_gpu_model_runner(source: str) -> str:
@@ -642,20 +739,6 @@ def patch_gpu_input_batch(source: str) -> str:
     ).replace(
         "pin_memory=self.pin_memory",
         f"pin_memory={PIN_MEMORY_EXPR}",
-    )
-    source = source.replace(
-        "            and not self.no_penalties\n"
-        "            and num_reqs <= 4\n",
-        "            and not self.no_penalties\n"
-        "            and self.max_num_logprobs is None\n"
-        "            and num_reqs <= 4\n",
-        1,
-    )
-    source = replace_once(
-        source,
-        INPUT_BATCH_IMPORTS,
-        INPUT_BATCH_IMPORTS_PATCHED,
-        "gpu input batch os import",
     )
     if INPUT_BATCH_TOPK_REQS in source or INPUT_BATCH_TOPK_REQS_PATCHED in source:
         source = replace_once(
@@ -690,6 +773,11 @@ def patch_gpu_input_batch(source: str) -> str:
         INPUT_BATCH_COPY_TOPK,
         INPUT_BATCH_COPY_TOPK_PATCHED,
         "gpu input batch l20 copy",
+    )
+    source = source.replace(
+        INPUT_BATCH_SPARSE_HISTORY_LEGACY_DEFERRED,
+        INPUT_BATCH_SPARSE_HISTORY,
+        1,
     )
     source = replace_once(
         source,

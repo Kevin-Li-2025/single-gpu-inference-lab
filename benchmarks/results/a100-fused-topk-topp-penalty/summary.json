@@ -1,4 +1,6 @@
 {
+  "evidence_status": "superseded_semantics",
+  "performance_comparable": false,
   "artifact": "a100-fused-topk-topp-penalty",
   "claim_boundary": "A100 microbenchmark for dense token-count prototype; not a vLLM serving result and not an L20 measurement.",
   "hardware": "NVIDIA A100-SXM4-80GB",

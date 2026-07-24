@@ -1,9 +1,14 @@
 # 20260702-133710
 
+> **Superseded combined comparison:** the top-logprobs component is separately
+> valid, but this candidate included the affected custom sampler. Preserve the
+> run for provenance, not as current serving-speed evidence. See the
+> [sampling correctness notice](../../../../docs/sampling-correctness-notice-2026-07.md).
+
 This artifact compares native vLLM token-logprobs gathering with the
 opt-in fused top-logprobs path under an OpenAI-compatible serving workload.
 
-## Result
+## Historical result (not current evidence)
 
 | Metric | Native logprobs median | Fused top-logprobs median | Delta |
 | --- | ---: | ---: | ---: |
@@ -30,6 +35,8 @@ opt-in fused top-logprobs path under an OpenAI-compatible serving workload.
 
 ## Claim Boundary
 
+- The combined sparse-sampler deltas are not current performance evidence.
+- The corrected top-p sampler must pass native-equivalent semantic revalidation before comparison.
 - This is a real vLLM HTTP serving A/B for token logprobs.
 - The candidate enables both the opt-in sparse token-history sampler and fused top-logprobs path.
 - The candidate is opt-in and falls back to native vLLM when the fused logprobs gate rejects a request.

@@ -19,6 +19,6 @@ A strict win requires both lower median ITL and higher output throughput.
 ## Interpretation
 
 The measured positive path is vLLM's FlashInfer top-k/top-p sampler
-with CUDA 13 JIT prewarm and explicit fallback checks. The custom
-standalone L20 sampler remains disabled because it regresses serving
-ITL despite kernel-level wins.
+with CUDA 13 JIT prewarm and explicit fallback checks. The custom standalone
+L20 sampler remains disabled pending a corrected, native-equivalent rerun; its
+historical serving comparison is not used here.

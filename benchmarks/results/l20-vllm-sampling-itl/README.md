@@ -1,5 +1,10 @@
 # L20 vLLM Sampling ITL Results
 
+> **Superseded sampling comparison:** custom top-p rows in this artifact used
+> the pre-audit nucleus mask. The raw runs remain useful for provenance, but
+> their custom-sampler deltas are not current evidence. See the
+> [sampling correctness notice](../../../docs/sampling-correctness-notice-2026-07.md).
+
 This directory contains real vLLM serving results for the experimental L20
 top-k/top-p sampler hook.
 
@@ -13,7 +18,7 @@ Hardware and serving shape:
 - Shape: random input 512, output 32, 32 prompts, 3 runs
 - Limits: `max_model_len=2048`, `gpu_memory_utilization=0.70`
 
-## Result
+## Historical result (not current evidence)
 
 Median of 3 runs:
 
@@ -35,9 +40,10 @@ Deltas against clean FlashInfer:
 | L20 trace | 1 | +36.63% | +37.50% | -24.57% |
 | L20 trace | 4 | +34.59% | +27.84% | -24.30% |
 
-Conclusion: the standalone two-stage Triton top-k/top-p sampler wins the
-microbenchmark but loses real vLLM serving. The current hook should stay
-experimental and disabled by default.
+Historical conclusion: the standalone two-stage Triton top-k/top-p sampler
+recorded a faster microbenchmark and slower real vLLM serving. Because the
+custom top-p semantics were later invalidated, neither comparison is current
+performance evidence. The hook remains experimental and disabled by default.
 
 ## Stateful RNG Smoke
 
@@ -94,19 +100,19 @@ Serving result:
 | L20 active metadata + b1-b4 prewarm | 1 | 6.871 | 132.1 | fp16/fp32 prewarm |
 | L20 active metadata + b1-b4 prewarm | 4 | 7.632 | 388.2 | fp16/fp32 prewarm |
 
-Conclusion: the metadata blocker is solved. The custom sampler now really runs
-on the active vLLM serving path, but the result is still a serving regression
-versus clean FlashInfer. External prewarm reduces some noise but does not remove
-vLLM's inference-time Triton JIT warning; this needs an in-process warmup,
-compiled sampler integration, or logits-epilogue fusion before another
-performance claim is justified.
+Current conclusion: the metadata blocker was solved and the custom sampler
+really ran on the active vLLM path. The recorded latency comparison against
+FlashInfer is superseded because the candidate top-p semantics were later
+invalidated. External prewarm and JIT observations remain historical debugging
+context, not performance evidence.
 
 ## Path Evidence
 
-The trace run records `4251 / 4253` eligible events, so the negative result is
-not a fallback artifact. The custom path really ran for nearly all decode
-sampling calls. The two fallback events were large `256 x 151936` logits shapes
-outside the measured profitability gate.
+The trace run records `4251 / 4253` eligible events, proving that the custom path
+ran for nearly all decode sampling calls. The two fallback events were large
+`256 x 151936` logits shapes outside the historical profitability gate. This
+establishes path coverage only; it does not rescue the invalidated positive or
+negative latency comparison.
 
 The main gap is integration overhead:
 

@@ -1,6 +1,12 @@
 # vLLM Compiled Sampler Boundary Scout
 
-This artifact follows the negative L20 standalone-sampler serving result. It records the source boundaries required for a compiled sampler or logits/LM-head epilogue path.
+> **Source-map evidence only:** the linked custom-sampler latency comparison
+> used pre-audit top-p semantics. Its deltas and reject verdict are historical;
+> the patch-point and RNG-state analysis remain useful.
+
+This artifact follows an experimental L20 standalone-sampler run. It records
+the source boundaries required for a compiled sampler or logits/LM-head
+epilogue path.
 
 ## Source
 
@@ -26,16 +32,19 @@ This artifact follows the negative L20 standalone-sampler serving result. It rec
 | `flashinfer_sampler_contract` | `vllm/v1/sample/ops/topk_topp_sampler.py` | yes | 3/3 | current fused sampler contract and seed/offset-compatible baseline |
 | `logits_processor_lm_head` | `vllm/model_executor/layers/logits_processor.py` | yes | 3/3 | LM-head/logits producer boundary; epilogue must preserve this optimized path |
 
-## Serving Evidence
+## Superseded serving measurements
 
 - Summary: `benchmarks/results/l20-vllm-sampling-itl/qwen25-coder-1p5b-summary.json`
 - Model: `Qwen2.5-Coder-1.5B-Instruct`
-- Rejects standalone hook: `True`
+- Current performance verdict: `not_comparable`
 
 | Shape | Median ITL delta | Output throughput delta |
 | --- | ---: | ---: |
 | `c1` | 32.36% | -21.70% |
 | `c4` | 32.06% | -21.94% |
+
+These recorded deltas are retained for provenance and must not be used to
+accept or reject the corrected sampler.
 
 ## Active Sampler RNG Gap
 
