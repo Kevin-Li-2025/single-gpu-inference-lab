@@ -19,8 +19,9 @@ The L20 evidence now points away from more isolated microkernels:
   gains are Amdahl-limited.
 - Q/K norm + Q/K RoPE + KV write is live under O2, but the custom kernel is a
   small GPU-time fraction.
-- The self-written standalone top-k/top-p sampler reaches the vLLM hot path but
-  regresses real serving versus FlashInfer.
+- The self-written standalone top-k/top-p sampler reaches the vLLM hot path,
+  but its pre-audit serving comparison is superseded and the path stays
+  disabled.
 - Standalone no-full-logits top-k is slower than the optimized full-logits path.
 
 The useful remaining boundary is upstream of standalone sampling: the
@@ -226,11 +227,11 @@ prototype should target those semantics rather than plain greedy argmax.
 The current planner selects `fused_topk_topp+penalty` as the first P0 target,
 with `fused_token_logprobs` also marked P0.
 
-The first dense-count fused prototype is now implemented and correct on A100:
-for Qwen-sized vocab, it beats the apply-penalty-then-sample baseline by 1.36x
-at batch 1 and 1.42x at batch 4. This is still a microbenchmark; production
-serving needs a sparse vLLM token-history layout instead of dense
-`[batch, vocab]` counts.
+The first dense-count fused prototype was implemented and measured on A100,
+but that artifact used the pre-audit nucleus mask. Its 1.36x/1.42x recorded
+speedups are retained for provenance, not as current evidence. A corrected
+prototype still needs a native-equivalent rerun before informing production
+design.
 
 Artifact:
 

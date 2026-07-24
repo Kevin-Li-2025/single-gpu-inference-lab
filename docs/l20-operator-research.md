@@ -473,6 +473,11 @@ treated as a serving optimization rather than a correctness/control kernel.
 
 ### GPU-Side Sampling V2: L20 Top-k/Top-p Prototype
 
+> **Status correction (2026-07):** the custom top-p measurements below used
+> the pre-audit nucleus mask and are retained only as historical engineering
+> records. They do not support a current microbenchmark or serving claim. See
+> `docs/sampling-correctness-notice-2026-07.md`.
+
 The first self-written stochastic sampler is implemented in
 `src/l20_stack/ops/triton_sampling.py` and benchmarked by
 `scripts/benchmark_l20_topk_topp_sampling.py`. The gate is deliberately narrow:
@@ -492,12 +497,11 @@ PyTorch reference before connecting the kernel to vLLM's RNG/Philox state. This
 is still a standalone prototype; serving claims require wiring it to the traced
 logits boundary and comparing real ITL against FlashInfer sampling.
 
-The first L20 policy is batch-aware: batch sizes 1 through 4 use 2048-token
-vocab tiles to reduce candidate metadata and launches, while larger batches keep
-1024-token tiles to preserve parallelism across rows. The measured profitability
-gate is narrower than correctness: prefer the custom kernel for batch <= 4 and
-fall back to FlashInfer for batch >= 8 until the batched reduce/sample path is
-rewritten.
+The historical L20 policy was batch-aware: batch sizes 1 through 4 used 2048-token
+vocab tiles to reduce candidate metadata and launches, while larger batches kept
+1024-token tiles to preserve parallelism across rows. Its batch<=4
+"profitability" gate came from the invalidated comparison and must not be
+treated as a current enablement policy.
 
 Benchmark command:
 
@@ -521,9 +525,9 @@ Measured results:
 | 16 | 1024 | 0.2048 ms | 0.1311 ms | 0.2729 ms | 3.9890 ms | 0.64x |
 | 64 | 1024 | 0.5622 ms | 0.2109 ms | 0.3092 ms | 14.4788 ms | 0.38x |
 
-This is the first custom L20 stochastic sampler result that beats FlashInfer in
-a useful regime, but the claim is narrow: batch 1 to 4 only. Batch 8 and above
-must route to FlashInfer until the batched reduce/sample path is redesigned.
+Historically, this table appeared to beat FlashInfer at batch 1 to 4. That
+interpretation is withdrawn because the custom top-p semantics were wrong;
+batch 8 and above were slower even under the affected comparator.
 Triton/CUDA sampler is only worth writing if it beats FlashInfer on the exact
 serving shapes or fuses with the logits producer to remove logits materialization
 entirely. Otherwise the right engineering work is vLLM integration: route L20
@@ -545,14 +549,15 @@ exports `CUDA_HOME`, `CUDACXX`, and `PATH` before launching the server, controls
 
 The self-written L20 sampler was then wired into vLLM through
 `integrations/vllm/install_l20_topk_topp_sampler.py`. This patches the
-FlashInfer top-k/top-p sampler boundary and uses the custom Triton path only
-when the measured profitability gate says batch <= 4, vocab <= 262144,
-`top_k <= 64`, and homogeneous top-k/top-p params. A trace-enabled proof run
-recorded 4251 eligible events out of 4253, so the serving result below is not a
-fallback artifact.
+FlashInfer top-k/top-p sampler boundary and retains a conservative batch <= 4,
+vocab <= 262144, `top_k <= 64`, homogeneous-parameter eligibility cap. The hook
+is disabled by default and that cap is not a current profitability claim. A
+trace-enabled proof run recorded 4251 eligible events out of 4253, establishing
+that the historical serving run reached the intended path.
 
-Real serving does not preserve the microbenchmark win. Qwen2.5-Coder-1.5B,
-input 512, output 32, 32 prompts, 3 runs, FlashInfer attention:
+The historical serving campaign recorded the following values for
+Qwen2.5-Coder-1.5B, input 512, output 32, 32 prompts, 3 runs, FlashInfer
+attention:
 
 | mode | concurrency | median ITL | mean ITL | output tok/s | median TTFT |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -561,14 +566,11 @@ input 512, output 32, 32 prompts, 3 runs, FlashInfer attention:
 | FlashInfer clean | 4 | 5.721 ms | 6.042 ms | 512.4 | 69.7 ms |
 | L20 no-trace | 4 | 7.555 ms | 7.593 ms | 400.0 | 89.0 ms |
 
-Against clean FlashInfer, the no-trace custom hook regresses median ITL by
-32.36% at concurrency 1 and 32.06% at concurrency 4, while output throughput
-drops about 21.7%-21.9%. The result identifies the missing integration work:
-the serving hook adds random-uniform generation, Python gate/scalar checks, and
-two standalone Triton launches outside vLLM's compiled sampler/CUDA graph. This
-is why the standalone hook remains experimental and disabled. Future sampler
-work should target the compiled sampler/logits epilogue boundary rather than
-enabling this standalone replacement. Artifacts:
+Those deltas cannot be used as current negative evidence because the custom
+sampler was not semantically equivalent. The trace still proves the path was
+reached, and the hook remains experimental and disabled. Future sampler work
+must first pass independent semantic parity, then measure the compiled
+sampler/logits epilogue boundary. Artifacts:
 `benchmarks/results/l20-vllm-sampling-itl/qwen25-coder-1p5b-summary.json`,
 `benchmarks/results/l20-vllm-sampling-itl/qwen25-coder-1p5b-flashinfer-clean-c1c4-i512-o32-r3/`,
 and

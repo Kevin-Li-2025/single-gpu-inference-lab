@@ -112,7 +112,9 @@ def test_boundary_impacts_include_negative_controls_and_p0_budget():
     rows = build_boundary_impacts(".")
     by_name = {row.boundary: row for row in rows}
     assert by_name["RoPE + paged KV append"].micro_speedup_x > 3.0
-    assert by_name["Self-written standalone sampler"].serving_impact_pct < 0.0
+    sampler = by_name["Self-written standalone sampler"]
+    assert sampler.status == "superseded_semantics"
+    assert sampler.serving_impact_pct is None
     assert by_name["Standalone LM-head top-k"].micro_speedup_x < 1.0
     logits = by_name["LM-head/logits epilogue"]
     assert logits.status == "active_p0_budget"

@@ -11,30 +11,29 @@
 <text x="28" y="110" class="small muted">case_study_evidence_not_next_target</text>
 <rect x="430" y="81" width="160.0" height="16" rx="2" class="micro"/>
 <text x="598.0" y="94" class="small">7.70x</text>
-<rect x="660" y="81" width="2.8" height="16" rx="2" class="good"/>
-<text x="670.8" y="94" class="small">+0.58%</text>
+<rect x="660" y="81" width="10.6" height="16" rx="2" class="good"/>
+<text x="678.6" y="94" class="small">+0.58%</text>
 <text x="900" y="94" class="small muted">n/a</text>
 <line x1="28" y1="126" x2="1072" y2="126" class="axis"/>
 <text x="28" y="148" class="label">Q/K norm + Q/K RoPE + KV write</text>
 <text x="28" y="168" class="small muted">do_not_micro_optimize_alone</text>
 <rect x="430" y="139" width="30.5" height="16" rx="2" class="micro"/>
 <text x="468.5" y="152" class="small">1.47x</text>
-<rect x="660" y="139" width="22.3" height="16" rx="2" class="good"/>
-<text x="690.3" y="152" class="small">+4.52%</text>
+<rect x="660" y="139" width="82.9" height="16" rx="2" class="good"/>
+<text x="750.9" y="152" class="small">+4.52%</text>
 <text x="900" y="152" class="small muted">n/a</text>
 <line x1="28" y1="184" x2="1072" y2="184" class="axis"/>
 <text x="28" y="206" class="label">FlashInfer sampling route</text>
 <text x="28" y="226" class="small muted">harden_existing_route</text>
 <text x="430" y="210" class="small muted">not measured</text>
-<rect x="660" y="197" width="43.1" height="16" rx="2" class="good"/>
-<text x="711.1" y="210" class="small">+8.73%</text>
+<rect x="660" y="197" width="160.0" height="16" rx="2" class="good"/>
+<text x="828.0" y="210" class="small">+8.73%</text>
 <text x="900" y="210" class="small muted">n/a</text>
 <line x1="28" y1="242" x2="1072" y2="242" class="axis"/>
 <text x="28" y="264" class="label">Self-written standalone sampler</text>
 <text x="28" y="284" class="small muted">keep_disabled</text>
 <text x="430" y="268" class="small muted">not measured</text>
-<rect x="660" y="255" width="160.0" height="16" rx="2" class="bad"/>
-<text x="828.0" y="268" class="small">-32.36%</text>
+<text x="660" y="268" class="small muted">pending</text>
 <text x="900" y="268" class="small muted">n/a</text>
 <line x1="28" y1="300" x2="1072" y2="300" class="axis"/>
 <text x="28" y="322" class="label">Standalone LM-head top-k</text>

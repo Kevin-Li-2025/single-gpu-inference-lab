@@ -1,3 +1,4 @@
+import hashlib
 import importlib.util
 from pathlib import Path
 
@@ -106,7 +107,8 @@ def sample():
     assert "l20_defer_penalties: bool = False" in patched_topk
     assert "expanded_idx_mapping=l20_expanded_idx_mapping" in patched_topk
     assert "history_tokens=l20_history_tokens" in patched_topk
-    assert "defer_penalties=l20_defer_penalties" in patched_topk
+    assert "defer_penalties=False" in patched_topk
+    assert "defer_penalties=l20_defer_penalties" not in patched_topk
     assert "return l20_sampled, None" in patched_topk
     assert "l20_expanded_idx_mapping: torch.Tensor | None" in patched_metadata
     assert "l20_seeds: torch.Tensor | None" in patched_metadata
@@ -121,22 +123,23 @@ def sample():
     assert "sampling_metadata.l20_seeds" in patched_active_sampler
     assert "sampling_metadata.l20_positions" in patched_active_sampler
     assert "sampling_metadata.l20_history_tokens" in patched_active_sampler
-    assert "sampling_metadata.l20_defer_penalties" in patched_active_sampler
+    assert "l20_defer_penalties=False" in patched_active_sampler
     assert "sampling_metadata.frequency_penalties" in patched_active_sampler
-    assert 'getattr(sampling_metadata, "l20_defer_penalties", False)' in patched_active_sampler
+    assert (
+        'getattr(sampling_metadata, "l20_defer_penalties", False)'
+        not in patched_active_sampler
+    )
+    assert "assert sampling_metadata.prompt_token_ids is not None" in patched_active_sampler
     assert "self.l20_sampler_seeds" in patched_gpu_input_batch
     assert 'globals().get("PIN_MEMORY"' in patched_gpu_input_batch
     assert "self.l20_sampler_positions" in patched_gpu_input_batch
     assert "self.l20_sampler_positions_cpu_tensor" in patched_gpu_input_batch
     assert "self.l20_sampler_positions_cpu[:num_reqs]" in patched_gpu_input_batch
     assert "self.l20_sampler_indices[:num_reqs]" in patched_gpu_input_batch
-    assert "import os" in patched_gpu_input_batch
-    assert "VLLM_L20_TOPK_TOPP_DEFER_PENALTIES" in patched_gpu_input_batch
-    assert "self.max_num_logprobs is None" in patched_gpu_input_batch
-    assert "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS" in patched_gpu_input_batch
-    assert "and l20_allow_logprobs" in patched_gpu_input_batch
-    assert "l20_history_cpu = torch.full" in patched_gpu_input_batch
-    assert "l20_defer_penalties = True" in patched_gpu_input_batch
+    assert "Keep native vLLM penalties active" in patched_gpu_input_batch
+    assert "l20_defer_penalties = False" in patched_gpu_input_batch
+    assert "l20_defer_penalties = True" not in patched_gpu_input_batch
+    assert "l20_history_cpu = torch.full" not in patched_gpu_input_batch
     assert "l20_history_tokens=l20_history_tokens" in patched_gpu_input_batch
     assert "l20_expanded_idx_mapping=torch.arange" in patched_gpu_model_runner
     assert "maybe_l20_topk_topp_sample" in patched_worker
@@ -186,7 +189,7 @@ def test_sparse_sampling_ab_runner_detects_log_request_flag():
     assert 'server_args+=("$no_log_requests_arg")' in source
 
 
-def test_l20_topk_topp_installer_patches_forward_level_penalty_guard():
+def test_l20_topk_topp_installer_keeps_forward_level_penalties_active():
     module = load_installer()
     active_sampler_source = """
         random_sampled, processed_logprobs = self.topk_topp_sampler(
@@ -205,8 +208,8 @@ def test_l20_topk_topp_installer_patches_forward_level_penalty_guard():
     assert "sampling_metadata.max_num_logprobs is None" in patched
     assert "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS" in patched
     assert "sampling_metadata.l20_history_tokens" in patched
-    assert 'getattr(sampling_metadata, "l20_defer_penalties", False)' in patched
-    assert "if not getattr" in patched
+    assert 'getattr(sampling_metadata, "l20_defer_penalties", False)' not in patched
+    assert "if not getattr" not in patched
     assert "logits = self.apply_penalties(logits, sampling_metadata)" in patched
 
 
@@ -280,21 +283,57 @@ class TopKTopPSampler:
 
 def test_l20_topk_topp_installer_upgrades_old_active_sampler_patch():
     module = load_installer()
-    source = module.SAMPLER_TOPK_CALL_PATCHED_NO_LOGPROBS_GATE + """
-        if sampling_metadata.no_penalties:
-            return logits
+    legacy_calls = (
+        module.SAMPLER_TOPK_CALL_PATCHED_NO_LOGPROBS_GATE_LEGACY_DEFERRED,
+        module.SAMPLER_TOPK_CALL_PATCHED_LEGACY_DEFERRED,
+    )
+    legacy_penalty_guards = (
+        module.SAMPLER_APPLY_PENALTIES_PATCHED,
+        module.SAMPLER_FORWARD_APPLY_PENALTIES_PATCHED,
+    )
 
-        assert sampling_metadata.prompt_token_ids is not None
-"""
+    for legacy_call in legacy_calls:
+        for legacy_penalty_guard in legacy_penalty_guards:
+            source = legacy_call + legacy_penalty_guard
+            patched = module.patch_active_sampler(source)
+            patched_twice = module.patch_active_sampler(patched)
+            native_penalty_marker = (
+                "assert sampling_metadata.prompt_token_ids is not None"
+                if legacy_penalty_guard == module.SAMPLER_APPLY_PENALTIES_PATCHED
+                else "logits = self.apply_penalties(logits, sampling_metadata)"
+            )
 
-    patched = module.patch_active_sampler(source)
-    patched_twice = module.patch_active_sampler(patched)
+            assert patched_twice == patched
+            assert "sampling_metadata.max_num_logprobs is None" in patched
+            assert "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS" in patched
+            assert "l20_defer_penalties=False" in patched
+            assert (
+                "l20_defer_penalties=sampling_metadata.l20_defer_penalties"
+                not in patched
+            )
+            assert (
+                'getattr(sampling_metadata, "l20_defer_penalties", False)'
+                not in patched
+            )
+            assert "if not getattr" not in patched
+            assert native_penalty_marker in patched
+
+
+def test_l20_topk_topp_installer_upgrades_old_forward_cuda_patch():
+    module = load_installer()
+    source = (
+        module.IMPORT_LINE
+        + module.TOPK_FORWARD_SIGNATURE_PATCHED
+        + module.TOPK_NATIVE_SIGNATURE_PATCHED
+        + module.TOPK_FLASHINFER_RETURN_PATCHED_LEGACY_DEFERRED
+    )
+
+    patched = module.patch_topk_topp_sampler(source)
+    patched_twice = module.patch_topk_topp_sampler(patched)
 
     assert patched_twice == patched
-    assert "sampling_metadata.max_num_logprobs is None" in patched
-    assert "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS" in patched
-    assert "else False" in patched
-    assert "l20_defer_penalties=sampling_metadata.l20_defer_penalties" not in patched
+    assert "defer_penalties=False" in patched
+    assert "defer_penalties=l20_defer_penalties" not in patched
 
 
 def test_l20_topk_topp_installer_forces_forward_cuda_without_flashinfer():
@@ -357,11 +396,41 @@ import torch
 
     patched = module.patch_gpu_input_batch(gpu_input_batch_source)
 
-    assert "import os" in patched
     assert "self.l20_sampler_seeds" in patched
     assert "self.l20_sampler_indices" in patched
     assert "self.l20_sampler_positions_cpu_tensor" in patched
     assert "self.l20_sampler_seeds_cpu[req_index] = l20_seed" in patched
     assert "l20_history_tokens=l20_history_tokens" in patched
     assert "l20_defer_penalties=l20_defer_penalties" in patched
-    assert "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS" in patched
+    assert "Keep native vLLM penalties active" in patched
+    assert "l20_defer_penalties = False" in patched
+    assert "l20_defer_penalties = True" not in patched
+
+
+def test_l20_topk_topp_installer_removes_legacy_deferred_history_hot_path():
+    module = load_installer()
+    assert (
+        hashlib.sha256(
+            module.INPUT_BATCH_SPARSE_HISTORY_LEGACY_DEFERRED.encode()
+        ).hexdigest()
+        == "a8da249eae6f5dbb0c58c238f2b9d2bee187908c962f541e720b8d9e7071b3ff"
+    )
+    legacy_source = (
+        "import numpy as np\nimport os\nimport torch\n"
+        + module.INPUT_BATCH_TOPK_REQS_V010_PATCHED
+        + module.INPUT_BATCH_TOPK_CPU_V010_PATCHED
+        + module.INPUT_BATCH_COPY_TOPK_PATCHED
+        + module.INPUT_BATCH_SPARSE_HISTORY_LEGACY_DEFERRED
+        + module.INPUT_BATCH_METADATA_GENERATORS_PATCHED
+    )
+
+    patched = module.patch_gpu_input_batch(legacy_source)
+    patched_twice = module.patch_gpu_input_batch(patched)
+
+    assert patched_twice == patched
+    assert patched.count(module.INPUT_BATCH_SPARSE_HISTORY) == 1
+    assert "VLLM_L20_TOPK_TOPP_DEFER_PENALTIES" not in patched
+    assert "l20_history_cpu = torch.full" not in patched
+    assert "l20_lengths_cpu = torch.zeros" not in patched
+    assert "l20_defer_penalties = True" not in patched
+    assert "Keep native vLLM penalties active" in patched

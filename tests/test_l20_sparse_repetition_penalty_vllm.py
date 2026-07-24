@@ -18,6 +18,59 @@ def load_processor():
 
 
 class L20SparseRepetitionPenaltyVllmTest(unittest.TestCase):
+    def test_penalty_validation_rejects_non_finite_and_non_positive_values(self):
+        module = load_processor()
+
+        for value in ("nan", "inf", "-inf", "0", "-1"):
+            params = SimpleNamespace(
+                extra_args={
+                    "l20_sparse_repetition_penalty": True,
+                    "l20_repetition_penalty": value,
+                }
+            )
+            with self.subTest(value=value), self.assertRaisesRegex(
+                ValueError,
+                "finite and positive",
+            ):
+                module.L20SparseRepetitionPenaltyProcessor.validate_params(params)
+
+    def test_uniform_penalty_requires_exact_semantic_match(self):
+        module = load_processor()
+
+        self.assertEqual(module._uniform_penalty([1.1, 1.1]), 1.1)
+        self.assertIsNone(module._uniform_penalty([1.1, 1.100000001]))
+        self.assertIsNone(module._uniform_penalty([]))
+
+    def test_processor_builds_unique_active_token_prefixes(self):
+        try:
+            import torch
+        except ImportError:
+            self.skipTest("torch is not installed")
+        module = load_processor()
+        processor = module.L20SparseRepetitionPenaltyProcessor()
+        params = SimpleNamespace(
+            extra_args={
+                "l20_sparse_repetition_penalty": True,
+                "l20_repetition_penalty": 1.1,
+                "l20_penalty_include_prompt": True,
+            }
+        )
+        processor.update_state(
+            SimpleNamespace(
+                removed=[],
+                added=[(0, params, [1, 1, 2], [2, 3, 3])],
+                moved=[],
+            )
+        )
+
+        token_ids, lengths, penalty = processor._build_history_tensors(
+            torch.zeros((1, 8))
+        )
+
+        self.assertEqual(lengths.tolist(), [3])
+        self.assertEqual(token_ids[0, :3].tolist(), [1, 2, 3])
+        self.assertEqual(penalty, 1.1)
+
     def test_sparse_repetition_penalty_gate_matches_l20_benchmark_policy(self):
         module = load_processor()
 
@@ -65,6 +118,7 @@ class L20SparseRepetitionPenaltyVllmTest(unittest.TestCase):
         self.assertIn("l20_sparse_repetition_penalty", source)
         self.assertIn("l20_repetition_penalty", source)
         self.assertIn("VLLM_L20_SPARSE_REPETITION_PENALTY_TRACE", source)
+        self.assertIn("must contain unique", source)
 
     def test_processor_state_handles_added_before_swap_moves(self):
         module = load_processor()
@@ -116,5 +170,16 @@ class L20SparseRepetitionPenaltyVllmTest(unittest.TestCase):
         self.assertIn("C10_CUDA_KERNEL_LAUNCH_CHECK", kernel)
         self.assertIn("logits.scalar_type() == at::kFloat", kernel)
         self.assertIn("token_ids.scalar_type() == at::kLong", kernel)
+        self.assertIn("token_ids.device() == logits.device()", kernel)
+        self.assertIn("lengths.device() == logits.device()", kernel)
+        self.assertIn("std::isfinite(repetition_penalty)", kernel)
         self.assertIn("torch.ops.l20_stack.sparse_repetition_penalty_out", smoke)
         self.assertIn("torch.testing.assert_close", smoke)
+
+    def test_provider_gate_does_not_synchronize_history_lengths_to_host(self):
+        source = Path(
+            "integrations/vllm/l20_sparse_repetition_penalty_logits_processor.py"
+        ).read_text()
+
+        self.assertNotIn("lengths.max().item()", source)
+        self.assertIn("max_unique = int(token_ids.shape[1])", source)

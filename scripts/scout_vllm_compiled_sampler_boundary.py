@@ -285,10 +285,9 @@ def load_serving_summary(path: Path | None) -> dict:
         "path": str(path),
         "model": data.get("model"),
         "shape": data.get("shape", {}),
-        "l20_notrace_deltas": deltas,
-        "rejects_standalone_hook": any(
-            float(row.get("median_itl_pct", 0.0)) > 0.0 for row in deltas.values()
-        ),
+        "evidence_status": "superseded_semantics",
+        "historical_l20_notrace_deltas": deltas,
+        "performance_comparable": False,
     }
 
 
@@ -309,11 +308,12 @@ def build_plan(points: list[dict], serving: dict, rng_gap: dict) -> list[dict]:
     return [
         {
             "priority": "P0",
-            "step": "do not enable the standalone L20 sampler hook",
-            "ready": bool(serving.get("rejects_standalone_hook")),
+            "step": "keep the standalone L20 sampler disabled pending revalidation",
+            "ready": bool(serving),
             "details": (
-                "Real ITL regressed, so the hook is useful only as a negative "
-                "artifact and path-proof harness."
+                "The historical latency comparator used invalidated top-p "
+                "semantics; retain only its path-proof value until a corrected "
+                "native-equivalent rerun."
             ),
         },
         {
@@ -355,6 +355,7 @@ def analyze(source: Path, serving_summary: Path | None) -> dict:
     complete = all(point["required_complete"] for point in points)
     return {
         "schema_version": 1,
+        "evidence_status": "source_map_only",
         "complete": complete,
         "source": source_metadata(source),
         "patch_points": points,
@@ -370,9 +371,16 @@ def render_markdown(result: dict) -> str:
     lines = [
         "# vLLM Compiled Sampler Boundary Scout",
         "",
-        "This artifact follows the negative L20 standalone-sampler serving result. "
-        "It records the source boundaries required for a compiled sampler or "
-        "logits/LM-head epilogue path.",
+        (
+            "> **Source-map evidence only:** the linked custom-sampler latency "
+            "comparison used pre-audit top-p semantics. Its deltas are historical."
+        ),
+        "",
+        (
+            "This artifact follows an experimental L20 standalone-sampler run. It "
+            "records the source boundaries required for a compiled sampler or "
+            "logits/LM-head epilogue path."
+        ),
         "",
         "## Source",
         "",
@@ -400,21 +408,31 @@ def render_markdown(result: dict) -> str:
         lines.extend(
             [
                 "",
-                "## Serving Evidence",
+                "## Superseded serving measurements",
                 "",
                 f"- Summary: `{serving.get('path')}`",
                 f"- Model: `{serving.get('model')}`",
-                f"- Rejects standalone hook: `{serving.get('rejects_standalone_hook')}`",
+                f"- Evidence status: `{serving.get('evidence_status')}`",
+                f"- Performance comparable: `{serving.get('performance_comparable')}`",
                 "",
                 "| Shape | Median ITL delta | Output throughput delta |",
                 "| --- | ---: | ---: |",
             ]
         )
-        for shape, row in serving.get("l20_notrace_deltas", {}).items():
+        for shape, row in serving.get("historical_l20_notrace_deltas", {}).items():
             lines.append(
                 f"| `{shape}` | {row.get('median_itl_pct', 0.0):.2f}% | "
                 f"{row.get('output_throughput_pct', 0.0):.2f}% |"
             )
+        lines.extend(
+            [
+                "",
+                (
+                    "These deltas are retained for provenance and must not be used "
+                    "to accept or reject the corrected sampler."
+                ),
+            ]
+        )
 
     rng_gap = result.get("rng_metadata_gap", {})
     if rng_gap:

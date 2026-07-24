@@ -1,11 +1,17 @@
 # c8_i512_o32_r64
 
+> **Superseded performance comparison:** this leaf run used the affected
+> custom sampler. Retain it for provenance, not as current performance
+> evidence. See the
+> [sampling correctness notice](../../../../../docs/sampling-correctness-notice-2026-07.md).
+
 This artifact compares three real vLLM HTTP serving paths for repetition penalty:
 native vLLM baseline, request-level standalone logits processor, and fused sampler boundary.
 
-- Comparable workload: `True`
+- Workload signatures match: `True`
+- Performance comparable: `False`
 
-## Delta vs Baseline
+## Historical delta vs baseline
 
 | Variant | Metric | Baseline | Candidate | Improvement | Speedup |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -35,7 +41,7 @@ native vLLM baseline, request-level standalone logits processor, and fused sampl
 
 ## Claim Boundary
 
-- Only compare rows when comparable_workload is true.
+- The recorded workload signatures match, but performance is not comparable until semantic revalidation passes.
 - Latency variants should run without trace enabled; trace variants are path proof only.
-- This comparison isolates repetition penalty so standalone and fused routes share one semantic target.
-- Treat small deltas as directional until request count and traffic shape are expanded.
+- Do not treat positive or negative deltas as current evidence until native-equivalent sampling and penalty-history parity are independently verified.
+- Passing the sampling correctness notice revalidation gate is required before promoting this artifact.

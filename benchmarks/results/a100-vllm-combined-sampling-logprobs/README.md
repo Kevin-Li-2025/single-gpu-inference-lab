@@ -1,5 +1,11 @@
 # A100 Combined Sampling + Logprobs Serving A/B
 
+> **Superseded sampling comparison:** the fused top-logprobs component remains
+> independently validated, but this combined candidate predates the 2026-07
+> top-p semantics and penalty-history corrections. These deltas are historical,
+> not current performance evidence. See
+> `docs/sampling-correctness-notice-2026-07.md`.
+
 This directory records the first combined A100 vLLM serving result where the
 candidate enables both:
 
@@ -25,19 +31,18 @@ candidate-side raw logits clone when later no-op processors are provably empty.
 ## Extra Smoke
 
 `logprobs20-flashinfer-smoke/` raises generated-token `logprobs` from 5 to 20.
-It still wins the FlashInfer-enabled baseline in a 5-run smoke:
+It historically recorded a lower latency than the FlashInfer-enabled baseline
+in a 5-run smoke; the combined comparison is superseded:
 
 | Baseline | Candidate | Median ITL | Total request time | Trace proof |
 | --- | --- | ---: | ---: | --- |
 | vLLM FlashInfer sampler + native logprobs=20 | sparse sampler + fused top-logprobs=20 | 4.432 ms -> 4.262 ms (-3.85%) | 217.8 ms -> 210.0 ms (-3.59%) | top-logprobs 36/36, sparse sampler 36/38 |
 
-## Claim Boundary
+## Current claim boundary
 
-- This is a real OpenAI-compatible vLLM HTTP serving A/B, not a standalone
-  microbenchmark.
-- The FlashInfer comparison is the stronger baseline. The candidate still wins,
-  but the gain is low-single-digit.
-- The native PyTorch comparison is a weaker baseline. It is useful for showing
-  the integration boundary, not for claiming a production-wide replacement.
-- The trace runs prove path coverage but are not used for latency.
+- The HTTP and trace artifacts prove that both hooks reached real vLLM serving.
+- No combined latency delta is current evidence because the sampling component
+  was not native-equivalent.
+- The fused top-logprobs primitive remains separately supported by its
+  unaffected microbenchmark and clean path proof.
 - Server logs and model cache directories are intentionally excluded from git.

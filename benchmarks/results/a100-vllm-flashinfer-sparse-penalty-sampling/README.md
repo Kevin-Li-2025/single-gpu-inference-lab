@@ -1,5 +1,10 @@
 # a100-vllm-flashinfer-sparse-penalty-sampling
 
+> **Superseded pending rerun:** the custom sampler in this A/B predates the
+> top-p semantics correction and safe penalty fallback. Preserve the run for
+> provenance; exclude its latency delta from current claims. See the
+> [sampling correctness notice](../../../docs/sampling-correctness-notice-2026-07.md).
+
 This artifact compares vLLM's FlashInfer top-k/top-p sampler with the
 opt-in sparse token-history penalty sampler on a real OpenAI-compatible
 vLLM serving path.
@@ -14,7 +19,7 @@ vLLM serving path.
 - Output length: 48 tokens
 - Probe: 2 warmup, 20 measured requests
 
-## Result
+## Historical result (not current evidence)
 
 | Metric | FlashInfer median | Sparse sampler median | Delta |
 | --- | ---: | ---: | ---: |
@@ -33,8 +38,9 @@ vLLM serving path.
 
 ## Claim Boundary
 
-- This is a real vLLM HTTP serving A/B, not a standalone microbenchmark.
+- These deltas are not current performance evidence.
+- The custom sampler must pass the corrected top-p semantic revalidation gate before comparison.
+- This was collected through a real vLLM HTTP path, not a standalone microbenchmark.
 - The baseline uses vLLM's FlashInfer top-k/top-p sampler path.
 - The no-trace candidate is compared against the FlashInfer-enabled baseline.
 - The separate trace run proves custom hook coverage but is not used for latency.
-- Results should only be claimed when the GPU was idle before the run.

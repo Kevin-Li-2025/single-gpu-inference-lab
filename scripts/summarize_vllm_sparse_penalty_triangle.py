@@ -159,19 +159,22 @@ def build_summary(root: Path) -> dict[str, Any]:
     fused_trace_path = root / "fused-trace" / "l20-topk-topp-trace.jsonl"
     return {
         "schema_version": 1,
+        "evidence_status": "requires_semantic_validation",
+        "performance_comparable": False,
         "artifact": root.name,
         "boundary": (
             "three-way serving comparison: native vLLM penalty path vs request-level "
             "standalone logits processor vs fused sampler-boundary sparse penalty"
         ),
-        "comparable_workload": comparable,
+        "workload_signature_matches": comparable,
+        "comparable_workload": False,
         "workloads": workloads,
         "variants": {
             "baseline": baseline,
             "standalone": standalone,
             "fused": fused,
         },
-        "delta_vs_baseline": {
+        "historical_delta_vs_baseline": {
             "standalone": compare_against_baseline(baseline, standalone),
             "fused": compare_against_baseline(baseline, fused),
         },
@@ -180,10 +183,10 @@ def build_summary(root: Path) -> dict[str, Any]:
             "fused": summarize_fused_trace(fused_trace_path),
         },
         "claim_boundary": [
-            "Only compare rows when comparable_workload is true.",
+            "The recorded workload signatures match, but performance is not comparable until semantic revalidation passes.",
             "Latency variants should run without trace enabled; trace variants are path proof only.",
-            "This comparison isolates repetition penalty so standalone and fused routes share one semantic target.",
-            "Treat small deltas as directional until request count and traffic shape are expanded.",
+            "Do not treat positive or negative deltas as current evidence until native-equivalent sampling and penalty-history parity are independently verified.",
+            "Passing the sampling correctness notice revalidation gate is required before promoting this artifact.",
         ],
     }
 
@@ -194,10 +197,14 @@ def render_markdown(summary: dict[str, Any]) -> str:
     lines = [
         f"# {summary['artifact']}",
         "",
+        "> **Provisional semantics:** generated latency deltas are not current",
+        "> performance evidence until the sampling revalidation gate passes.",
+        "",
         "This artifact compares three real vLLM HTTP serving paths for repetition penalty:",
         "native vLLM baseline, request-level standalone logits processor, and fused sampler boundary.",
         "",
-        f"- Comparable workload: `{summary['comparable_workload']}`",
+        f"- Workload signatures match: `{summary['workload_signature_matches']}`",
+        f"- Performance comparable: `{summary['performance_comparable']}`",
         "",
         "## Delta vs Baseline",
         "",
@@ -205,12 +212,11 @@ def render_markdown(summary: dict[str, Any]) -> str:
         "| --- | --- | ---: | ---: | ---: | ---: |",
     ]
     for variant in ("standalone", "fused"):
-        for row in summary["delta_vs_baseline"][variant]:
+        for row in summary["historical_delta_vs_baseline"][variant]:
             lines.append(
                 f"| `{variant}` | `{row['metric']}` | {row['baseline']} | "
                 f"{row['candidate']} | {row['improvement_pct']}% | {row['speedup']}x |"
             )
-    trace = summary["trace_proof"]
     lines.extend(
         [
             "",

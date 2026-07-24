@@ -1,5 +1,10 @@
 # L20 GPU Sampling Results
 
+> **Superseded pending rerun:** every custom top-p timing in this artifact used
+> the pre-audit nucleus mask. The tables remain as historical measurements, but
+> neither their correctness comparison nor their speedups are current evidence.
+> See the [sampling correctness notice](../../../docs/sampling-correctness-notice-2026-07.md).
+
 This directory tracks GPU-side sampling experiments for Qwen-sized vocabularies
 on NVIDIA L20 / SM89. The current stochastic target is `top_k=50`, `top_p=0.9`,
 temperature `0.8`, vocab `151936`, FP16 logits.
@@ -13,10 +18,11 @@ Implementation:
 - algorithm: two-stage tile-local top-k, row-level top-k/top-p merge, and
   multinomial sampling from caller-provided GPU uniforms
 
-The caller-provided uniforms make correctness exact against a deterministic
-PyTorch reference before wiring the kernel into vLLM RNG state.
+Caller-provided uniforms made the original kernel and reference deterministic,
+but both shared the same nucleus-mask bug; that comparison did not establish
+native-equivalent correctness.
 
-## Selected Policy Results
+## Historical Recorded Results
 
 | Batch | Block Vocab | Triton Preallocated ms | FlashInfer ms | PyTorch GPU ms | CPU Round-trip ms | Triton vs FlashInfer |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -26,17 +32,16 @@ PyTorch reference before wiring the kernel into vLLM RNG state.
 | 16 | 1024 | 0.20480 | 0.13107 | 0.27290 | 3.98898 | 0.64x |
 | 64 | 1024 | 0.56218 | 0.21094 | 0.30925 | 14.47883 | 0.38x |
 
-Conclusion: the first self-written stochastic sampler is useful for latency
-sensitive batch 1 to 4 decode, where it beats FlashInfer 0.6.12 by 1.17x to
-1.51x on this L20. It should not replace FlashInfer for batch 8 or larger; the
-batched reduce/sample path is the next optimization gap.
+The recorded 1.17x–1.51x batch-1-to-4 deltas are not carried forward. A
+corrected kernel/reference and the target FlashInfer implementation must first
+agree under fixed RNG state before a new performance policy is derived.
 
 ## Tile Sweep
 
 | Batch | Block Vocab | Triton Preallocated ms | Note |
 | ---: | ---: | ---: | --- |
 | 1 | 512 | 0.33331 | too many tile candidates |
-| 1 | 1024 | 0.09421 | faster than FlashInfer, not best |
+| 1 | 1024 | 0.09421 | historically faster than FlashInfer, not current evidence |
 | 1 | 2048 | 0.07834 | best batch-one tile |
 | 4 | 512 | 0.39578 | too many tile candidates |
 | 4 | 2048 | 0.10547 | best measured batch-four tile |
@@ -49,11 +54,14 @@ batched reduce/sample path is the next optimization gap.
 | 64 | 1024 | 0.56218 | best measured batch-sixty-four tile |
 | 64 | 2048 | 0.63078 | less parallelism |
 
-The dispatch policy derived from this matrix is:
+The historical dispatch policy derived from this invalidated matrix was:
 
 - correctness gate: batch <= 64, vocab <= 262144, `2 <= top_k <= 64`
 - performance gate: prefer custom L20 sampler only for batch <= 4
 - tile policy: 2048 vocab tiles for batch <= 4, 1024 vocab tiles otherwise
+
+It must not be enabled from these results. The current integration remains
+experimental and disabled pending the notice's revalidation gate.
 
 ## Reproduce
 

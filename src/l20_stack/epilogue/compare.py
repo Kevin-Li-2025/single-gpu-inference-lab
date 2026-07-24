@@ -145,19 +145,6 @@ def _best_batched_lm_head_top1_speedup(root: Path) -> float | None:
     return max(values) if values else None
 
 
-def _custom_sampler_regression(root: Path) -> float | None:
-    summary = _load_json(
-        root / "benchmarks/results/l20-vllm-sampling-itl/qwen25-coder-1p5b-summary.json"
-    )
-    if not summary:
-        return None
-    values = [
-        float(row.get("median_itl_pct", 0.0))
-        for row in summary.get("deltas", {}).get("l20_notrace", {}).values()
-    ]
-    return max(values) if values else None
-
-
 def build_boundary_impacts(root: str | Path = ".") -> list[BoundaryImpact]:
     """Build rows from the checked-in benchmark artifacts."""
 
@@ -169,7 +156,6 @@ def build_boundary_impacts(root: str | Path = ".") -> list[BoundaryImpact]:
     append_speedup = _max_paged_rope_micro_speedup(repo)
     rope_e2e_gain = _max_rope_kv_e2e_output_gain(repo)
     flashinfer_sampling_win = _max_flashinfer_sampling_itl_win(repo)
-    custom_sampler_regression = _custom_sampler_regression(repo)
     current_custom_gpu_pct = _max_gpu_boundary_pct(ceiling, "custom_l20_current")
     sampling_gpu_pct = _max_gpu_boundary_pct(ceiling, "standalone_sampling")
     gemm_gpu_pct = _max_gpu_boundary_pct(ceiling, "gemm_or_gemv")
@@ -222,18 +208,16 @@ def build_boundary_impacts(root: str | Path = ".") -> list[BoundaryImpact]:
         ),
         BoundaryImpact(
             boundary="Self-written standalone sampler",
-            status="negative_serving_result",
+            status="superseded_semantics",
             micro_speedup_x=None,
-            serving_impact_pct=(
-                -custom_sampler_regression if custom_sampler_regression is not None else None
-            ),
-            serving_metric="median ITL regression versus clean FlashInfer",
+            serving_impact_pct=None,
+            serving_metric="pre-audit top-p comparison withdrawn",
             gpu_time_pct=sampling_gpu_pct,
             eligible_fraction_pct=None,
             materialization_mib=None,
             decision="keep_disabled",
             evidence="benchmarks/results/l20-vllm-sampling-itl/qwen25-coder-1p5b-summary.json",
-            note="The hook reaches the path but loses to FlashInfer once integrated.",
+            note="The hook reaches the path; performance requires a corrected semantic rerun.",
         ),
         BoundaryImpact(
             boundary="Standalone LM-head top-k",
@@ -348,7 +332,8 @@ def render_markdown(rows: Iterable[BoundaryImpact]) -> str:
             "## Reading The Table",
             "",
             "- RoPE/KV and Q/K fusion rows show why micro wins are not enough.",
-            "- Standalone sampler and standalone LM-head top-k rows are negative controls.",
+            "- The standalone sampler row is superseded; standalone LM-head top-k "
+            "remains a valid negative control.",
             "- Batched greedy top-1 is a positive micro signal, not a serving claim.",
             "- FlashSampling-style Gumbel is the current positive epilogue target, still micro-only.",
             "- The logits epilogue row is not a speed claim; it is the measured "

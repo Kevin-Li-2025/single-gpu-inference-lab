@@ -40,11 +40,12 @@ jobs:
         run: |
           single-gpu-infer doc-links
 
-      - name: Build artifact catalog
+      - name: Verify checked-in artifact catalog
         env:
           PYTHONPATH: src
         run: |
-          single-gpu-infer artifact-catalog --output /tmp/artifact-catalog.json
+          single-gpu-infer artifact-catalog --output /tmp/artifact-catalog.json > /dev/null
+          cmp benchmarks/results/artifact-catalog.json /tmp/artifact-catalog.json
 
       - name: Run CPU-safe pytest suite
         env:
@@ -52,8 +53,9 @@ jobs:
         run: |
           python -m pytest -q
 
-      - name: Compile source and scripts
+      - name: Run static checks
         env:
           PYTHONPYCACHEPREFIX: /tmp/single-gpu-infer-pycache
         run: |
-          python -m compileall -q src scripts
+          ruff check --select E9,F63,F7,F82 src integrations scripts tests
+          python -m compileall -q src integrations scripts tests

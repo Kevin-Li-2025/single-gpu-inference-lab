@@ -24,6 +24,7 @@ REQUIRED_COMPARISON_METRICS = ("median_itl_ms", "output_throughput")
 CONTINUE_EPILOGUE_PROTOTYPE = "continue_epilogue_prototype"
 NEEDS_MORE_RUNS = "needs_more_runs"
 DO_NOT_CLAIM_WIN = "do_not_claim_win"
+NOT_COMPARABLE = "not_comparable"
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -437,19 +438,23 @@ def summarize_logits_boundary_ab(
         for reason in row["incomplete_reasons"]:
             incomplete_reasons.append(f"{row['shape']}:{reason}")
 
-    verdict = _verdict(rows, incomplete_reasons)
+    historical_verdict = _verdict(rows, incomplete_reasons)
     compared_shape_count = sum(
         1 for row in rows if row["baseline"] is not None and row["candidate"] is not None
     )
     strict_win_count = sum(1 for row in rows if row["strict_win"])
     return {
         "schema_version": 1,
+        "evidence_status": "requires_semantic_validation",
+        "performance_comparable": False,
         "input_dir": str(root),
         "baseline_dir": discovered["baseline_dir"],
         "candidate_dir": discovered["candidate_dir"],
-        "status": "incomplete" if incomplete_reasons else "complete",
+        "status": NOT_COMPARABLE,
+        "collection_status": "incomplete" if incomplete_reasons else "complete",
         "incomplete": bool(incomplete_reasons),
-        "verdict": verdict,
+        "verdict": NOT_COMPARABLE,
+        "historical_verdict": historical_verdict,
         "incomplete_reasons": incomplete_reasons,
         "min_runs_per_shape": min_runs_per_shape,
         "gate": {
@@ -503,13 +508,20 @@ def render_logits_boundary_ab_markdown(summary: dict[str, Any]) -> str:
     lines = [
         "# L20 Logits Boundary A/B Verdict",
         "",
+        "> **Provisional semantics:** the recorded deltas are historical and",
+        "> not current performance evidence until the corrected sampler passes",
+        "> native-equivalent semantic revalidation.",
+        "",
         f"- Input: `{summary['input_dir']}`",
         f"- Baseline: `{summary.get('baseline_dir')}`",
         f"- Candidate: `{summary.get('candidate_dir')}`",
-        f"- Status: `{summary['status']}`",
-        f"- Verdict: `{summary['verdict']}`",
+        f"- Evidence status: `{summary['evidence_status']}`",
+        f"- Performance comparable: `{summary['performance_comparable']}`",
+        f"- Collection status: `{summary['collection_status']}`",
+        f"- Current verdict: `{summary['verdict']}`",
+        f"- Historical verdict: `{summary['historical_verdict']}`",
         "",
-        "## Gate",
+        "## Historical gate",
         "",
         summary["gate"]["definition"],
         "",
@@ -531,7 +543,7 @@ def render_logits_boundary_ab_markdown(summary: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
-            "## Shape Results",
+            "## Historical recorded shape results",
             "",
             "| Shape | Baseline runs | Candidate runs | Baseline ITL ms | Candidate ITL ms | "
             "ITL delta | Baseline tok/s | Candidate tok/s | Throughput delta | Strict win |",

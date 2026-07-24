@@ -1,4 +1,5 @@
 {
+  "evidence_status": "superseded_semantics",
   "artifact": "a100-vllm-flashinfer-sparse-penalty-sampling",
   "baseline": {
     "mode": "vllm_flashinfer_topk_topp_penalty",
@@ -75,11 +76,12 @@
     }
   },
   "claim_boundary": [
-    "This is a real vLLM HTTP serving A/B, not a standalone microbenchmark.",
+    "These deltas are not current performance evidence.",
+    "The custom sampler must pass the corrected top-p semantic revalidation gate before comparison.",
+    "This was collected through a real vLLM HTTP path, not a standalone microbenchmark.",
     "The baseline uses vLLM's FlashInfer top-k/top-p sampler path.",
     "The no-trace candidate is compared against the FlashInfer-enabled baseline.",
-    "The separate trace run proves custom hook coverage but is not used for latency.",
-    "Results should only be claimed when the GPU was idle before the run."
+    "The separate trace run proves custom hook coverage but is not used for latency."
   ],
   "config": {
     "gpu": "NVIDIA A100-SXM4-80GB",
@@ -105,7 +107,7 @@
     "vllm_version": "0.10.2",
     "warmup": 2
   },
-  "delta": {
+  "historical_delta": {
     "itl_ms": {
       "baseline_median": 4.468297498533502,
       "candidate_median": 4.345882538473234,
@@ -147,6 +149,7 @@
     "schema_version": 1,
     "status": "ok"
   },
+  "performance_comparable": false,
   "schema_version": 1,
   "stability": {
     "itl_ms": {

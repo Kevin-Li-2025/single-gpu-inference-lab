@@ -1,5 +1,10 @@
 # L20 Sparse Repetition-Penalty Serving A/B
 
+> **Superseded comparator / path proof only:** this historical request omitted
+> prompt tokens from the custom repetition-penalty scope, unlike native vLLM.
+> Trace reachability remains useful; latency deltas are not current evidence.
+> See the [sampling correctness notice](../../../../docs/sampling-correctness-notice-2026-07.md).
+
 This is a runner smoke, not a serving-speed claim: the candidate did not hit the sparse CUDA op.
 
 This summary is valid only when both variants report zero failed requests and candidate trace coverage matches the intended gate.

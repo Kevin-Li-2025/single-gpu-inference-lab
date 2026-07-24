@@ -7,6 +7,9 @@ This file is the fastest way to orient in the repo.
 | File | Use |
 | --- | --- |
 | `README.md` | Public landing page and current result summary. |
+| `docs/reviewer-guide.md` | Evidence-first 1/5/15-minute technical review path. |
+| `docs/l20-sparse-penalty-case-study.md` | Featured CUDA-to-PyTorch-to-vLLM engineering loop. |
+| `docs/sampling-correctness-notice-2026-07.md` | Custom top-p correction, affected artifacts, and revalidation gate. |
 | `docs/hardware-scope.md` | Hardware claim policy: L20-first, A100 controls. |
 | `docs/experiment-status.md` | Current status map and negative-result ledger. |
 | `docs/where-optimizations-stop-mattering.md` | Paper-style one-page systems thesis. |
@@ -54,13 +57,12 @@ The active line is the producer-side sampling/logits boundary:
 
 ```text
 serving semantics probe
--> fused top-k/top-p + dense penalties
--> sparse token-history prototype
--> real vLLM serving ITL A/B
--> fused top-logprobs path proof
--> combined sparse-sampling + top-logprobs serving matrix
+-> fused top-logprobs and sparse repetition-penalty operator evidence
+-> historical custom-sampler prototypes and serving path proofs
+-> adversarial semantics audit withdraws affected performance claims
+-> corrected sampler keeps native penalties for safe fallback
 -> standalone LM-head sparse-penalty negative proof
--> L20 sparse repetition-penalty kernel + negative processor + fused sampler matrix
+-> logits-boundary traces and Amdahl ceiling
 -> CPU tiny-transformer path proof and real GGUF smoke for cost/boundary control
 -> CPU-vs-L20 Qwen-family break-even table
 -> CPU-vs-L20 cost/tail table plus fixed real-prompt HTTP trace

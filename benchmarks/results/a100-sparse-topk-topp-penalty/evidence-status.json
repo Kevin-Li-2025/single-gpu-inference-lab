@@ -1,0 +1,10 @@
+{
+  "evidence_status": "superseded_semantics",
+  "performance_comparable": false,
+  "reason": "The sparse-history fused top-k/top-p measurements predate the native-equivalent top-p semantics correction.",
+  "revalidation_required": "Rerun correctness and performance after the 2026-07 sampling audit gate passes.",
+  "schema_version": 1,
+  "scope": [
+    "*.json"
+  ]
+}

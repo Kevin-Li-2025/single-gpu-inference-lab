@@ -1,4 +1,5 @@
 {
+  "evidence_status": "superseded_semantics",
   "artifact": "a100-vllm-sparse-penalty-sampling",
   "baseline": {
     "flashinfer_available": false,
@@ -76,13 +77,15 @@
     }
   },
   "claim_boundary": [
-    "This is a real vLLM HTTP serving A/B on A100, not a standalone microbenchmark.",
+    "These deltas are not current performance evidence.",
+    "The custom sampler must pass the corrected top-p semantic revalidation gate before comparison.",
+    "This was collected through a real vLLM HTTP serving path on A100, not a standalone microbenchmark.",
     "The no-trace candidate is compared against vLLM native PyTorch top-k/top-p because FlashInfer was not installed in this vLLM 0.10.2 environment.",
     "The separate trace run proves hook coverage but is not used for latency because per-token JSON tracing adds overhead.",
     "This is not yet a broad production claim across models, GPUs, or FlashInfer-enabled deployments."
   ],
   "date": "2026-07-02",
-  "delta": {
+  "historical_delta": {
     "itl_ms": {
       "baseline_median": 9.544255008222535,
       "candidate_median": 4.093441995792091,
@@ -120,6 +123,7 @@
     "top_k": 50,
     "top_p": 0.9
   },
+  "performance_comparable": false,
   "schema_version": 1,
   "served_model_name": "qwen25-05b",
   "torch_version": "2.8.0+cu128",

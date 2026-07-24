@@ -22,7 +22,7 @@ def load_json(path: Path) -> dict[str, Any]:
 
 
 def metric_delta(row: dict[str, Any], variant: str, metric: str) -> dict[str, Any]:
-    for item in row["delta_vs_baseline"][variant]:
+    for item in row["historical_delta_vs_baseline"][variant]:
         if item["metric"] == metric:
             return item
     raise KeyError(f"missing {variant} metric {metric}")
@@ -36,19 +36,27 @@ def build_row(path: Path, root: Path) -> dict[str, Any]:
     return {
         "artifact": path.name,
         "path": str(path.relative_to(root)),
-        "comparable_workload": bool(summary["comparable_workload"]),
+        "evidence_status": summary["evidence_status"],
+        "workload_signature_matches": bool(summary["workload_signature_matches"]),
+        "performance_comparable": False,
         "input_tokens": workload["input_tokens_requested"],
         "output_tokens": workload["output_tokens_requested"],
         "num_prompts": workload["num_prompts"],
         "max_concurrency": workload["max_concurrency"],
-        "standalone_itl": metric_delta(summary, "standalone", "median_itl_ms"),
-        "fused_itl": metric_delta(summary, "fused", "median_itl_ms"),
-        "standalone_e2e": metric_delta(summary, "standalone", "median_e2el_ms"),
-        "fused_e2e": metric_delta(summary, "fused", "median_e2el_ms"),
-        "standalone_output_throughput": metric_delta(
+        "historical_standalone_itl": metric_delta(
+            summary, "standalone", "median_itl_ms"
+        ),
+        "historical_fused_itl": metric_delta(summary, "fused", "median_itl_ms"),
+        "historical_standalone_e2e": metric_delta(
+            summary, "standalone", "median_e2el_ms"
+        ),
+        "historical_fused_e2e": metric_delta(summary, "fused", "median_e2el_ms"),
+        "historical_standalone_output_throughput": metric_delta(
             summary, "standalone", "output_throughput"
         ),
-        "fused_output_throughput": metric_delta(summary, "fused", "output_throughput"),
+        "historical_fused_output_throughput": metric_delta(
+            summary, "fused", "output_throughput"
+        ),
         "fused_trace": {
             "eligible_events": fused_trace.get("eligible_events", 0),
             "total_events": fused_trace.get("total_events", 0),
@@ -63,45 +71,84 @@ def build_summary(root: Path) -> dict[str, Any]:
     for child in sorted(root.iterdir()):
         if child.is_dir() and (child / "summary.json").exists():
             rows.append(build_row(child, root))
-    comparable = [row for row in rows if row["comparable_workload"]]
+    signature_matches = [row for row in rows if row["workload_signature_matches"]]
+    evidence_status = (
+        "superseded_semantics"
+        if rows
+        and all(row["evidence_status"] == "superseded_semantics" for row in rows)
+        else "requires_semantic_validation"
+    )
     return {
         "schema_version": 1,
+        "evidence_status": evidence_status,
+        "performance_comparable": False,
         "artifact": root.name,
         "row_count": len(rows),
-        "comparable_row_count": len(comparable),
-        "fused_itl_positive_rows": sum(
-            1 for row in comparable if row["fused_itl"]["improvement_pct"] > 0
+        "workload_signature_match_row_count": len(signature_matches),
+        "historical_fused_itl_positive_rows": sum(
+            1
+            for row in signature_matches
+            if row["historical_fused_itl"]["improvement_pct"] > 0
         ),
-        "standalone_itl_positive_rows": sum(
-            1 for row in comparable if row["standalone_itl"]["improvement_pct"] > 0
+        "historical_standalone_itl_positive_rows": sum(
+            1
+            for row in signature_matches
+            if row["historical_standalone_itl"]["improvement_pct"] > 0
         ),
-        "fused_e2e_positive_rows": sum(
-            1 for row in comparable if row["fused_e2e"]["improvement_pct"] > 0
+        "historical_fused_e2e_positive_rows": sum(
+            1
+            for row in signature_matches
+            if row["historical_fused_e2e"]["improvement_pct"] > 0
         ),
         "rows": rows,
         "claim_boundary": [
             "This is a serving matrix, but each row is still scoped to its model and traffic shape.",
             "Latency rows are no-trace runs; trace sub-runs are path proof only.",
-            "Positive rows are evidence for this fused sampler boundary, not a general vLLM claim.",
+            "Positive and negative rows are not current evidence until native-equivalent semantic parity is independently verified.",
             "Standalone logits-processor rows remain useful as the architecture-control baseline.",
         ],
     }
 
 
 def render_markdown(summary: dict[str, Any]) -> str:
+    if summary["evidence_status"] == "superseded_semantics":
+        evidence_banner = [
+            "> **Superseded performance comparison:** all recorded deltas are",
+            "> historical; only the trace/path structure remains current evidence.",
+        ]
+    else:
+        evidence_banner = [
+            "> **Provisional semantics:** generated latency deltas are not current",
+            "> performance evidence until the sampling revalidation gate passes.",
+        ]
     lines = [
         f"# {summary['artifact']}",
+        "",
+        *evidence_banner,
         "",
         "This artifact summarizes a native-vs-standalone-vs-fused repetition-penalty",
         "serving matrix on the L20 vLLM path.",
         "",
-        "## Summary",
+        "## Recorded summary",
         "",
         f"- Rows: `{summary['row_count']}`",
-        f"- Comparable rows: `{summary['comparable_row_count']}`",
-        f"- Fused median ITL positives: `{summary['fused_itl_positive_rows']}`",
-        f"- Standalone median ITL positives: `{summary['standalone_itl_positive_rows']}`",
-        f"- Fused median E2E positives: `{summary['fused_e2e_positive_rows']}`",
+        (
+            "- Workload-signature matches: "
+            f"`{summary['workload_signature_match_row_count']}`"
+        ),
+        f"- Performance comparable: `{summary['performance_comparable']}`",
+        (
+            "- Historical fused median ITL positives: "
+            f"`{summary['historical_fused_itl_positive_rows']}`"
+        ),
+        (
+            "- Historical standalone median ITL positives: "
+            f"`{summary['historical_standalone_itl_positive_rows']}`"
+        ),
+        (
+            "- Historical fused median E2E positives: "
+            f"`{summary['historical_fused_e2e_positive_rows']}`"
+        ),
         "",
         "## Rows",
         "",
@@ -113,9 +160,9 @@ def render_markdown(summary: dict[str, Any]) -> str:
         lines.append(
             f"| `{row['artifact']}` | {row['max_concurrency']} | {row['input_tokens']} | "
             f"{row['output_tokens']} | {row['num_prompts']} | "
-            f"{row['standalone_itl']['improvement_pct']:+.3f}% | "
-            f"{row['fused_itl']['improvement_pct']:+.3f}% | "
-            f"{row['fused_e2e']['improvement_pct']:+.3f}% | "
+            f"{row['historical_standalone_itl']['improvement_pct']:+.3f}% | "
+            f"{row['historical_fused_itl']['improvement_pct']:+.3f}% | "
+            f"{row['historical_fused_e2e']['improvement_pct']:+.3f}% | "
             f"{trace['eligible_events']}/{trace['total_events']} |"
         )
     lines.extend(["", "## Claim Boundary", ""])

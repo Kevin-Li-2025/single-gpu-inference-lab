@@ -11,13 +11,13 @@ serving behavior.
 | --- | --- | --- | --- |
 | `install_l20_logits_boundary_trace.py` | Safe trace | Records where an LM-head/logits/sampling epilogue could be legal. | Behavior-preserving only; no speed claim. |
 | `install_l20_gemm_epilogue_trace.py` | Safe trace / API scaffold | Adds a fallback-first `LogitsProcessor.try_sample_from_lm_head` hook before `compute_logits`. | Behavior-preserving by default; install smoke only, no ITL claim. |
-| `l20_sparse_repetition_penalty_logits_processor.py` | Official custom processor scaffold | Exposes the sparse repetition-penalty gate through vLLM's custom logits-processor API and a `l20_stack::sparse_repetition_penalty_out` dispatcher op. | Opt-in only; no serving A/B claim yet. |
+| `l20_sparse_repetition_penalty_logits_processor.py` | Official custom processor / control path | Exposes the sparse repetition-penalty gate through vLLM's custom logits-processor API and a `l20_stack::sparse_repetition_penalty_out` dispatcher op. | Opt-in only. Historical serving runs exist, but their deltas are superseded by the 2026-07 semantic audit. |
 | `l20_flashsampling_epilogue.py` | Shadow helper | Narrows the logits-boundary trace to the FlashSampling-style full-vocab Gumbel epilogue gate. | Behavior-preserving only; micro result is not serving proof. |
 | `install_l20_flashsampling_epilogue_trace.py` | Safe trace | Installs the logits-boundary trace plus the narrower FlashSampling gate into vLLM. | Behavior-preserving only; path-proof/fallback accounting. |
 | `install_l20_flashsampling_epilogue_candidate.py` | Experimental | Opt-in LM-head FlashSampling candidate for full-vocab decode. | Real native path works; current paired run is not a throughput win. |
 | `install_l20_qk_norm_rope_kv.py` | Experimental | Tests a fused Q/K norm + Q/K RoPE + KV write boundary. | Path proof and small serving signal, not a broad win. |
 | `install_l20_rope_kv.py` | Confirmed kernel / limited serving | Fuses RoPE and KV-cache append. | Useful case-study evidence; Amdahl-limited in full serving. |
-| `install_l20_topk_topp_sampler.py` | Negative serving result | Wires the self-written L20 sampler into vLLM. | Disabled for production claims after ITL regression. |
+| `install_l20_topk_topp_sampler.py` | Corrected experiment / disabled | Wires the self-written L20 sampler into vLLM while keeping native penalties active for safe fallback. | Historical performance results are superseded; keep disabled until parity and repeated reruns pass. |
 | `install_l20_fp8_paged_decode.py` | Disabled experiment | Tests FP8 KV-cache paged decode with fused dequant. | Disabled unless forced; current serving baseline wins. |
 | `install_l20_paged_decode.py` | Experimental | Tests custom paged decode attention dispatch. | O2 path works, but serving boundary is too small. |
 | `install_l20_tree_attention.py` | Experimental | Speculative verifier/tree attention hook. | Research-only. |
@@ -91,7 +91,7 @@ Example OpenAI-compatible request payload:
     "vllm_xargs": {
       "l20_sparse_repetition_penalty": true,
       "l20_repetition_penalty": 1.1,
-      "l20_penalty_include_prompt": false
+      "l20_penalty_include_prompt": true
     }
   }
 }
@@ -100,11 +100,12 @@ Example OpenAI-compatible request payload:
 The shared object comes from
 `integrations/vllm/cuda/l20_sparse_repetition_penalty.cpp` plus
 `integrations/vllm/cuda/l20_sparse_repetition_penalty.cu`; the smoke entry is
-`scripts/smoke_cuda_sparse_repetition_penalty_op.py`. This remains a scaffold
-until a paired L20 serving run reports TTFT, ITL, throughput, and trace hit
-coverage. vLLM marks the custom logits-processor API as version-sensitive, so
-the first serving run should verify the request payload shape against the target
-vLLM commit before collecting latency.
+`scripts/smoke_cuda_sparse_repetition_penalty_op.py`. The standalone path has
+reached paired L20 serving, but its old comparison used non-equivalent
+prompt-history settings. Treat it as a control path until a corrected run
+satisfies `docs/sampling-correctness-notice-2026-07.md`. vLLM marks the custom
+logits-processor API as version-sensitive, so every run must verify the request
+payload shape against the target vLLM commit before collecting latency.
 
 For CUDA Graph/O2 experiments, generate the explicit op-preservation config
 instead of relying on compiler defaults:

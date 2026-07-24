@@ -27,7 +27,10 @@ def test_logits_boundary_ab_links_core_evidence():
 
 
 def test_public_summaries_link_the_ab_plan_once():
-    readme_link = "| Logits-boundary A/B plan | `docs/logits-boundary-ab.md` |"
+    readme_link = (
+        "| Logits-boundary A/B plan | "
+        "[`docs/logits-boundary-ab.md`](docs/logits-boundary-ab.md) |"
+    )
     summary_link = "[`docs/logits-boundary-ab.md`](logits-boundary-ab.md)"
     assert read(Path("README.md")).count(readme_link) == 1
     assert read(Path("docs/where-optimizations-stop-mattering.md")).count(

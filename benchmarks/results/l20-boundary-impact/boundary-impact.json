@@ -46,10 +46,10 @@
     "gpu_time_pct": 3.4160520483759185,
     "materialization_mib": null,
     "micro_speedup_x": null,
-    "note": "The hook reaches the path but loses to FlashInfer once integrated.",
-    "serving_impact_pct": -32.36045369402194,
-    "serving_metric": "median ITL regression versus clean FlashInfer",
-    "status": "negative_serving_result"
+    "note": "The hook reaches the path; performance requires a corrected semantic rerun.",
+    "serving_impact_pct": null,
+    "serving_metric": "pre-audit top-p comparison withdrawn",
+    "status": "superseded_semantics"
   },
   {
     "boundary": "Standalone LM-head top-k",

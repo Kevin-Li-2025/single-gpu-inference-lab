@@ -113,6 +113,8 @@ def build_summary(root: Path) -> dict[str, Any]:
     result = {
         "schema_version": 1,
         "artifact": root.name,
+        "evidence_status": "requires_semantic_validation",
+        "performance_comparable": False,
         "config": load_json(config_path) if config_path.exists() else {},
         "case": {
             "name": baseline.get("case"),
@@ -139,15 +141,16 @@ def build_summary(root: Path) -> dict[str, Any]:
                 else {}
             ),
         },
-        "delta": deltas,
+        "historical_delta": deltas,
         "trace_proof": trace_summary,
         "flashinfer_prewarm": load_json(prewarm_path) if prewarm_path.exists() else {},
         "claim_boundary": [
-            "This is a real vLLM HTTP serving A/B, not a standalone microbenchmark.",
+            "These deltas are not current performance evidence.",
+            "The custom sampler must pass the corrected top-p semantic revalidation gate before comparison.",
+            "This was collected through a real vLLM HTTP path, not a standalone microbenchmark.",
             "The baseline uses vLLM's FlashInfer top-k/top-p sampler path.",
             "The no-trace candidate is compared against the FlashInfer-enabled baseline.",
             "The separate trace run proves custom hook coverage but is not used for latency.",
-            "Results should only be claimed when the GPU was idle before the run.",
         ],
         "stability": {
             metric: {
@@ -166,12 +169,16 @@ def build_summary(root: Path) -> dict[str, Any]:
 
 def render_markdown(summary: dict[str, Any]) -> str:
     config = summary.get("config") or {}
-    delta = summary["delta"]
+    delta = summary["historical_delta"]
     trace = summary.get("trace_proof") or {}
     prewarm = summary.get("flashinfer_prewarm") or {}
     case = summary.get("case") or {}
     lines = [
         f"# {summary['artifact']}",
+        "",
+        "> **Provisional semantics:** the deltas below are historical and are",
+        "> not current performance evidence until the corrected top-p sampler",
+        "> passes native-equivalent semantic revalidation.",
         "",
         "This artifact compares vLLM's FlashInfer top-k/top-p sampler with the",
         "opt-in sparse token-history penalty sampler on a real OpenAI-compatible",
@@ -189,7 +196,7 @@ def render_markdown(summary: dict[str, Any]) -> str:
         f"{config.get('runs', 'unknown')} measured requests",
         f"- Case: `{case.get('name', config.get('probe_case', 'unknown'))}`",
         "",
-        "## Result",
+        "## Historical result (not current evidence)",
         "",
         "| Metric | FlashInfer median | Sparse sampler median | Delta |",
         "| --- | ---: | ---: | ---: |",

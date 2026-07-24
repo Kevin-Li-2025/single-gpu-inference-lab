@@ -1,4 +1,5 @@
 {
+  "evidence_status": "superseded_semantics",
   "baseline": {
     "dir": "/home/hhai/l20-stack/benchmarks/results/l20-logits-boundary-ab-smoke/qwen25-coder-1p5b-c1c4-i512-r1/baseline-trace-only",
     "exists": true,
@@ -118,10 +119,13 @@
     "strict_win_shapes": 0,
     "total_shapes": 2
   },
+  "collection_status": "complete",
+  "historical_verdict": "do_not_claim_win",
   "incomplete": false,
   "incomplete_reasons": [],
   "input_dir": "/home/hhai/l20-stack/benchmarks/results/l20-logits-boundary-ab-smoke/qwen25-coder-1p5b-c1c4-i512-r1",
   "min_runs_per_shape": 1,
+  "performance_comparable": false,
   "schema_version": 1,
   "shapes": [
     {
@@ -175,6 +179,6 @@
       "throughput_win": false
     }
   ],
-  "status": "complete",
-  "verdict": "do_not_claim_win"
+  "status": "not_comparable",
+  "verdict": "not_comparable"
 }

@@ -176,7 +176,6 @@ start_server() {
       env_args+=(
         "VLLM_L20_TOPK_TOPP_SAMPLER=1"
         "VLLM_L20_TOPK_TOPP_ALLOW_NON_L20=1"
-        "VLLM_L20_TOPK_TOPP_DEFER_PENALTIES=1"
         "VLLM_L20_TOPK_TOPP_ALLOW_LOGPROBS=1"
       )
     fi
@@ -415,6 +414,8 @@ def summarize_trace(path):
 
 baseline = case_summary("baseline-flashinfer-logprobs")
 candidate = case_summary("candidate-fused-top-logprobs")
+config = load(root / "run-config.json")
+sparse_sampler_enabled = bool(config.get("enable_sparse_sampler", False))
 delta = {}
 for metric in metrics:
     base = median(baseline, metric)
@@ -428,7 +429,7 @@ for metric in metrics:
 summary = {
     "schema_version": 1,
     "artifact": root.name,
-    "config": load(root / "run-config.json"),
+    "config": config,
     "case": {
         "name": baseline.get("case"),
         "description": baseline.get("description"),
@@ -437,8 +438,7 @@ summary = {
     "baseline": {
         "mode": (
             "vllm_flashinfer_sampling_native_logprobs"
-            if (root / "run-config.json").exists()
-            and load(root / "run-config.json").get("baseline_use_flashinfer", True)
+            if config.get("baseline_use_flashinfer", True)
             else "vllm_native_pytorch_sampling_native_logprobs"
         ),
         "ok_runs": baseline.get("ok_runs"),
@@ -470,18 +470,39 @@ summary = {
         "The separate trace run proves custom hook coverage but is not used for latency.",
     ],
 }
+if sparse_sampler_enabled:
+    summary["evidence_status"] = "requires_semantic_validation"
+    summary["performance_comparable"] = False
+    summary["historical_delta"] = summary.pop("delta")
+    summary["claim_boundary"][:0] = [
+        "The combined sparse-sampler deltas are not current performance evidence.",
+        "The corrected top-p sampler must pass native-equivalent semantic revalidation before comparison.",
+    ]
 (root / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 lines = [
     f"# {root.name}",
     "",
+]
+if sparse_sampler_enabled:
+    lines.extend([
+        "> **Provisional sampling semantics:** this combined sampler +",
+        "> top-logprobs A/B is not current performance evidence until the",
+        "> corrected sampler passes native-equivalent revalidation.",
+        "",
+    ])
+lines.extend([
     "This artifact compares native vLLM token-logprobs gathering with the",
     "opt-in fused top-logprobs path under an OpenAI-compatible serving workload.",
     "",
-    "## Result",
+    (
+        "## Historical result (not current evidence)"
+        if sparse_sampler_enabled
+        else "## Result"
+    ),
     "",
     "| Metric | Native logprobs median | Fused top-logprobs median | Delta |",
     "| --- | ---: | ---: | ---: |",
-]
+])
 for metric, label in [
     ("itl_ms", "ITL"),
     ("ms_per_output_token", "ms/output token"),

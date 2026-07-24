@@ -49,9 +49,9 @@ PYTHONPATH=src python scripts/benchmark_l20_top_logprobs.py \
 
 ## Interpretation
 
-The previous sparse sampler serving hook now gates out `logprobs` requests
-because a reused top-k/top-p sparse sampler path regressed under logprobs
-workloads. This result shows that logprobs deserve a separate primitive:
+The previous combined sparse-sampler comparison was superseded after its
+top-p semantics audit. This unaffected result shows that logprobs deserve a
+separate primitive:
 normalized top-N logprobs can be selected much faster than the PyTorch baselines
 when full-vocab log-softmax materialization is avoided.
 

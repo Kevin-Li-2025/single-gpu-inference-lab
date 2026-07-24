@@ -40,7 +40,7 @@ The following must stay hardware-scoped:
 | `benchmarks/results/l20-vllm-logits-boundary-trace-p1/` | L20 | Safe decode logits-materialization budget under real vLLM serving. |
 | `benchmarks/results/a100-vllm-gemm-epilogue-candidate/` | A100 | Output-changing greedy LM-head epilogue path works but does not beat baseline. |
 | `benchmarks/results/a100-vllm-sampling-semantics-qwen25-05b/` | A100 | Sampling semantics, not plain greedy argmax, create the large ITL gap. |
-| `benchmarks/results/a100-fused-topk-topp-penalty/` | A100 | Fused dense-count top-k/top-p + penalty primitive wins microbenchmarks. |
+| `benchmarks/results/a100-fused-topk-topp-penalty/` | A100 | Historical fused dense-count top-k/top-p + penalty microbenchmark; superseded after the nucleus-semantics audit. |
 
 ## Naming
 

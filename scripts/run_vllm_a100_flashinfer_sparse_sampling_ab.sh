@@ -139,7 +139,6 @@ start_server() {
     env_args+=(
       "VLLM_L20_TOPK_TOPP_SAMPLER=1"
       "VLLM_L20_TOPK_TOPP_ALLOW_NON_L20=1"
-      "VLLM_L20_TOPK_TOPP_DEFER_PENALTIES=1"
     )
   fi
   if [[ -n "$trace_path" ]]; then

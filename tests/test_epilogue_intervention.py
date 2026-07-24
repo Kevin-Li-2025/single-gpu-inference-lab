@@ -7,6 +7,7 @@ from l20_stack.epilogue.intervention import (
     CONTINUE_EPILOGUE_PROTOTYPE,
     DO_NOT_CLAIM_WIN,
     NEEDS_MORE_RUNS,
+    NOT_COMPARABLE,
     render_logits_boundary_ab_markdown,
     summarize_logits_boundary_ab,
 )
@@ -119,8 +120,12 @@ def test_logits_boundary_ab_strict_win_with_trace_and_shadow(tmp_path):
 
     summary = summarize_logits_boundary_ab(root)
 
-    assert summary["status"] == "complete"
-    assert summary["verdict"] == CONTINUE_EPILOGUE_PROTOTYPE
+    assert summary["status"] == NOT_COMPARABLE
+    assert summary["collection_status"] == "complete"
+    assert summary["verdict"] == NOT_COMPARABLE
+    assert summary["historical_verdict"] == CONTINUE_EPILOGUE_PROTOTYPE
+    assert summary["evidence_status"] == "requires_semantic_validation"
+    assert summary["performance_comparable"] is False
     assert summary["incomplete"] is False
     assert summary["gate"]["strict_win_shapes"] == 1
     assert summary["baseline"]["serving_report_count"] == 2
@@ -153,8 +158,10 @@ def test_logits_boundary_ab_reports_incomplete_when_candidate_dir_missing(tmp_pa
 
     summary = summarize_logits_boundary_ab(root)
 
-    assert summary["status"] == "incomplete"
-    assert summary["verdict"] == NEEDS_MORE_RUNS
+    assert summary["status"] == NOT_COMPARABLE
+    assert summary["collection_status"] == "incomplete"
+    assert summary["verdict"] == NOT_COMPARABLE
+    assert summary["historical_verdict"] == NEEDS_MORE_RUNS
     assert summary["incomplete"] is True
     assert "missing_candidate_dir" in summary["incomplete_reasons"]
     assert "c1-i512:missing_candidate_shape" in summary["incomplete_reasons"]
@@ -171,8 +178,10 @@ def test_logits_boundary_ab_does_not_claim_complete_non_strict_win(tmp_path):
 
     summary = summarize_logits_boundary_ab(root)
 
-    assert summary["status"] == "complete"
-    assert summary["verdict"] == DO_NOT_CLAIM_WIN
+    assert summary["status"] == NOT_COMPARABLE
+    assert summary["collection_status"] == "complete"
+    assert summary["verdict"] == NOT_COMPARABLE
+    assert summary["historical_verdict"] == DO_NOT_CLAIM_WIN
     assert summary["shapes"][0]["median_itl_win"] is True
     assert summary["shapes"][0]["throughput_win"] is False
     assert summary["shapes"][0]["strict_win"] is False
@@ -200,7 +209,8 @@ def test_logits_boundary_ab_uses_campaign_summary_and_cli_writes_outputs(tmp_pat
     ) == 0
 
     payload = json.loads(output_json.read_text(encoding="utf-8"))
-    assert payload["verdict"] == CONTINUE_EPILOGUE_PROTOTYPE
+    assert payload["verdict"] == NOT_COMPARABLE
+    assert payload["historical_verdict"] == CONTINUE_EPILOGUE_PROTOTYPE
     assert payload["baseline"]["shapes"][0]["source"] == "campaign-summary.json"
     assert "L20 Logits Boundary A/B Verdict" in output_md.read_text(encoding="utf-8")
 

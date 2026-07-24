@@ -1,5 +1,10 @@
 # A100 Sparse Top-k/Top-p + Penalty Microbenchmark
 
+> **Superseded pending rerun:** this benchmark used the pre-audit nucleus mask
+> and an affected penalty-history route. Its raw measurements are historical,
+> not current performance evidence. See the
+> [sampling correctness notice](../../../docs/sampling-correctness-notice-2026-07.md).
+
 This artifact tests the serving-shaped successor to the dense-count penalty
 prototype. Instead of assuming a dense `[batch, vocab]` token-count matrix, the
 new path consumes sparse token history:
@@ -16,9 +21,9 @@ copy logits to FP32 workspace
 -> existing two-stage top-k/top-p sampler
 ```
 
-This is still a microbenchmark. It is not a vLLM serving ITL win yet.
+This is a historical microbenchmark, not current operator or serving evidence.
 
-## Results
+## Historical results (not current evidence)
 
 Hardware: NVIDIA A100-SXM4-80GB
 
@@ -32,10 +37,9 @@ Shape: Qwen vocab 151936, top-k 50, top-p 0.9, temperature 0.8,
 
 ## Interpretation
 
-The result is useful because it removes the unrealistic dense-count assumption
-while staying faster than a separate penalty-then-sampling path. The remaining
-gap to dense-count fused is expected: sparse v1 adds a copy kernel and a scatter
-kernel before top-k/top-p reduction.
+The artifact records the move away from an unrealistic dense-count assumption,
+but its speed ratios are not carried forward because both the custom sampler
+and benchmark reference used the invalidated semantics.
 
 The next step was to wire this path into vLLM with an explicit opt-in gate and
 run paired ITL A/B on requests that use top-k/top-p plus penalties. That serving
@@ -45,16 +49,10 @@ artifact now lives in:
 benchmarks/results/a100-vllm-sparse-penalty-sampling/
 ```
 
-The current vLLM installer now carries that opt-in boundary:
-
-```text
-VLLM_L20_TOPK_TOPP_DEFER_PENALTIES=1
-```
-
-When enabled, the patched vLLM path builds a bounded sparse history window from
-request token IDs and defers penalties into the custom sampler. If the custom
-sampler is not eligible, it fails fast instead of falling back to unpenalized
-sampling. The default path leaves vLLM penalty handling unchanged.
+The current vLLM installer deliberately does **not** defer penalties into this
+path. Native vLLM penalties stay active so every later sampler fallback
+preserves semantics. A fused penalty route may return only after complete
+history parity and corrected GPU remeasurement.
 
 ## Files
 

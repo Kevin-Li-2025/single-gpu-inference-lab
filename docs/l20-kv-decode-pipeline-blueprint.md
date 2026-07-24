@@ -94,23 +94,17 @@ for the CUDA Graph preservation config that declares
 `l20_stack::sparse_repetition_penalty_out` as both a custom op and splitting op.
 The first checked-in Qwen3-0.6B runner smoke only proves plumbing: the tiny
 batch-one shape stays outside the sparse gate and records zero sparse-op hits.
-The first c8/i512/o32 eager run reaches the CUDA op 65 times, but it is a
-negative serving result: the standalone logits-processor launch and Python
-processor boundary erase the microbenchmark win. This pushes the next sparse
-penalty attempt toward a fused sampler or LM-head epilogue rather than another
-standalone logits processor.
+The first c8/i512/o32 eager run reaches the CUDA op 65 times, which remains a
+valid path proof. Its latency comparator omitted prompt tokens from the custom
+repetition-penalty scope, so the recorded delta is superseded rather than a
+current negative result.
 
-The fused sampler follow-up is now checked in as a separate boundary. The first
-FlashInfer-enabled L20 serving smoke moves median ITL 2.609 ms -> 2.575 ms with
-48/50 traced sampler events eligible. The native-vs-standalone-vs-fused
-triangle runner then puts the same repetition-penalty workload behind three
-real vLLM HTTP paths. Its first smoke proves all three routes start and complete
-with zero failed requests. The formal Qwen3-0.6B L20 matrix is now checked in:
-4/4 comparable rows are fused median-ITL positive and 4/4 are fused median-E2E
-positive, while the standalone request-level processor is median-ITL positive
-in only 1/4 rows. This keeps the serving claim scoped to the measured c2/c4/c8
-traffic shapes and makes the request-level processor a control path, not an
-optimization path.
+The fused-sampler smoke and four-row triangle matrix are also retained only as
+historical path/provenance artifacts: they used the pre-audit top-p mask and an
+unsafe deferred-history route. The corrected installer leaves native vLLM
+penalties active and replaces only an eligible sampling boundary, allowing
+safe fallback. A new repeated, native-equivalent GPU campaign is required
+before this blueprint treats either serving route as a win or loss.
 
 ### 5. MLA/GQA Compression Track
 
@@ -144,10 +138,10 @@ The final writeup should read like a short systems paper:
 | --- | --- |
 | `docs/l20-serving-case-study.md` | Existing micro-to-serving Amdahl case study. |
 | `benchmarks/results/l20-sparse-repetition-penalty/` | New standalone CUDA sparse logits-processing boundary. |
-| `benchmarks/results/l20-sparse-penalty-triangle-matrix/` | Qwen3-0.6B L20 serving matrix showing fused sampler wins where standalone request-level processing mostly regresses. |
+| `benchmarks/results/l20-sparse-penalty-triangle-matrix/` | Superseded Qwen3-0.6B matrix retained as sampler path/provenance evidence. |
 | `benchmarks/results/l20-fp8-kv-decode-attention/` | FP8 KV decode boundary to harden or reject. |
 | `benchmarks/results/l20-vllm-sampling-winner-v2/` | Production sampler route baseline. |
-| `benchmarks/results/a100-vllm-combined-sampling-logprobs-matrix/` | A100 control for richer sampling/logprobs workloads. |
+| `benchmarks/results/a100-vllm-combined-sampling-logprobs-matrix/` | Superseded combined-path A100 control; top-logprobs remains independently valid. |
 
 ## 4-6 Month Execution Plan
 
@@ -156,6 +150,6 @@ The final writeup should read like a short systems paper:
 | 1 | L20 baseline serving matrix with prefix-cache on/off | no optimization work until bottlenecks are measured |
 | 2 | KV pressure and prefix-cache jitter benchmark | publish cache hit and TTFT deltas only |
 | 3 | FP8 KV decode serving gate with Nsight summary | disable if BF16/FlashInfer wins |
-| 4 | sparse repetition-penalty vLLM processor, then fusion into sampler/logits boundary | keep only fused paths with positive serving matrix evidence |
+| 4 | sparse repetition-penalty vLLM processor, then sampler/logits-boundary experiment | require semantic parity before accepting any positive serving matrix |
 | 5 | MLA/GQA latent-KV fixture and decode benchmark | keep accuracy and speed claims separate |
 | 6 | consolidated case study and upstreamable diagnostic PR | no broad claim without serving evidence |

@@ -1,5 +1,10 @@
 # Qwen2.5-Coder-1.5B Active L20 Sampling NSYS v1
 
+> **Path proof only:** this run used the pre-audit custom top-p semantics.
+> Preserve its kernel counts and trace coverage, but exclude its latency
+> comparison from current evidence. See the
+> [sampling correctness notice](../../../../../docs/sampling-correctness-notice-2026-07.md).
+
 This run profiles real vLLM stochastic serving with the experimental L20
 top-k/top-p sampler hook enabled on one NVIDIA L20. It is a path-proof and
 system-boundary run, not a performance-win run.
@@ -36,10 +41,10 @@ system-boundary run, not a performance-win run.
 | Median ITL | 7.879 ms |
 | P99 ITL | 13.257 ms |
 
-Compared with the matched FlashInfer NSYS run, median ITL regresses from
-5.426 ms to 7.879 ms. The useful result is that the L20 hook is active inside
-real serving and visible in the timeline; it should not be shipped as a
-standalone replacement sampler.
+The historical matched run recorded median ITL moving from 5.426 ms to
+7.879 ms, but that delta is not native-equivalent and is excluded. The current
+result is narrower: the L20 hook was active inside real serving and is visible
+in the timeline.
 
 ## Timeline Counts
 
@@ -96,12 +101,11 @@ On the CUDA API side, synchronization, memcpy, and launch calls account for
 
 ## Conclusion
 
-The active L20 sampler hook is real in serving, but the standalone two-stage
-Triton sampler is not the right performance boundary. It adds 264 custom kernel
-instances and regresses median ITL despite covering 98.51% of sampling events.
-The next credible optimization is fusing sampling with the logits producer or
-LM-head epilogue so the full logits postprocessing path loses launches,
-synchronization, and intermediate traffic together.
+The active L20 sampler hook is real in serving: it adds 264 recorded custom
+kernel instances and covers 98.51% of sampling events. Because the candidate
+semantics were later invalidated, this profile cannot decide whether the
+standalone boundary wins or loses. Its kernel mix still motivates testing
+fusion with the logits producer or LM-head epilogue.
 
 ## Artifacts
 

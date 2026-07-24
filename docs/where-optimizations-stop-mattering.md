@@ -50,14 +50,14 @@ serving win unless the full stack improves.
 | RoPE + paged KV append | Roughly 7-8x write-path speedup in the strongest micro runs | Large batch/context attention dilutes the gain; serving impact is marginal | Keep as case-study evidence |
 | Q/K norm + Q/K RoPE + KV write | Correct O2 custom path, up to 1.47x micro speedup | Path is live but small in NSYS GPU-time share | Do not optimize alone |
 | FlashInfer sampling route | Production route, not a custom kernel | Wins most paired serving shapes versus torch/native sampling | Harden and prewarm |
-| Self-written standalone sampler | Path reaches vLLM hot path | Median ITL regresses versus FlashInfer | Keep disabled |
+| Self-written standalone sampler | Historical path reaches vLLM hot path | Pre-audit top-p serving delta is superseded | Keep disabled; rerun after semantic parity |
 | Standalone LM-head top-k | Chunked top-k and batch-1 direct top-1 are slower than full logits | Not worth serving integration | Avoid standalone replacement |
 | Batched LM-head greedy top-1 | Batch-4 direct top-1 reaches 0.677 ms vs 0.712 ms full logits, a 4.8% micro speedup | No vLLM serving integration and no top-k/top-p semantics yet | Keep as epilogue prototype evidence |
 | FlashSampling-style LM-head Gumbel | Tile-policy-v2 improves the standalone candidate policy; batch-4 h1024 reaches 0.911x candidate/full-logits ratio | Native vLLM candidate path is wired, but c1 policy-v2 smoke still loses throughput and TTFT | Negative standalone result |
 | A100 output-changing greedy LM-head epilogue | Candidate returns `SamplerOutput` for 378/378 eligible decode events without full-logits materialization | Same-session no-trace Qwen2.5-0.5B median ITL is 6.733 ms vs 6.727 ms baseline | Functional boundary proof, not a speedup |
 | A100 sampling semantics probe | Greedy/no-penalty control is 6.720 ms median ITL | repetition/top-k/top-p/logprobs move median ITL to 9.22-9.56 ms, +37-42% | Optimize semantics boundary, not greedy argmax |
-| Fused top-k/top-p + dense penalties | A100 Qwen-vocab microbench: 0.1407 ms vs 0.1915 ms at batch 1, 1.36x | Dense-count prototype only; no serving integration yet | Carry forward to sparse token-history prototype |
-| LM-head/logits epilogue | 96.00% trace eligibility; 339.93 MiB eligible logits materialization in latest smoke | A/B sampler hook and standalone FlashSampling candidate both regressed serving throughput | Current P0: true GEMM epilogue only |
+| Fused top-k/top-p + dense penalties | Historical A100 microbenchmark used the pre-audit nucleus mask | Comparator is not current semantic evidence | Superseded pending corrected rerun |
+| LM-head/logits epilogue | 96.00% trace eligibility; 339.93 MiB eligible logits materialization in latest smoke | Custom-sampler A/B is superseded; the separate standalone FlashSampling candidate regressed serving throughput | Current P0: true GEMM epilogue only |
 
 The generated artifact for this table is:
 `benchmarks/results/l20-boundary-impact/`.
@@ -68,8 +68,8 @@ The generated artifact for this table is:
 
 The negative results are part of the contribution:
 
-- the self-written top-k/top-p sampler regresses real vLLM serving despite
-  reaching the custom path;
+- the self-written top-k/top-p sampler reached the vLLM path, but its historical
+  serving delta is superseded after the semantics audit;
 - standalone no-full-logits top-k does not beat the optimized full-logits path;
 - batched greedy top-1 can beat full logits in a narrow microbenchmark, but it is not yet a production sampler path;
 - FlashSampling-style full-vocabulary Gumbel reaches the native vLLM path, but
@@ -124,5 +124,6 @@ The first output-changing A100 boundary artifact is:
 The first A100 sampling-semantics artifact is:
 `benchmarks/results/a100-vllm-sampling-semantics-qwen25-05b/`.
 
-The first fused top-k/top-p + penalty microbenchmark artifact is:
-`benchmarks/results/a100-fused-topk-topp-penalty/`.
+The historical fused top-k/top-p + penalty artifact is retained at
+`benchmarks/results/a100-fused-topk-topp-penalty/`; it is superseded pending a
+corrected rerun.

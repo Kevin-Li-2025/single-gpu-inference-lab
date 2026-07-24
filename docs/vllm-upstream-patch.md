@@ -1,6 +1,14 @@
 # vLLM Upstream Patch
 
-The current upstream-facing branch is:
+> **Superseded patch snapshots:** the two checked-in `.patch` files predate the
+> current CUDA boundary checks for device, shape, packed workspace capacity,
+> split count, and sequence bounds. Do not apply them as current integration
+> patches. The authoritative implementation is
+> `integrations/vllm/cuda/l20_paged_decode.cu`, built by
+> `integrations/vllm/install_l20_paged_decode.py`. Regenerate and revalidate an
+> upstream patch before proposing it.
+
+The historical upstream-facing branch snapshot is:
 
 ```text
 Kevin-Li-2025/vllm:kevin/l20-sm89-paged-decode-rfc
@@ -8,7 +16,7 @@ commit bb1ae10f04f1a80e8389df2b38fdbc7acf66f38e
 base vllm-project/vllm main 9fd00ee006ccd4996bbc756397b039343d2fde94
 ```
 
-The corresponding current-main patch is:
+The corresponding historical current-main patch is:
 
 ```text
 integrations/vllm/vllm-main-l20-paged-decode-rfc.patch
@@ -70,10 +78,10 @@ PYTHONPYCACHEPREFIX=/tmp/vllm-l20-pycache \
   vllm/_custom_ops.py tests/v1/attention/test_l20_paged_decode.py
 ```
 
-The branch is ready for an RFC or draft PR. It is not merge-ready until the
-current-main branch is built on the L20 host and the GPU correctness/smoke
-tests are rerun. The first remote L20 retry after the rebase timed out on SSH,
-so CUDA build, Compute Sanitizer, and serving smoke are still pending.
+The branch was staged for an RFC, but this snapshot is no longer current or
+merge-ready. A replacement must first incorporate the local hardening, build
+on the L20 host, and rerun GPU correctness, boundary, Compute Sanitizer, and
+serving smoke tests.
 
 ## Historical L20 Validation
 
@@ -95,14 +103,7 @@ The remote host has intermittent GitHub connectivity. CUTLASS and
 vLLM FlashAttention are therefore supplied through `VLLM_CUTLASS_SRC_DIR` and
 `VLLM_FLASH_ATTN_SRC_DIR` instead of being fetched during CMake configuration.
 
-Apply the current RFC patch from a clean vLLM `main` checkout:
-
-```bash
-git apply /path/to/vllm-main-l20-paged-decode-rfc.patch
-```
-
-Apply the historical patch from a clean vLLM `v0.23.0` checkout:
-
-```bash
-git apply /path/to/vllm-v0.23.0-l20-paged-decode.patch
-```
+The checked-in patches are retained only to document the earlier upstream
+shape and validation history. Do not apply either snapshot to a current
+checkout; regenerate from the authoritative local CUDA source and review the
+resulting diff against the exact target vLLM revision.

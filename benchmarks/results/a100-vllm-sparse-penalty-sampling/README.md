@@ -1,5 +1,10 @@
 # A100 vLLM Sparse Penalty Sampling A/B
 
+> **Superseded pending rerun:** the custom sampler in this A/B predates the
+> top-p semantics correction and safe penalty fallback. Preserve the run for
+> provenance; exclude its latency delta from current claims. See the
+> [sampling correctness notice](../../../docs/sampling-correctness-notice-2026-07.md).
+
 This artifact is the first real vLLM HTTP serving A/B for the sparse
 token-history top-k/top-p + penalty sampler path.
 
@@ -17,7 +22,7 @@ token-history top-k/top-p + penalty sampler path.
   `frequency_penalty=0.1`, `presence_penalty=0.1`,
   `repetition_penalty=1.05`
 
-## Result
+## Historical result (not current evidence)
 
 The comparison is against vLLM's native PyTorch top-k/top-p + penalty path in
 this environment. FlashInfer was not installed, so this is not a FlashInfer
@@ -43,15 +48,14 @@ latency because per-token JSON tracing adds overhead.
 
 ## Interpretation
 
-This is a real serving win for the sparse token-history integration boundary:
-the hook runs on the active vLLM serving path and the no-trace A/B improves
-median ITL by 2.33x versus the native PyTorch sampler path.
+The trace still proves that the sparse sampler hook ran on the active vLLM
+serving path. The recorded 2.33x median-ITL ratio is historical only: the
+candidate was not native-equivalent, so it cannot establish a serving win
+against either the PyTorch or FlashInfer path.
 
-The claim is intentionally narrow. It does not prove a win over a
-FlashInfer-enabled production sampler, and it does not yet cover a model matrix
-or L20 serving. The next validation step is to repeat the same A/B on L20 and
-on a larger Qwen/Qwen-Coder model, then compare against a FlashInfer-prewarmed
-route where available.
+A corrected rerun must satisfy the
+[revalidation gate](../../../docs/sampling-correctness-notice-2026-07.md#revalidation-gate)
+before any latency interpretation is restored.
 
 ## Files
 

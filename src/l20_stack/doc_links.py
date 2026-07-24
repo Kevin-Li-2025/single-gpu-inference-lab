@@ -113,6 +113,8 @@ def _default_markdown_files(root: Path) -> tuple[Path, ...]:
         root / "benchmarks" / "results" / "README.md",
         root / "docs" / "experiment-status.md",
         root / "docs" / "hardware-scope.md",
+        root / "docs" / "reviewer-guide.md",
+        root / "docs" / "sampling-correctness-notice-2026-07.md",
         root / "docs" / "repo-map.md",
         root / "docs" / "where-optimizations-stop-mattering.md",
     ]

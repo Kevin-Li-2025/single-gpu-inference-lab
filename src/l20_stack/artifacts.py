@@ -15,6 +15,7 @@ COMPACT_ARTIFACT_NAMES = frozenset(
         "README.md",
         "summary.json",
         "campaign-summary.json",
+        "evidence-status.json",
         "run-config.json",
     }
 )

@@ -9,7 +9,10 @@ usage: scripts/run_vllm_l20_sparse_penalty_triangle.sh \
 Runs a three-way vLLM serving comparison for repetition penalty:
   1. native vLLM penalty path with FlashInfer sampling enabled
   2. request-level L20 sparse repetition-penalty logits processor
-  3. fused L20 sparse token-history sampler boundary
+  3. corrected L20 sampler after native vLLM penalty processing
+
+The legacy output label `fused` is retained for artifact-schema compatibility;
+deferred penalty fusion is disabled so every fallback remains semantically safe.
 
 Latency variants run without trace enabled. Short trace variants are run
 afterward for path proof only.
@@ -190,7 +193,6 @@ start_server() {
     env_args+=(
       "VLLM_L20_TOPK_TOPP_SAMPLER=1"
       "VLLM_L20_TOPK_TOPP_ALLOW_NON_L20=1"
-      "VLLM_L20_TOPK_TOPP_DEFER_PENALTIES=1"
     )
     if [[ -n "$trace_path" ]]; then
       env_args+=("VLLM_L20_TOPK_TOPP_SAMPLER_TRACE=$trace_path")

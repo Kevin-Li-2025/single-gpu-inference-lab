@@ -9,12 +9,13 @@ from l20_stack.ops.triton_sampling import (
     greedy_sampling_launch_config,
     logprob_topk_launch_config,
     should_prefer_l20_topk_topp_sampling,
+    should_use_l20_gpu_greedy_sampling,
     should_use_l20_logprob_topk,
     should_use_l20_sparse_topk_topp_penalty_sampling,
-    should_use_l20_gpu_greedy_sampling,
     should_use_l20_topk_topp_sampling,
     top_logprobs_reference,
     topk_topp_penalty_sample_from_uniform_reference,
+    topk_topp_sample_from_uniform_reference,
     topk_topp_sampling_launch_config,
     topk_topp_sparse_penalty_sample_from_uniform_reference,
     vllm_top_logprobs_reference,
@@ -85,6 +86,31 @@ class L20SamplingTest(unittest.TestCase):
         self.assertTrue(should_prefer_l20_topk_topp_sampling(4, 151_936, 50, 0.9))
         self.assertFalse(should_prefer_l20_topk_topp_sampling(8, 151_936, 50, 0.9))
         self.assertFalse(should_prefer_l20_topk_topp_sampling(16, 151_936, 50, 0.9))
+
+    def test_top_p_reference_keeps_threshold_crossing_token(self):
+        try:
+            import torch
+        except ImportError:
+            self.skipTest("torch is not installed")
+        probabilities = torch.tensor([[0.6, 0.3, 0.1]], dtype=torch.float32)
+        logits = torch.log(probabilities)
+
+        sampled = topk_topp_sample_from_uniform_reference(
+            logits,
+            torch.tensor([0.8]),
+            top_k=3,
+            top_p=0.8,
+        )
+
+        self.assertEqual(int(sampled.item()), 1)
+
+    def test_triton_top_p_kernels_use_pre_token_cumulative_mass(self):
+        spec = importlib.util.find_spec("l20_stack.ops.triton_sampling")
+        self.assertIsNotNone(spec)
+        source = Path(spec.origin).read_text(encoding="utf-8")
+
+        self.assertNotIn("cumulative_exp / total_exp <= TOP_P", source)
+        self.assertEqual(source.count("keep = cumulative_exp / total_exp < TOP_P"), 4)
 
     def test_sparse_penalty_gate_keeps_history_window_bounded(self):
         self.assertTrue(
